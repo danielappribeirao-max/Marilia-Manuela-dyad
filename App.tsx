@@ -280,7 +280,7 @@ export default function App() {
     switch (currentPage) {
       case Page.HOME: return <HomePage onPurchaseOrBook={handlePurchaseOrBook} onPurchasePackage={handlePurchasePackage} />;
       case Page.SERVICES: return <ServicesPage onPurchaseOrBook={handlePurchaseOrBook} onPurchasePackage={handlePurchasePackage} />;
-      case Page.LOGIN: return <LoginPage onLogin={handleLogin} />;
+      case Page.LOGIN: return <LoginPage />;
       case Page.USER_DASHBOARD: return <UserDashboardPage onBookWithCredit={handleStartCreditBooking} onReschedule={handleStartReschedule} />;
       case Page.ADMIN_DASHBOARD: return <AdminDashboardPage />;
       default: return <HomePage onPurchaseOrBook={handlePurchaseOrBook} onPurchasePackage={handlePurchasePackage} />;

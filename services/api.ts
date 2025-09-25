@@ -1,5 +1,6 @@
 import { supabase } from '../supabase/client';
 import { User, Service, Booking, Role, Sale, ServicePackage } from '../types';
+import { User as SupabaseAuthUser } from '@supabase/supabase-js'; // Importar o tipo User do Supabase
 
 // Helper to map Supabase user and profile to our app's User type
 const toAppUser = (supabaseUser: any, profile: any): User | null => {
@@ -247,8 +248,8 @@ export const getUsersWithRoles = async (): Promise<User[]> => {
         return [];
     }
 
-    const usersMap = new Map<string, any>();
-    authUsers.forEach(u => usersMap.set(u.id, u));
+    const usersMap = new Map<string, SupabaseAuthUser>(); // Explicitly type SupabaseAuthUser
+    authUsers.forEach((u: SupabaseAuthUser) => usersMap.set(u.id, u));
 
     return profiles.map(profile => {
         const authUser = usersMap.get(profile.id);
@@ -273,8 +274,8 @@ export const getProfessionals = async (): Promise<User[]> => {
         return [];
     }
 
-    const usersMap = new Map<string, any>();
-    authUsers.forEach(u => usersMap.set(u.id, u));
+    const usersMap = new Map<string, SupabaseAuthUser>(); // Explicitly type SupabaseAuthUser
+    authUsers.forEach((u: SupabaseAuthUser) => usersMap.set(u.id, u));
 
     return profiles.map(profile => {
         const authUser = usersMap.get(profile.id);

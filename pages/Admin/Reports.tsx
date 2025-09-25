@@ -136,7 +136,6 @@ export default function AdminReports() {
     }, [filteredSales]);
     
     const topServicesData = useMemo(() => {
-        // Fix: Explicitly type the accumulator in the reduce function to prevent 'data' from being inferred as 'unknown'.
         const salesByService = filteredSales.reduce((acc: Record<string, { faturamento: number; quantidade: number }>, sale) => {
             const serviceName = sale.serviceName;
             if (!acc[serviceName]) {
@@ -148,7 +147,7 @@ export default function AdminReports() {
         }, {} as Record<string, { faturamento: number; quantidade: number }>);
 
        return Object.entries(salesByService)
-           .map(([name, data]) => ({ name, Faturamento: data.faturamento, Quantidade: data.quantidade }))
+           .map(([name, data]: [string, { faturamento: number; quantidade: number }]) => ({ name, Faturamento: data.faturamento, Quantidade: data.quantidade }))
            .sort((a, b) => b.Faturamento - a.Faturamento).slice(0, 5);
     }, [filteredSales]);
     
