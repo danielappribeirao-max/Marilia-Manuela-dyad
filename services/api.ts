@@ -83,7 +83,7 @@ export const signUp = async (email: string, password: string, name: string) => {
         // The handle_new_user trigger will create the profile.
         // We might need to fetch it after a short delay or rely on the auth state change listener.
         // For now, return a basic user object. The App.tsx listener will fetch the full profile.
-        return { id: data.user.id, email: data.user.email || '', name: name, phone: '', cpf: '', role: Role.CLIENT, credits: {} };
+        return { user: { id: data.user.id, email: data.user.email || '', name: name, phone: '', cpf: '', role: Role.CLIENT }, error: null };
     }
     return { user: null, error: { message: "Sign up failed." } };
 };
@@ -131,7 +131,7 @@ const MOCK_SERVICES: Service[] = [
         category: 'Corporal',
     },
     {
-        id: 'b2c3d4a1-e5f6-7890-1234-abcdef567890',
+        id: 'b2c3d4a1-f6e5-7890-1234-abcdef567890',
         name: 'Peeling de Diamante',
         description: 'Esfoliação mecânica profunda que promove a renovação celular, melhora a textura da pele, atenua manchas, rugas finas e cicatrizes de acne.',
         duration: 45,
