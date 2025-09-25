@@ -1,11 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
 
-// These environment variables are expected to be set in the deployment environment.
-const supabaseUrl = 'https://cyqulktexjergwxmlntv.supabase.co';
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN5cXVsa3RleGplcmd3eG1sbnR2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE2OTU4MTAxMjcsImV4cCI6MjAxMTM4NjEyN30.20j2edTwn24_2-BEl-0N3H3I6s6pL4K2i0JdxQat4wA';
+// Credenciais do projeto Supabase (obtidas do contexto)
+const supabaseUrl = 'https://klsrqngtvbbejhoqkqli.supabase.co';
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtsc3Jxbmd0dmJiZWpob3FrcWxpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTgzNzI2MjYsImV4cCI6MjA3Mzk0ODYyNn0.62RBQTOBDft8ZnK9qB2urfboVl3aj0BwlPl2KYSPq_w';
 
 if (!supabaseUrl || !supabaseAnonKey) {
-    console.error("Supabase URL and Anon Key must be provided. Check your environment variables.");
+    console.error("Supabase URL e Anon Key devem ser fornecidos. Verifique suas variáveis de ambiente.");
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
