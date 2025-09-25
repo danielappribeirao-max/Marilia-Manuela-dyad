@@ -187,7 +187,7 @@ const MOCK_PACKAGES: ServicePackage[] = [
     description: 'Tratamento intensivo para revitalização facial, combinando limpeza profunda com o poder do peeling de diamante.',
     services: [
       { serviceId: 'a1b2c3d4-e5f6-7890-1234-567890abcdef', quantity: 2 }, // Limpeza de Pele
-      { serviceId: 'b2c3d4a1-f6e5-7890-1234-abcdef567890', quantity: 1 }, // Peeling de Diamante
+      { serviceId: 'b2c3d4a1-e5f6-7890-1234-abcdef567890', quantity: 1 }, // Peeling de Diamante
     ],
     price: 550.00,
     imageUrl: 'https://picsum.photos/seed/skinpack/400/300'
