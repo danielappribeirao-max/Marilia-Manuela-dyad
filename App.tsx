@@ -1,4 +1,3 @@
-
 import React, { useState, createContext, useContext, useCallback, useMemo, useEffect } from 'react';
 import { User, Role, Page, Service, Booking, ServicePackage } from './types';
 import * as api from './services/api';
@@ -75,10 +74,10 @@ export default function App() {
         setProfessionals(professionalsData || []);
         setPackages(packagesData || []);
 
-        const sessionResponse = await api.getCurrentUserSession();
-        // FIX: The session object from the mock API is nested. Access sessionResponse.session.
-        if (sessionResponse.session) {
-          const userProfile = await api.getUserProfile(sessionResponse.session.user.id);
+        // Initial session check
+        const { session } = await api.getCurrentUserSession();
+        if (session?.user) {
+          const userProfile = await api.getUserProfile(session.user.id);
           if (userProfile) {
             setCurrentUser(userProfile);
             setCurrentPage(userProfile.role === Role.ADMIN ? Page.ADMIN_DASHBOARD : Page.USER_DASHBOARD);
@@ -92,10 +91,14 @@ export default function App() {
     };
     initializeApp();
 
+    // Listen for auth state changes
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session) {
+      if (session?.user) {
         const userProfile = await api.getUserProfile(session.user.id);
-        setCurrentUser(userProfile);
+        if (userProfile) {
+          setCurrentUser(userProfile);
+          setCurrentPage(userProfile.role === Role.ADMIN ? Page.ADMIN_DASHBOARD : Page.USER_DASHBOARD);
+        }
       } else {
         setCurrentUser(null);
         setCurrentPage(Page.HOME);

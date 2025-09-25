@@ -2,52 +2,112 @@ import { supabase } from '../supabase/client';
 import { User, Service, Booking, Role, Sale, ServicePackage } from '../types';
 
 // Helper to map Supabase user and profile to our app's User type
-const toAppUser = (user: any, profile: any): User | null => {
-    if (!user || !profile) return null;
+const toAppUser = (supabaseUser: any, profile: any): User | null => {
+    if (!supabaseUser || !profile) return null;
     return {
-        id: user.id,
-        email: user.email || '',
-        name: profile.name || '',
+        id: supabaseUser.id,
+        email: supabaseUser.email || '',
+        name: profile.full_name || '',
         phone: profile.phone || '',
         cpf: profile.cpf || '',
-        role: profile.role || Role.CLIENT,
+        role: profile.role as Role || Role.CLIENT,
         credits: profile.credits || {},
     };
 };
 
 // ==================
-// MOCK DATA
+// AUTHENTICATION
 // ==================
-const MOCK_PROFESSIONALS: User[] = [
-    {
-        id: 'prof1',
-        name: 'Ana Silva',
-        email: 'ana.silva@bellezapura.com',
-        phone: '(11) 98765-4321',
-        cpf: '111.222.333-44',
-        role: Role.STAFF,
-        credits: {},
-    },
-    {
-        id: 'prof2',
-        name: 'Beatriz Costa',
-        email: 'beatriz.costa@bellezapura.com',
-        phone: '(11) 91234-5678',
-        cpf: '222.333.444-55',
-        role: Role.STAFF,
-        credits: {},
-    },
-     {
-        id: 'prof3',
-        name: 'Carla Dias',
-        email: 'carla.dias@bellezapura.com',
-        phone: '(11) 99999-8888',
-        cpf: '333.444.555-66',
-        role: Role.STAFF,
-        credits: {},
-    },
-];
+export const getCurrentUserSession = async () => {
+    const { data, error } = await supabase.auth.getSession();
+    if (error) {
+        console.error("Error getting session:", error);
+        return { session: null, error };
+    }
+    return { session: data.session, error: null };
+};
 
+export const getUserProfile = async (userId: string): Promise<User | null> => {
+    const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId) // 'id' in profiles table is the user_id from auth.users
+        .single();
+
+    if (profileError) {
+        console.error("Error fetching user profile:", profileError);
+        return null;
+    }
+
+    const { data: { user: supabaseUser }, error: userError } = await supabase.auth.getUser();
+    if (userError) {
+        console.error("Error fetching auth user:", userError);
+        return null;
+    }
+
+    return toAppUser(supabaseUser, profile);
+};
+
+export const signIn = async (email: string, password?: string) => {
+    if (!password) return { user: null, error: { message: "Password is required." } };
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) {
+        console.error("Error signing in:", error);
+        return { user: null, error };
+    }
+    
+    if (data.user) {
+        const userProfile = await getUserProfile(data.user.id);
+        return { user: userProfile, error: null };
+    }
+    return { user: null, error: { message: "Login failed." } };
+};
+
+export const signUp = async (email: string, password: string, name: string) => {
+    const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+            data: {
+                full_name: name, // This will be used by the handle_new_user trigger
+            },
+        },
+    });
+    if (error) {
+        console.error("Error signing up:", error);
+        return { user: null, error };
+    }
+    if (data.user) {
+        // The handle_new_user trigger will create the profile.
+        // We might need to fetch it after a short delay or rely on the auth state change listener.
+        return { user: { id: data.user.id, email: data.user.email }, error: null };
+    }
+    return { user: null, error: { message: "Sign up failed." } };
+};
+
+export const signOut = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+        console.error("Error signing out:", error);
+        return { error };
+    }
+    return { error: null };
+};
+
+export const sendPasswordResetEmail = async (email: string) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/update-password`, // Redirect to a page where user can set new password
+    });
+    if (error) {
+        console.error("Error sending password reset email:", error);
+        return { error };
+    }
+    return { error: null };
+};
+
+// ==================
+// SERVICES & PACKAGES (Still using mock data for now, will update later if requested)
+// ==================
 const MOCK_SERVICES: Service[] = [
     {
         id: 'a1b2c3d4-e5f6-7890-1234-567890abcdef',
@@ -142,152 +202,6 @@ const MOCK_PACKAGES: ServicePackage[] = [
   }
 ];
 
-const MOCK_USERS: User[] = [
-    {
-        id: 'user1',
-        name: 'Mariana Lima',
-        email: 'mariana.lima@example.com',
-        phone: '(11) 91111-2222',
-        cpf: '123.456.789-00',
-        role: Role.CLIENT,
-        credits: {
-            'a1b2c3d4-e5f6-7890-1234-567890abcdef': 2, // Limpeza de Pele
-            'f5e6d4c3-b2a1-9876-5432-109876abcdef': 1, // Massagem Modeladora
-        },
-    },
-    {
-        id: 'user2',
-        name: 'Juliana Almeida',
-        email: 'juliana.almeida@example.com',
-        phone: '(21) 93333-4444',
-        cpf: '098.765.432-11',
-        role: Role.CLIENT,
-        credits: {},
-    },
-    {
-        id: 'admin1',
-        name: 'Sofia Oliveira',
-        email: 'sofia.oliveira@bellezapura.com',
-        phone: '(31) 95555-6666',
-        cpf: '111.111.111-11',
-        role: Role.ADMIN,
-        credits: {},
-    },
-    ...MOCK_PROFESSIONALS,
-];
-
-const MOCK_BOOKINGS: Booking[] = [
-    {
-        id: 'booking1',
-        userId: 'user1',
-        serviceId: 'a1b2c3d4-e5f6-7890-1234-567890abcdef', // Limpeza de Pele
-        professionalId: 'prof1', // Ana Silva
-        date: new Date(new Date().setDate(new Date().getDate() + 3)),
-        status: 'confirmed',
-        duration: 90,
-    },
-    {
-        id: 'booking2',
-        userId: 'user2',
-        serviceId: 'd4c3b2a1-f6e5-0987-4321-fedcba098765', // Massagem Relaxante
-        professionalId: 'prof2', // Beatriz Costa
-        date: new Date(new Date().setDate(new Date().getDate() - 7)),
-        status: 'completed',
-        rating: 5,
-        comment: 'A massagem foi incrível, saí de lá renovada! A Beatriz é excelente.',
-        duration: 60,
-    },
-    {
-        id: 'booking3',
-        userId: 'user1',
-        serviceId: 'e6f5d4c3-b2a1-0987-6543-210987fedcba', // Design de Sobrancelhas
-        professionalId: 'prof3', // Carla Dias
-        date: new Date(new Date().setDate(new Date().getDate() - 14)),
-        status: 'completed',
-        duration: 30,
-    },
-    {
-        id: 'booking4',
-        userId: 'user2',
-        serviceId: 'b2c3d4a1-e5f6-7890-1234-abcdef567890', // Peeling de Diamante
-        professionalId: 'prof1', // Ana Silva
-        date: new Date(new Date().setDate(new Date().getDate() - 5)),
-        status: 'canceled',
-        duration: 45,
-    },
-    {
-        id: 'booking5',
-        userId: 'user2',
-        serviceId: 'c3d4a1b2-f6e5-0987-4321-abcdef098765', // Drenagem
-        professionalId: 'prof2',
-        date: new Date(new Date().setDate(new Date().getDate() + 10)),
-        status: 'confirmed',
-        duration: 60,
-    }
-];
-
-
-// ==================
-// AUTHENTICATION
-// ==================
-export const getCurrentUserSession = async () => {
-    // To make the app usable, we'll simulate being logged in as a mock user.
-    const mockClient = MOCK_USERS.find(u => u.role === Role.CLIENT);
-    if (mockClient) {
-        return {
-            session: {
-                user: {
-                    id: mockClient.id,
-                    email: mockClient.email,
-                }
-            }
-        };
-    }
-    return { session: null };
-};
-
-export const getUserProfile = async (userId: string): Promise<User | null> => {
-    const user = MOCK_USERS.find(u => u.id === userId);
-    return Promise.resolve(user || null);
-};
-
-export const signIn = async (email?: string, password?: string) => {
-    if (!email || !password) return { user: null, error: { message: "Email and password are required." } };
-    const user = MOCK_USERS.find(u => u.email === email); // Simplified login
-    if (user) {
-        return { user, error: null };
-    }
-    return { user: null, error: { message: "E-mail ou senha inválidos." } };
-};
-
-export const signUp = async (email?: string, password?: string, name?: string) => {
-    if (!email || !password || !name) return { user: null, error: { message: "All fields are required." } };
-    const newUser: User = {
-        id: `user-${Date.now()}`,
-        name,
-        email,
-        phone: '',
-        cpf: '',
-        role: Role.CLIENT,
-        credits: {},
-    };
-    MOCK_USERS.push(newUser);
-    return { user: { id: newUser.id, email: newUser.email }, error: null };
-};
-
-export const signOut = async () => {
-    // In a mock environment, we don't need to do anything.
-    return Promise.resolve();
-};
-
-export const sendPasswordResetEmail = async (email: string) => {
-    alert(`(Simulação) Um link para redefinição de senha foi enviado para ${email}.`);
-    return { data: {}, error: null };
-}
-
-// ==================
-// SERVICES & PACKAGES
-// ==================
 export const getServices = async (): Promise<Service[]> => {
     return Promise.resolve(MOCK_SERVICES);
 };
@@ -295,7 +209,6 @@ export const getServices = async (): Promise<Service[]> => {
 export const getServicePackages = async (): Promise<ServicePackage[]> => {
     return Promise.resolve(MOCK_PACKAGES);
 };
-
 
 export const addOrUpdateService = async (service: Service): Promise<Service | null> => {
     const serviceWithId = { ...service, id: service.id || `service-${Date.now()}` };
@@ -319,44 +232,131 @@ export const deleteService = async (serviceId: string) => {
 // USERS & PROFESSIONALS
 // ==================
 export const getUsersWithRoles = async (): Promise<User[]> => {
-    return Promise.resolve(MOCK_USERS);
+    const { data: profiles, error } = await supabase
+        .from('profiles')
+        .select('*');
+
+    if (error) {
+        console.error("Error fetching users with roles:", error);
+        return [];
+    }
+
+    const { data: { users: authUsers }, error: authUsersError } = await supabase.auth.admin.listUsers();
+    if (authUsersError) {
+        console.error("Error fetching auth users:", authUsersError);
+        return [];
+    }
+
+    const usersMap = new Map<string, any>();
+    authUsers.forEach(u => usersMap.set(u.id, u));
+
+    return profiles.map(profile => {
+        const authUser = usersMap.get(profile.id);
+        return toAppUser(authUser, profile);
+    }).filter(Boolean) as User[];
 };
 
 export const getProfessionals = async (): Promise<User[]> => {
-    return Promise.resolve(MOCK_USERS.filter(u => u.role === Role.STAFF));
+    const { data: profiles, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('role', Role.STAFF); // Assuming 'STAFF' is the role for professionals
+
+    if (error) {
+        console.error("Error fetching professionals:", error);
+        return [];
+    }
+
+    const { data: { users: authUsers }, error: authUsersError } = await supabase.auth.admin.listUsers();
+    if (authUsersError) {
+        console.error("Error fetching auth users:", authUsersError);
+        return [];
+    }
+
+    const usersMap = new Map<string, any>();
+    authUsers.forEach(u => usersMap.set(u.id, u));
+
+    return profiles.map(profile => {
+        const authUser = usersMap.get(profile.id);
+        return toAppUser(authUser, profile);
+    }).filter(Boolean) as User[];
 };
 
 export const updateUserProfile = async (userId: string, updates: Partial<User>): Promise<User | null> => {
-    const index = MOCK_USERS.findIndex(u => u.id === userId);
-    if (index > -1) {
-        MOCK_USERS[index] = { ...MOCK_USERS[index], ...updates };
-        return MOCK_USERS[index];
+    const { data, error } = await supabase
+        .from('profiles')
+        .update({
+            full_name: updates.name,
+            phone: updates.phone,
+            cpf: updates.cpf,
+            role: updates.role,
+            credits: updates.credits,
+            // Add other fields as needed
+        })
+        .eq('id', userId)
+        .select()
+        .single();
+
+    if (error) {
+        console.error("Error updating user profile:", error);
+        return null;
     }
-    return null;
+
+    const { data: { user: supabaseUser }, error: userError } = await supabase.auth.getUser();
+    if (userError) {
+        console.error("Error fetching auth user after profile update:", userError);
+        return null;
+    }
+
+    return toAppUser(supabaseUser, data);
 };
 
 export const addOrUpdateUser = async (user: User): Promise<User | null> => {
-    const index = MOCK_USERS.findIndex(u => u.id === user.id);
-    if (index > -1) {
-        MOCK_USERS[index] = user;
-    } else {
-        MOCK_USERS.push(user);
+    // For existing users, update profile. For new users, this should ideally be handled by signUp.
+    // Admin can update roles, phone, cpf, etc.
+    const { data, error } = await supabase
+        .from('profiles')
+        .upsert({
+            id: user.id, // This is the auth.users.id
+            full_name: user.name,
+            email: user.email, // Email is not directly in profiles, but useful for context
+            phone: user.phone,
+            cpf: user.cpf,
+            role: user.role,
+        }, { onConflict: 'id' })
+        .select()
+        .single();
+
+    if (error) {
+        console.error("Error adding or updating user:", error);
+        return null;
     }
-    return user;
+    
+    // If the user's email or role needs to be updated in auth.users, it requires admin privileges
+    // For now, we'll assume email is handled by auth.signUp/signIn and role is only in profiles.
+    // If you need to update auth.users.email, you'd use supabase.auth.admin.updateUserById(user.id, { email: user.email })
+
+    const { data: { user: supabaseUser }, error: authUserError } = await supabase.auth.getUser();
+    if (authUserError) {
+        console.error("Error fetching auth user after upsert:", authUserError);
+        return null;
+    }
+
+    return toAppUser(supabaseUser, data);
 };
 
 // ==================
 // CREDITS
 // ==================
 export const addCreditsToUser = async (userId: string, serviceId: string, quantity: number, sessionsPerPackage: number = 1): Promise<User | null> => {
-    const user = await getUserProfile(userId);
-    if (!user) return null;
+    const userProfile = await getUserProfile(userId);
+    if (!userProfile) return null;
 
     const totalCreditsToAdd = (sessionsPerPackage || 1) * quantity;
-    const existingCredits = user.credits?.[serviceId] || 0;
+    const existingCredits = userProfile.credits?.[serviceId] || 0;
     
     const newCredits = {
-        ...user.credits,
+        ...userProfile.credits,
         [serviceId]: existingCredits + totalCreditsToAdd,
     };
     
@@ -364,10 +364,10 @@ export const addCreditsToUser = async (userId: string, serviceId: string, quanti
 };
 
 export const addPackageCreditsToUser = async (userId: string, pkg: ServicePackage): Promise<User | null> => {
-    const user = await getUserProfile(userId);
-    if (!user) return null;
+    const userProfile = await getUserProfile(userId);
+    if (!userProfile) return null;
 
-    const newCredits = { ...(user.credits || {}) };
+    const newCredits = { ...(userProfile.credits || {}) };
 
     pkg.services.forEach(item => {
         const existingCredits = newCredits[item.serviceId] || 0;
@@ -378,14 +378,14 @@ export const addPackageCreditsToUser = async (userId: string, pkg: ServicePackag
 };
 
 export const deductCreditFromUser = async (userId: string, serviceId: string): Promise<User | null> => {
-    const user = await getUserProfile(userId);
-    if (!user) return null;
+    const userProfile = await getUserProfile(userId);
+    if (!userProfile) return null;
 
-    const existingCredits = user.credits?.[serviceId] || 0;
-    if (existingCredits <= 0) return user; // Cannot go below zero
+    const existingCredits = userProfile.credits?.[serviceId] || 0;
+    if (existingCredits <= 0) return userProfile; // Cannot go below zero
 
     const newCredits = {
-        ...user.credits,
+        ...userProfile.credits,
         [serviceId]: existingCredits - 1,
     };
 
@@ -396,49 +396,110 @@ export const deductCreditFromUser = async (userId: string, serviceId: string): P
 // ==================
 // BOOKINGS
 // ==================
-const mapBooking = (b: any): Booking => ({ ...b, date: new Date(b.date) });
+const mapBooking = (b: any): Booking => ({ ...b, date: new Date(b.appointment_date + 'T' + b.start_time) }); // Combine date and time
 
 export const getAllBookings = async (): Promise<Booking[]> => {
-    return Promise.resolve(MOCK_BOOKINGS.map(mapBooking));
+    const { data, error } = await supabase
+        .from('appointments')
+        .select('*');
+
+    if (error) {
+        console.error("Error fetching all bookings:", error);
+        return [];
+    }
+    return data.map(mapBooking);
 };
 
 export const getUserBookings = async (userId: string): Promise<Booking[]> => {
-    const userBookings = MOCK_BOOKINGS.filter(b => b.userId === userId);
-    return Promise.resolve(userBookings.map(mapBooking));
+    const { data, error } = await supabase
+        .from('appointments')
+        .select('*')
+        .eq('client_id', userId);
+
+    if (error) {
+        console.error("Error fetching user bookings:", error);
+        return [];
+    }
+    return data.map(mapBooking);
 };
 
 export const addOrUpdateBooking = async (booking: Partial<Booking>): Promise<Booking | null> => {
+    const appointmentDate = booking.date?.toISOString().split('T')[0];
+    const startTime = booking.date?.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+
+    const bookingData = {
+        client_id: booking.userId,
+        service_id: booking.serviceId,
+        professional_id: booking.professionalId,
+        appointment_date: appointmentDate,
+        start_time: startTime,
+        end_time: new Date(booking.date!.getTime() + (booking.duration || 0) * 60000).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }),
+        status: booking.status,
+        notes: booking.comment, // Using comment for notes
+        // internal_notes: booking.internalNotes, // If you have this field
+    };
+
     if (booking.id) { // Update
-        const index = MOCK_BOOKINGS.findIndex(b => b.id === booking.id);
-        if (index > -1) {
-            MOCK_BOOKINGS[index] = { ...MOCK_BOOKINGS[index], ...booking } as Booking;
-            return mapBooking(MOCK_BOOKINGS[index]);
+        const { data, error } = await supabase
+            .from('appointments')
+            .update(bookingData)
+            .eq('id', booking.id)
+            .select()
+            .single();
+
+        if (error) {
+            console.error("Error updating booking:", error);
+            return null;
         }
+        return mapBooking(data);
+    } else { // Create
+        const { data, error } = await supabase
+            .from('appointments')
+            .insert(bookingData)
+            .select()
+            .single();
+
+        if (error) {
+            console.error("Error creating booking:", error);
+            return null;
+        }
+        return mapBooking(data);
     }
-    // Create
-    const newBooking: Booking = {
-        id: `booking-${Date.now()}`,
-        ...booking,
-    } as Booking;
-    MOCK_BOOKINGS.push(newBooking);
-    return mapBooking(newBooking);
 };
 
 // ==================
 // REPORTS
 // ==================
 export const getSalesData = async (): Promise<Sale[]> => {
-    const completedBookings = MOCK_BOOKINGS.filter(b => b.status === 'completed');
+    const { data: payments, error: paymentsError } = await supabase
+        .from('payments')
+        .select(`
+            *,
+            appointments (
+                client_id,
+                service_id,
+                profiles (full_name),
+                services (name, price)
+            )
+        `)
+        .eq('status', 'paid'); // Assuming 'paid' status for completed sales
+
+    if (paymentsError) {
+        console.error("Error fetching sales data:", paymentsError);
+        return [];
+    }
     
-    return completedBookings.map((b: any) => {
-        const service = MOCK_SERVICES.find(s => s.id === b.serviceId);
-        const client = MOCK_USERS.find(u => u.id === b.userId);
+    return payments.map((payment: any) => {
+        const serviceName = payment.appointments?.services?.name || 'Serviço Desconhecido';
+        const clientName = payment.appointments?.profiles?.full_name || 'Cliente Desconhecido';
+        const amount = payment.amount || payment.appointments?.services?.price || 0; // Use payment amount if available, otherwise service price
+        
         return {
-            id: b.id,
-            serviceName: service?.name || 'Serviço Desconhecido',
-            clientName: client?.name || 'Cliente Desconhecido',
-            amount: service?.price || 0,
-            date: new Date(b.date),
+            id: payment.id,
+            serviceName: serviceName,
+            clientName: clientName,
+            amount: amount,
+            date: new Date(payment.paid_at || payment.created_at),
         };
     });
 };
