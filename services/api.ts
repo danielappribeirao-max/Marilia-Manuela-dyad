@@ -3,16 +3,17 @@ import { User, Service, Booking, Role, Sale, ServicePackage } from '../types';
 import { User as SupabaseAuthUser } from '@supabase/supabase-js'; // Importar o tipo User do Supabase
 
 // Helper to map Supabase user and profile to our app's User type
-const toAppUser = (supabaseUser: any, profile: any): User | null => {
-    if (!supabaseUser || !profile) return null;
+const toAppUser = (supabaseUser: SupabaseAuthUser, profile: any | null): User => {
+    // Ensure supabaseUser is always valid here, as it's checked before calling this.
+    // If profile is null, use default values or values from supabaseUser.user_metadata
     return {
         id: supabaseUser.id,
-        email: supabaseUser.email || '', // Use email from auth.users if available, otherwise from profile (if it existed)
-        name: profile.full_name || '',
-        phone: profile.phone || '',
-        cpf: profile.cpf || '',
-        role: profile.role as Role || Role.CLIENT,
-        credits: profile.credits || {},
+        email: supabaseUser.email || '',
+        name: profile?.full_name || supabaseUser.user_metadata?.full_name || supabaseUser.email || 'Usuário',
+        phone: profile?.phone || supabaseUser.user_metadata?.phone || '',
+        cpf: profile?.cpf || supabaseUser.user_metadata?.cpf || '',
+        role: profile?.role as Role || Role.CLIENT, // Default to CLIENT if profile or role is missing
+        credits: profile?.credits || {},
     };
 };
 
@@ -29,24 +30,25 @@ export const getCurrentUserSession = async () => {
 };
 
 export const getUserProfile = async (userId: string): Promise<User | null> => {
+    const { data: { user: supabaseUser }, error: userError } = await supabase.auth.getUser();
+    if (userError || !supabaseUser) {
+        console.error("Error fetching auth user:", userError);
+        return null;
+    }
+
     const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId) // 'id' in profiles table is the user_id from auth.users
         .single();
 
-    if (profileError) {
+    // If there's an error other than 'No rows found' (PGRST116), log it.
+    // But still attempt to create a user object from available data.
+    if (profileError && profileError.code !== 'PGRST116') {
         console.error("Error fetching user profile:", profileError);
-        return null;
     }
 
-    const { data: { user: supabaseUser }, error: userError } = await supabase.auth.getUser();
-    if (userError) {
-        console.error("Error fetching auth user:", userError);
-        return null;
-    }
-
-    // Ensure email is correctly mapped from supabaseUser
+    // Pass supabaseUser and the fetched profile (which can be null if not found) to toAppUser
     return toAppUser(supabaseUser, profile);
 };
 
@@ -197,7 +199,7 @@ const MOCK_PACKAGES: ServicePackage[] = [
     name: 'Pacote Corpo Leve',
     description: 'Sinta-se mais leve e relaxada com sessões de drenagem linfática e massagem para aliviar a tensão e o inchaço.',
     services: [
-      { serviceId: 'c3d4a1b2-f6e5-0987-4321-abcdef098765', quantity: 3 }, // Drenagem Linfática
+      { serviceId: 'c3d4a1b2-f6e5-0987-4321-fedcba098765', quantity: 3 }, // Drenagem Linfática
       { serviceId: 'd4c3b2a1-f6e5-0987-4321-fedcba098765', quantity: 1 }, // Massagem Relaxante
     ],
     price: 600.00,
