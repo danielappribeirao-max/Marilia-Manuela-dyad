@@ -7,7 +7,7 @@ const toAppUser = (supabaseUser: any, profile: any): User | null => {
     if (!supabaseUser || !profile) return null;
     return {
         id: supabaseUser.id,
-        email: supabaseUser.email || '',
+        email: supabaseUser.email || '', // Use email from auth.users if available, otherwise from profile (if it existed)
         name: profile.full_name || '',
         phone: profile.phone || '',
         cpf: profile.cpf || '',
@@ -46,6 +46,7 @@ export const getUserProfile = async (userId: string): Promise<User | null> => {
         return null;
     }
 
+    // Ensure email is correctly mapped from supabaseUser
     return toAppUser(supabaseUser, profile);
 };
 
@@ -81,7 +82,8 @@ export const signUp = async (email: string, password: string, name: string) => {
     if (data.user) {
         // The handle_new_user trigger will create the profile.
         // We might need to fetch it after a short delay or rely on the auth state change listener.
-        return { user: { id: data.user.id, email: data.user.email }, error: null };
+        // For now, return a basic user object. The App.tsx listener will fetch the full profile.
+        return { user: { id: data.user.id, email: data.user.email || '', name: name, phone: '', cpf: '', role: Role.CLIENT }, error: null };
     }
     return { user: null, error: { message: "Sign up failed." } };
 };
@@ -185,7 +187,7 @@ const MOCK_PACKAGES: ServicePackage[] = [
     description: 'Tratamento intensivo para revitalização facial, combinando limpeza profunda com o poder do peeling de diamante.',
     services: [
       { serviceId: 'a1b2c3d4-e5f6-7890-1234-567890abcdef', quantity: 2 }, // Limpeza de Pele
-      { serviceId: 'b2c3d4a1-e5f6-7890-1234-abcdef567890', quantity: 1 }, // Peeling de Diamante
+      { serviceId: 'b2c3d4a1-f6e5-7890-1234-abcdef567890', quantity: 1 }, // Peeling de Diamante
     ],
     price: 550.00,
     imageUrl: 'https://picsum.photos/seed/skinpack/400/300'
@@ -233,54 +235,45 @@ export const deleteService = async (serviceId: string) => {
 // USERS & PROFESSIONALS
 // ==================
 export const getUsersWithRoles = async (): Promise<User[]> => {
-    const { data: profiles, error } = await supabase
-        .from('profiles')
-        .select('*');
+    // Use RPC function to securely fetch all user profiles with emails for admins
+    const { data, error } = await supabase.rpc('get_users_with_emails');
 
     if (error) {
-        console.error("Error fetching users with roles:", error);
+        console.error("Error fetching users with roles via RPC:", error);
         return [];
     }
 
-    const { data: { users: authUsers }, error: authUsersError } = await supabase.auth.admin.listUsers();
-    if (authUsersError) {
-        console.error("Error fetching auth users:", authUsersError);
-        return [];
-    }
-
-    const usersMap = new Map<string, SupabaseAuthUser>(); // Explicitly type SupabaseAuthUser
-    authUsers.forEach((u: SupabaseAuthUser) => usersMap.set(u.id, u));
-
-    return profiles.map(profile => {
-        const authUser = usersMap.get(profile.id);
-        return toAppUser(authUser, profile);
-    }).filter(Boolean) as User[];
+    // Map the RPC result to the User type
+    return data.map((profile: any) => ({
+        id: profile.id,
+        email: profile.email || '',
+        name: profile.full_name || '',
+        phone: profile.phone || '',
+        cpf: profile.cpf || '',
+        role: profile.role as Role || Role.CLIENT,
+        credits: profile.credits || {},
+    }));
 };
 
 export const getProfessionals = async (): Promise<User[]> => {
-    const { data: profiles, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('role', Role.STAFF); // Assuming 'STAFF' is the role for professionals
+    // Use RPC function to securely fetch all user profiles with emails for admins
+    const { data, error } = await supabase.rpc('get_users_with_emails');
 
     if (error) {
-        console.error("Error fetching professionals:", error);
+        console.error("Error fetching professionals via RPC:", error);
         return [];
     }
 
-    const { data: { users: authUsers }, error: authUsersError } = await supabase.auth.admin.listUsers();
-    if (authUsersError) {
-        console.error("Error fetching auth users:", authUsersError);
-        return [];
-    }
-
-    const usersMap = new Map<string, SupabaseAuthUser>(); // Explicitly type SupabaseAuthUser
-    authUsers.forEach((u: SupabaseAuthUser) => usersMap.set(u.id, u));
-
-    return profiles.map(profile => {
-        const authUser = usersMap.get(profile.id);
-        return toAppUser(authUser, profile);
-    }).filter(Boolean) as User[];
+    // Filter for professionals and map the RPC result to the User type
+    return data.filter((profile: any) => profile.role === Role.STAFF).map((profile: any) => ({
+        id: profile.id,
+        email: profile.email || '',
+        name: profile.full_name || '',
+        phone: profile.phone || '',
+        cpf: profile.cpf || '',
+        role: profile.role as Role || Role.CLIENT,
+        credits: profile.credits || {},
+    }));
 };
 
 export const updateUserProfile = async (userId: string, updates: Partial<User>): Promise<User | null> => {
@@ -303,6 +296,7 @@ export const updateUserProfile = async (userId: string, updates: Partial<User>):
         return null;
     }
 
+    // Fetch the auth user to get the email, as it's not in the profiles table
     const { data: { user: supabaseUser }, error: userError } = await supabase.auth.getUser();
     if (userError) {
         console.error("Error fetching auth user after profile update:", userError);
@@ -320,7 +314,6 @@ export const addOrUpdateUser = async (user: User): Promise<User | null> => {
         .upsert({
             id: user.id, // This is the auth.users.id
             full_name: user.name,
-            email: user.email, // Email is not directly in profiles, but useful for context
             phone: user.phone,
             cpf: user.cpf,
             role: user.role,
@@ -333,10 +326,11 @@ export const addOrUpdateUser = async (user: User): Promise<User | null> => {
         return null;
     }
     
-    // If the user's email or role needs to be updated in auth.users, it requires admin privileges
-    // For now, we'll assume email is handled by auth.signUp/signIn and role is only in profiles.
+    // If the user's email needs to be updated, it requires admin privileges
+    // For now, we'll assume email is handled by auth.signUp/signIn.
     // If you need to update auth.users.email, you'd use supabase.auth.admin.updateUserById(user.id, { email: user.email })
 
+    // Fetch the auth user to get the email, as it's not in the profiles table
     const { data: { user: supabaseUser }, error: authUserError } = await supabase.auth.getUser();
     if (authUserError) {
         console.error("Error fetching auth user after upsert:", authUserError);
