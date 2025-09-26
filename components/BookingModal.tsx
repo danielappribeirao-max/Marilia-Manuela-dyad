@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { Service, Professional, Booking, User } from '../types';
 
@@ -17,15 +16,10 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, isCreditB
   const [step, setStep] = useState(1);
   const [selectedDate, setSelectedDate] = useState<Date | null>(booking ? new Date(booking.date) : new Date());
   const [selectedTime, setSelectedTime] = useState<string | null>(booking ? new Date(booking.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : null);
-  const [selectedProfessional, setSelectedProfessional] = useState<User | null>(
-    booking
-      ? professionals.find(p => p.id === booking.professionalId) || professionals[0]
-      : professionals[0]
-  );
   const [showConfirmation, setShowConfirmation] = useState(false);
 
   const availableTimes = useMemo(() => {
-    // This is still mock availability. A real app would fetch this from an API based on date and professional.
+    // This is still mock availability. A real app would fetch this from an API based on date.
     return ["09:00", "10:00", "11:00", "14:00", "15:00", "16:00", "17:00"];
   }, [selectedDate]);
 
@@ -37,7 +31,10 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, isCreditB
   };
   
   const handleBookingConfirm = async () => {
-    if (!selectedDate || !selectedTime || !selectedProfessional) return;
+    if (!selectedDate || !selectedTime || !professionals || professionals.length === 0) return;
+
+    // Assign the first available professional automatically
+    const assignedProfessionalId = professionals[0].id;
 
     const [hours, minutes] = selectedTime.split(':').map(Number);
     const finalDate = new Date(selectedDate);
@@ -45,7 +42,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, isCreditB
 
     const success = await onConfirmBooking({
         date: finalDate,
-        professionalId: selectedProfessional.id,
+        professionalId: assignedProfessionalId,
     });
     
     if (success) {
@@ -97,24 +94,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, isCreditB
             </div>
           </div>
         );
-      case 2: // Professional
-        return (
-          <div>
-            <h3 className="text-lg font-semibold mb-4 text-center">Escolha o profissional</h3>
-            <div className="space-y-3">
-              {professionals.map(prof => (
-                <div key={prof.id} onClick={() => setSelectedProfessional(prof)} className={`flex items-center p-3 rounded-lg cursor-pointer transition-all ${selectedProfessional?.id === prof.id ? 'bg-pink-100 ring-2 ring-pink-500' : 'bg-gray-50 hover:bg-gray-100'}`}>
-                  <img src={`https://picsum.photos/seed/${prof.name}/100/100`} alt={prof.name} className="w-12 h-12 rounded-full mr-4"/>
-                  <div>
-                    <p className="font-semibold">{prof.name}</p>
-                    <p className="text-sm text-gray-500">{prof.role}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        );
-      case 3: // Confirmation
+      case 2: // Confirmation
         return (
           <div>
             <h3 className="text-2xl font-bold mb-4 text-center">{isRescheduling ? 'Revisar Alterações' : 'Resumo do Agendamento'}</h3>
@@ -122,7 +102,6 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, isCreditB
                 <div className="flex justify-between"><span className="font-semibold">Serviço:</span><span>{service.name}</span></div>
                 <div className="flex justify-between"><span className="font-semibold">Data:</span><span>{selectedDate?.toLocaleDateString('pt-BR')}</span></div>
                 <div className="flex justify-between"><span className="font-semibold">Horário:</span><span>{selectedTime}</span></div>
-                <div className="flex justify-between"><span className="font-semibold">Profissional:</span><span>{selectedProfessional?.name}</span></div>
                 <hr className="my-3"/>
                 {isRescheduling ? (<div className="flex justify-between text-xl font-bold text-gray-800"><span>Custo da Alteração:</span><span className="text-green-600">Grátis</span></div>
                 ) : isCreditBooking ? (<div className="flex justify-between text-xl font-bold text-gray-800"><span>Custo:</span><span className="text-green-600">1 Crédito</span></div>
@@ -145,8 +124,8 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, isCreditB
         <div className="p-6 flex-grow">{renderStep()}</div>
         {!showConfirmation && <div className="p-6 bg-gray-50 border-t flex justify-between items-center">
           {step > 1 && <button onClick={() => setStep(s => s - 1)} className="px-6 py-2 bg-gray-200 text-gray-800 rounded-full font-semibold hover:bg-gray-300">Voltar</button>}
-          {step < 3 ? (
-            <button onClick={() => setStep(s => s + 1)} disabled={!selectedTime || (step === 2 && !selectedProfessional)} className="px-6 py-2 bg-pink-500 text-white rounded-full font-semibold hover:bg-pink-600 disabled:bg-gray-300 ml-auto">Avançar</button>
+          {step < 2 ? (
+            <button onClick={() => setStep(s => s + 1)} disabled={!selectedTime} className="px-6 py-2 bg-pink-500 text-white rounded-full font-semibold hover:bg-pink-600 disabled:bg-gray-300 ml-auto">Avançar</button>
           ) : (
             <button onClick={handleBookingConfirm} className="w-full px-6 py-3 bg-green-500 text-white rounded-full font-bold text-lg hover:bg-green-600">{isRescheduling ? 'Confirmar Reagendamento' : (isCreditBooking ? 'Confirmar Agendamento' : 'Confirmar e Pagar')}</button>
           )}
