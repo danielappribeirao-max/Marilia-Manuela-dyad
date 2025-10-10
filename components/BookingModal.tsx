@@ -64,7 +64,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, isCreditB
                         ? "Seu agendamento foi atualizado com sucesso. Nos vemos em breve!"
                         : isCreditBooking 
                         ? "Um crédito foi utilizado com sucesso. Mal podemos esperar para te ver!" 
-                        : "Você receberá um e-mail com os detalhes. Obrigado por escolher a BellezaPura!"
+                        : "Você receberá um e-mail com os detalhes. Obrigado por escolher a Marília Manuela!"
                     }
                 </p>
             </div>

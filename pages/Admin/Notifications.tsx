@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../App';
 import * as api from '../../services/api';
@@ -23,14 +22,14 @@ export default function AdminNotifications() {
     const [channels, setChannels] = useState({ email: true, whatsapp: false });
     const [messageTemplate, setMessageTemplate] = useState(
 `Olá {clientName},
-Este é um lembrete do seu agendamento na BellezaPura.
+Este é um lembrete do seu agendamento na Marília Manuela.
 
 Serviço: {serviceName}
 Profissional: {professionalName}
 Data: {date} às {time}
 
 Mal podemos esperar para vê-lo(a)!
-Equipe BellezaPura`
+Equipe Marília Manuela`
     );
     const [templateError, setTemplateError] = useState('');
 

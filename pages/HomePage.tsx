@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Service, ServicePackage } from '../types';
 import ServiceCard from '../components/ServiceCard';
@@ -65,9 +64,9 @@ export default function HomePage({ onPurchaseOrBook, onPurchasePackage }: HomePa
                 <img src="https://picsum.photos/seed/clinic/600/400" alt="Interior da clínica" className="rounded-lg shadow-xl"/>
             </div>
             <div className="md:w-1/2">
-                <h2 className="text-4xl font-bold text-gray-800 mb-4">Bem-vinda à BellezaPura</h2>
+                <h2 className="text-4xl font-bold text-gray-800 mb-4">Bem-vinda à Marília Manuela</h2>
                 <p className="text-gray-600 mb-4 leading-relaxed">
-                    Na BellezaPura, acreditamos que a estética vai além da aparência. É sobre bem-estar, autoestima e o prazer de se cuidar. Nossa equipe de especialistas utiliza as tecnologias mais avançadas e produtos de alta qualidade para oferecer resultados excepcionais com segurança e conforto.
+                    Na Marília Manuela, acreditamos que a estética vai além da aparência. É sobre bem-estar, autoestima e o prazer de se cuidar. Nossa equipe de especialistas utiliza as tecnologias mais avançadas e produtos de alta qualidade para oferecer resultados excepcionais com segurança e conforto.
                 </p>
                 <p className="text-gray-600 leading-relaxed">
                     Convidamos você a viver uma experiência única de transformação e relaxamento.

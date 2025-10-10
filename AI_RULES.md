@@ -1,6 +1,6 @@
 # Regras de Desenvolvimento para Dyad AI
 
-Este documento descreve a pilha de tecnologia e as diretrizes para o uso de bibliotecas no projeto "Clínica Estética Belleza Pura".
+Este documento descreve a pilha de tecnologia e as diretrizes para o uso de bibliotecas no projeto "Marília Manuela - Centro de Estética Avançada".
 
 ## Pilha de Tecnologia
 
