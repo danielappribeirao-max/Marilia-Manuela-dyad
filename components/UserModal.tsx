@@ -5,14 +5,15 @@ import { formatCPF, formatPhone } from '../utils/formatters';
 interface UserModalProps {
   user: Partial<User> | null;
   onClose: () => void;
-  onSave: (user: User) => void;
+  onSave: (userData: Partial<User> & { password?: string }) => void;
 }
 
 const UserModal: React.FC<UserModalProps> = ({ user, onClose, onSave }) => {
   const [formData, setFormData] = useState({
-    id: user?.id || `user-${Date.now()}`,
+    id: user?.id || '',
     name: user?.name || '',
     email: user?.email || '',
+    password: '',
     phone: user?.phone ? formatPhone(user.phone) : '',
     cpf: user?.cpf ? formatCPF(user.cpf) : '',
     role: user?.role || Role.CLIENT,
@@ -33,12 +34,12 @@ const UserModal: React.FC<UserModalProps> = ({ user, onClose, onSave }) => {
     }
 
     const phoneRegex = /^\(\d{2}\)\s\d{4,5}-\d{4}$/;
-    if (!phoneRegex.test(formData.phone)) {
+    if (formData.phone && !phoneRegex.test(formData.phone)) {
       newErrors.phone = 'Formato inválido. Use (XX) XXXXX-XXXX.';
     }
     
     const cpfRegex = /^\d{3}\.\d{3}\.\d{3}-\d{2}$/;
-    if (!cpfRegex.test(formData.cpf)) {
+    if (formData.cpf && !cpfRegex.test(formData.cpf)) {
       newErrors.cpf = 'Formato inválido. Use XXX.XXX.XXX-XX.';
     }
     
@@ -65,7 +66,7 @@ const UserModal: React.FC<UserModalProps> = ({ user, onClose, onSave }) => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (validate()) {
-      onSave(formData as User);
+      onSave(formData);
     }
   };
 
@@ -86,9 +87,18 @@ const UserModal: React.FC<UserModalProps> = ({ user, onClose, onSave }) => {
             {/* Email */}
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-              <input type="email" id="email" name="email" value={formData.email} onChange={handleChange} className={`w-full p-2 border bg-white text-gray-900 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500 ${errors.email ? 'border-red-500' : 'border-gray-300'}`} />
+              <input type="email" id="email" name="email" value={formData.email} onChange={handleChange} disabled={isEditing} className={`w-full p-2 border bg-white text-gray-900 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500 ${errors.email ? 'border-red-500' : 'border-gray-300'} ${isEditing ? 'bg-gray-100 cursor-not-allowed' : ''}`} />
               {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
             </div>
+            {/* Password (only for new users) */}
+            {!isEditing && (
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">Senha</label>
+                <input type="password" id="password" name="password" value={formData.password} onChange={handleChange} className={`w-full p-2 border bg-white text-gray-900 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500 ${errors.password ? 'border-red-500' : 'border-gray-300'}`} />
+                <p className="text-xs text-gray-500 mt-1">Opcional. Se deixado em branco, uma senha padrão será usada e o usuário poderá redefini-la.</p>
+                {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password}</p>}
+              </div>
+            )}
             {/* Phone */}
             <div>
               <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">Telefone</label>

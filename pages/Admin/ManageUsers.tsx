@@ -33,12 +33,18 @@ export default function AdminManageUsers() {
         setIsModalOpen(true);
     };
 
-    const handleSaveUser = async (savedUser: User) => {
-        const result = await api.addOrUpdateUser(savedUser);
+    const handleSaveUser = async (userData: Partial<User> & { password?: string }) => {
+        let result: User | null = null;
+        if (userData.id) { // Se tem ID, é uma atualização
+            result = await api.updateUserProfile(userData.id, userData);
+        } else { // Senão, é uma criação
+            result = await api.adminCreateUser(userData);
+        }
+
         if (result) {
-           await fetchUsers(); // Refetch to get the latest list
+           await fetchUsers(); // Recarrega a lista para mostrar as alterações
         } else {
-            alert("Ocorreu um erro ao salvar o usuário.");
+            // A mensagem de erro específica já é mostrada pela função da API
         }
         setIsModalOpen(false);
         setSelectedUser(null);
@@ -50,8 +56,8 @@ export default function AdminManageUsers() {
     
     const handleConfirmDelete = async () => {
         if (userToDelete) {
-            // Note: Deleting users can be complex due to foreign key constraints.
-            // This is a simplified version. A real app might deactivate users instead.
+            // Nota: A exclusão de usuários pode ser complexa devido a restrições de chave estrangeira.
+            // Esta é uma versão simplificada. Uma aplicação real poderia desativar os usuários em vez de excluí-los.
             alert("A funcionalidade de exclusão de usuários está desabilitada nesta demonstração para evitar a remoção de dados essenciais.");
             // await api.deleteUser(userToDelete.id);
             // await fetchUsers();

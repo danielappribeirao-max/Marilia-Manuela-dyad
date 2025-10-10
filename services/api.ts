@@ -134,6 +134,38 @@ export const deleteService = async (serviceId: string) => { const index = MOCK_S
 // ==================
 // USERS & PROFESSIONALS
 // ==================
+export const adminCreateUser = async (userData: Partial<User> & { password?: string }): Promise<User | null> => {
+    const { data, error } = await supabase.functions.invoke('admin-create-user', {
+        body: {
+            email: userData.email,
+            password: userData.password,
+            name: userData.name,
+            phone: userData.phone?.replace(/\D/g, ''),
+            cpf: userData.cpf?.replace(/\D/g, ''),
+            role: userData.role === Role.ADMIN ? 'admin' : userData.role === Role.STAFF ? 'staff' : 'user',
+        }
+    });
+
+    if (error) {
+        console.error('Error creating user via function:', error);
+        alert(`Erro ao criar usuário: ${error.message}`);
+        return null;
+    }
+
+    const profile = data.user;
+    const createdUser: User = {
+        id: profile.id,
+        email: profile.email,
+        name: profile.full_name,
+        phone: profile.phone,
+        cpf: profile.cpf,
+        role: profile.role === 'admin' ? Role.ADMIN : profile.role === 'staff' ? Role.STAFF : Role.CLIENT,
+        credits: profile.procedure_credits || {},
+    };
+
+    return createdUser;
+};
+
 export const getUsersWithRoles = async (): Promise<User[]> => {
     const { data, error } = await supabase.rpc('get_all_users_for_admin');
     if (error) {
@@ -169,12 +201,11 @@ export const getProfessionals = async (): Promise<User[]> => {
 };
 
 export const updateUserProfile = async (userId: string, updates: Partial<User>): Promise<User | null> => {
-    const dbUpdates: { [key: string]: any } = {
-        full_name: updates.name,
-        phone: updates.phone,
-        cpf: updates.cpf,
-        procedure_credits: updates.credits,
-    };
+    const dbUpdates: { [key: string]: any } = {};
+    if (updates.name) dbUpdates.full_name = updates.name;
+    if (updates.phone) dbUpdates.phone = updates.phone.replace(/\D/g, '');
+    if (updates.cpf) dbUpdates.cpf = updates.cpf.replace(/\D/g, '');
+    if (updates.credits) dbUpdates.procedure_credits = updates.credits;
 
     if (updates.role) {
         let dbRole = 'user';
@@ -183,11 +214,13 @@ export const updateUserProfile = async (userId: string, updates: Partial<User>):
         dbUpdates.role = dbRole;
     }
 
+    Object.keys(dbUpdates).forEach(key => dbUpdates[key] === undefined && delete dbUpdates[key]);
+
     const { data, error } = await supabase
         .from('profiles')
         .update(dbUpdates)
         .eq('id', userId)
-        .select()
+        .select('*, procedure_credits')
         .single();
 
     if (error) {
@@ -195,34 +228,6 @@ export const updateUserProfile = async (userId: string, updates: Partial<User>):
         return null;
     }
 
-    const { data: { user: supabaseUser } } = await supabase.auth.getUser();
-    if (!supabaseUser) return null;
-
-    return toAppUser(supabaseUser, data);
-};
-
-export const addOrUpdateUser = async (user: User): Promise<User | null> => {
-    let dbRole = 'user';
-    if (user.role === Role.ADMIN) dbRole = 'admin';
-    else if (user.role === Role.STAFF) dbRole = 'staff';
-
-    const { data, error } = await supabase
-        .from('profiles')
-        .upsert({
-            id: user.id,
-            full_name: user.name,
-            phone: user.phone,
-            cpf: user.cpf,
-            role: dbRole,
-        }, { onConflict: 'id' })
-        .select()
-        .single();
-
-    if (error) {
-        console.error("Error adding or updating user:", error);
-        return null;
-    }
-    
     const { data: { user: supabaseUser } } = await supabase.auth.getUser();
     if (!supabaseUser) return null;
 
