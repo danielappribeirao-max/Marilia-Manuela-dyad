@@ -1,6 +1,6 @@
-
 import React, { useState } from 'react';
 import { User, Role } from '../types';
+import { formatCPF, formatPhone } from '../utils/formatters';
 
 interface UserModalProps {
   user: Partial<User> | null;
@@ -8,31 +8,13 @@ interface UserModalProps {
   onSave: (user: User) => void;
 }
 
-const formatCPF = (value: string): string => {
-  const digits = value.replace(/\D/g, '').slice(0, 11);
-  if (digits.length <= 3) return digits;
-  if (digits.length <= 6) return `${digits.slice(0, 3)}.${digits.slice(3)}`;
-  if (digits.length <= 9) return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
-  return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
-};
-
-const formatPhone = (value: string): string => {
-  const digits = value.replace(/\D/g, '').slice(0, 11);
-  if (digits.length === 0) return '';
-  if (digits.length <= 2) return `(${digits}`;
-  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
-  if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
-  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
-};
-
-
 const UserModal: React.FC<UserModalProps> = ({ user, onClose, onSave }) => {
   const [formData, setFormData] = useState({
     id: user?.id || `user-${Date.now()}`,
     name: user?.name || '',
     email: user?.email || '',
-    phone: user?.phone || '',
-    cpf: user?.cpf || '',
+    phone: user?.phone ? formatPhone(user.phone) : '',
+    cpf: user?.cpf ? formatCPF(user.cpf) : '',
     role: user?.role || Role.CLIENT,
   });
   const [errors, setErrors] = useState<{ [key: string]: string }>({});

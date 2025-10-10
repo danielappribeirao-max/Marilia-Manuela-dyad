@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { User } from '../types';
+import { formatCPF, formatPhone } from '../utils/formatters';
 
 interface EditProfileModalProps {
   user: User;
@@ -10,8 +11,8 @@ interface EditProfileModalProps {
 const EditProfileModal: React.FC<EditProfileModalProps> = ({ user, onClose, onSave }) => {
   const [formData, setFormData] = useState({
     name: user.name,
-    phone: user.phone,
-    cpf: user.cpf,
+    phone: formatPhone(user.phone),
+    cpf: formatCPF(user.cpf),
   });
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
@@ -33,7 +34,15 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ user, onClose, onSa
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
+    const { name } = e.target;
+    let { value } = e.target;
+
+    if (name === 'phone') {
+      value = formatPhone(value);
+    } else if (name === 'cpf') {
+      value = formatCPF(value);
+    }
+
     setFormData(prev => ({ ...prev, [name]: value }));
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
