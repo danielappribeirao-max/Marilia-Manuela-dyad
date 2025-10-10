@@ -19,7 +19,7 @@ const toAppUser = (supabaseUser: SupabaseAuthUser, profile: any | null): User =>
         phone: profile?.phone || supabaseUser.user_metadata?.phone || '',
         cpf: profile?.cpf || '',
         role: appRole,
-        credits: profile?.credits || {},
+        credits: profile?.credits || profile?.procedure_credits || {},
     };
 };
 
@@ -44,7 +44,7 @@ export const getUserProfile = async (userId: string): Promise<User | null> => {
 
     const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('*')
+        .select('*, procedure_credits')
         .eq('id', userId)
         .single();
 
@@ -173,7 +173,7 @@ export const updateUserProfile = async (userId: string, updates: Partial<User>):
         full_name: updates.name,
         phone: updates.phone,
         cpf: updates.cpf,
-        credits: updates.credits,
+        procedure_credits: updates.credits,
     };
 
     if (updates.role) {
