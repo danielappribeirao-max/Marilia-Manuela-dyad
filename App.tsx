@@ -76,7 +76,7 @@ export default function App() {
           const userProfile = await api.getUserProfile(session.user.id);
           if (userProfile) {
             setCurrentUser(userProfile);
-            setCurrentPage(userProfile.role === Role.ADMIN ? Page.ADMIN_DASHBOARD : Page.USER_DASHBOARD);
+            // Don't auto-navigate on initial load, let user stay on the page they loaded
           }
         }
       } catch (error) {
@@ -92,9 +92,13 @@ export default function App() {
         const userProfile = await api.getUserProfile(session.user.id);
         if (userProfile) {
           setCurrentUser(userProfile);
-          setCurrentPage(userProfile.role === Role.ADMIN ? Page.ADMIN_DASHBOARD : Page.USER_DASHBOARD);
+          // Only redirect to dashboard on initial sign-in
+          if (event === 'SIGNED_IN') {
+            setCurrentPage(userProfile.role === Role.ADMIN ? Page.ADMIN_DASHBOARD : Page.USER_DASHBOARD);
+          }
         }
       } else {
+        // This handles SIGNED_OUT
         setCurrentUser(null);
         setCurrentPage(Page.HOME);
       }
@@ -119,9 +123,13 @@ export default function App() {
   }, [currentPage]);
 
   const logout = useCallback(async () => {
-    await api.signOut();
-    setCurrentUser(null);
-    setCurrentPage(Page.HOME);
+    const { error } = await api.signOut();
+    if (error) {
+      alert(`Ocorreu um erro ao sair: ${error.message}`);
+      console.error("Logout error:", error);
+    }
+    // The onAuthStateChange listener will automatically handle
+    // setting the user to null and navigating to the home page.
   }, []);
 
   const handlePurchaseOrBook = useCallback((service: Service, quantity: number) => {
@@ -181,7 +189,7 @@ export default function App() {
   }, []);
 
   const handleConfirmFinalBooking = useCallback(async (details: { date: Date, professionalId: string }) => {
-    if (!currentUser) return;
+    if (!currentUser) return false;
     let success = false;
     if (reschedulingBooking) {
       const updatedBooking = { ...reschedulingBooking, ...details, status: 'confirmed' as const };
@@ -189,7 +197,7 @@ export default function App() {
       if(result) success = true;
     } else {
       const serviceToBook = bookingService || creditBookingService;
-      if (!serviceToBook) return;
+      if (!serviceToBook) return false;
       const newBooking: Omit<Booking, 'id'> = { userId: currentUser.id, serviceId: serviceToBook.id, professionalId: details.professionalId, date: details.date, status: 'confirmed', duration: serviceToBook.duration };
       const result = await api.addOrUpdateBooking(newBooking);
       if(result) success = true;
