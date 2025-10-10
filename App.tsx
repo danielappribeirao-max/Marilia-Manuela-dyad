@@ -46,12 +46,10 @@ export default function App() {
   const [currentPage, setCurrentPage] = useState<Page>(Page.HOME);
   const [loading, setLoading] = useState(true);
   
-  // App-wide state
   const [services, setServices] = useState<Service[]>([]);
   const [packages, setPackages] = useState<ServicePackage[]>([]);
   const [professionals, setProfessionals] = useState<User[]>([]);
   
-  // Modal states
   const [bookingService, setBookingService] = useState<Service | null>(null);
   const [purchaseConfirmation, setPurchaseConfirmation] = useState<{ service: Service, quantity: number } | null>(null);
   const [purchasePackageConfirmation, setPurchasePackageConfirmation] = useState<ServicePackage | null>(null);
@@ -60,7 +58,6 @@ export default function App() {
 
   const [showWhatsApp, setShowWhatsApp] = useState(false);
 
-  // Auth and initial data loading
   useEffect(() => {
     const initializeApp = async () => {
       setLoading(true);
@@ -74,7 +71,6 @@ export default function App() {
         setProfessionals(professionalsData || []);
         setPackages(packagesData || []);
 
-        // Initial session check
         const { session } = await api.getCurrentUserSession();
         if (session?.user) {
           const userProfile = await api.getUserProfile(session.user.id);
@@ -91,7 +87,6 @@ export default function App() {
     };
     initializeApp();
 
-    // Listen for auth state changes
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
         const userProfile = await api.getUserProfile(session.user.id);
@@ -123,19 +118,6 @@ export default function App() {
     window.scrollTo(0, 0);
   }, [currentPage]);
 
-  const handleLogin = useCallback(async (email: string, password?: string) => {
-    const { user, error } = await api.signIn(email, password);
-    if (user) {
-        setCurrentUser(user);
-        if (user.role === Role.ADMIN) {
-            setCurrentPage(Page.ADMIN_DASHBOARD);
-        } else {
-            setCurrentPage(Page.USER_DASHBOARD);
-        }
-    }
-    return {user, error};
-  }, []);
-
   const logout = useCallback(async () => {
     await api.signOut();
     setCurrentUser(null);
@@ -164,10 +146,8 @@ export default function App() {
 
   const handleConfirmPurchase = useCallback(async () => {
     if (!purchaseConfirmation || !currentUser) return;
-
     const { service, quantity } = purchaseConfirmation;
     const updatedUser = await api.addCreditsToUser(currentUser.id, service.id, quantity, service.sessions);
-    
     if (updatedUser) {
       setCurrentUser(updatedUser);
        const sessionsPerPackage = service.sessions || 1;
@@ -181,10 +161,8 @@ export default function App() {
 
   const handleConfirmPackagePurchase = useCallback(async () => {
     if (!purchasePackageConfirmation || !currentUser) return;
-
     const pkg = purchasePackageConfirmation;
     const updatedUser = await api.addPackageCreditsToUser(currentUser.id, pkg);
-    
     if (updatedUser) {
       setCurrentUser(updatedUser);
       alert(`Compra do pacote "${pkg.name}" confirmada! Os créditos foram adicionados à sua conta.`);
@@ -212,18 +190,9 @@ export default function App() {
     } else {
       const serviceToBook = bookingService || creditBookingService;
       if (!serviceToBook) return;
-
-      const newBooking: Omit<Booking, 'id'> = {
-        userId: currentUser.id,
-        serviceId: serviceToBook.id,
-        professionalId: details.professionalId,
-        date: details.date,
-        status: 'confirmed',
-        duration: serviceToBook.duration,
-      };
+      const newBooking: Omit<Booking, 'id'> = { userId: currentUser.id, serviceId: serviceToBook.id, professionalId: details.professionalId, date: details.date, status: 'confirmed', duration: serviceToBook.duration };
       const result = await api.addOrUpdateBooking(newBooking);
       if(result) success = true;
-      
       if (creditBookingService) {
         const updatedUser = await api.deductCreditFromUser(currentUser.id, creditBookingService.id);
         if (updatedUser) setCurrentUser(updatedUser);
@@ -259,19 +228,7 @@ export default function App() {
     setServices(prevServices => prevServices.filter(s => s.id !== serviceId));
   }, []);
 
-  const appContextValue = useMemo(() => ({
-    currentUser,
-    setCurrentUser,
-    currentPage,
-    setCurrentPage,
-    logout,
-    services,
-    packages,
-    professionals,
-    addOrUpdateService,
-    deleteService,
-    loading,
-  }), [currentUser, currentPage, logout, services, packages, professionals, addOrUpdateService, deleteService, loading]);
+  const appContextValue = useMemo(() => ({ currentUser, setCurrentUser, currentPage, setCurrentPage, logout, services, packages, professionals, addOrUpdateService, deleteService, loading }), [currentUser, currentPage, logout, services, packages, professionals, addOrUpdateService, deleteService, loading]);
 
   const renderPage = () => {
     if(loading) {
@@ -293,49 +250,12 @@ export default function App() {
     <AppContext.Provider value={appContextValue}>
       <div className="bg-gray-50 text-gray-800 min-h-screen flex flex-col">
         <Header />
-        <main className="flex-grow">
-          {renderPage()}
-        </main>
+        <main className="flex-grow">{renderPage()}</main>
         <Footer />
-
-        {serviceForBookingModal && (
-          <BookingModal 
-            service={serviceForBookingModal}
-            booking={reschedulingBooking} 
-            onClose={handleCloseModals}
-            isCreditBooking={!!creditBookingService}
-            onConfirmBooking={handleConfirmFinalBooking}
-            professionals={professionals}
-          />
-        )}
-        
-        {purchaseConfirmation && (
-          <PurchaseConfirmationModal 
-            service={purchaseConfirmation.service}
-            quantity={purchaseConfirmation.quantity}
-            onConfirm={handleConfirmPurchase}
-            onClose={handleCloseModals}
-          />
-        )}
-
-        {purchasePackageConfirmation && (
-          <PackagePurchaseConfirmationModal
-            servicePackage={purchasePackageConfirmation}
-            services={services}
-            onConfirm={handleConfirmPackagePurchase}
-            onClose={handleCloseModals}
-          />
-        )}
-
-        <a 
-            href="https://wa.me/5511999999999" 
-            target="_blank" 
-            rel="noopener noreferrer" 
-            className={`fixed bottom-6 right-6 bg-green-500 rounded-full p-3 shadow-lg hover:bg-green-600 transition-transform duration-300 transform ${showWhatsApp ? 'scale-100' : 'scale-0'}`}
-            aria-label="Contact us on WhatsApp"
-        >
-            <WhatsAppIcon />
-        </a>
+        {serviceForBookingModal && <BookingModal service={serviceForBookingModal} booking={reschedulingBooking} onClose={handleCloseModals} isCreditBooking={!!creditBookingService} onConfirmBooking={handleConfirmFinalBooking} professionals={professionals} />}
+        {purchaseConfirmation && <PurchaseConfirmationModal service={purchaseConfirmation.service} quantity={purchaseConfirmation.quantity} onConfirm={handleConfirmPurchase} onClose={handleCloseModals} />}
+        {purchasePackageConfirmation && <PackagePurchaseConfirmationModal servicePackage={purchasePackageConfirmation} services={services} onConfirm={handleConfirmPackagePurchase} onClose={handleCloseModals} />}
+        <a href="https://wa.me/5511999999999" target="_blank" rel="noopener noreferrer" className={`fixed bottom-6 right-6 bg-green-500 rounded-full p-3 shadow-lg hover:bg-green-600 transition-transform duration-300 transform ${showWhatsApp ? 'scale-100' : 'scale-0'}`} aria-label="Contact us on WhatsApp"><WhatsAppIcon /></a>
       </div>
     </AppContext.Provider>
   );
