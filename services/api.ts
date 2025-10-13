@@ -197,9 +197,15 @@ export const uploadAvatar = async (userId: string, file: File): Promise<string |
 
 export const uploadLogo = async (file: File): Promise<string | null> => {
     const filePath = 'logo-marilia-manuela.jpeg'; // Manter o nome do arquivo consistente
+    
+    // Trocando para o método `update` que é mais apropriado para substituir um arquivo existente.
+    // `upsert: true` garante que o arquivo seja criado se ainda não existir.
     const { error } = await supabase.storage
         .from('assets')
-        .upload(filePath, file, { upsert: true, contentType: file.type });
+        .update(filePath, file, {
+            contentType: file.type,
+            upsert: true,
+        });
 
     if (error) {
         console.error('Error uploading logo:', error);
