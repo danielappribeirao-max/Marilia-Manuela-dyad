@@ -1,5 +1,5 @@
 import React from 'react';
-import logo from '../assets/logo.png';
+import logo from '@/src/assets/logo.png';
 
 const SocialIcon: React.FC<{ href: string, children: React.ReactNode }> = ({ href, children }) => (
   <a href={href} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-pink-400 transition-colors duration-300">

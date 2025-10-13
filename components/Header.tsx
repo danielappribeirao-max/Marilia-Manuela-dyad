@@ -1,7 +1,7 @@
 import React from 'react';
 import { useApp } from '../App';
 import { Page, Role } from '../types';
-import logo from '../assets/logo.png';
+import logo from '@/src/assets/logo.png';
 
 export default function Header() {
   const { currentUser, currentPage, setCurrentPage, logout } = useApp();
