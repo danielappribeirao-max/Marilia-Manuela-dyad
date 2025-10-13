@@ -93,16 +93,12 @@ export default function AdminSettingsPage() {
     return newUrl;
   };
   
-  // Placeholder for hero image upload logic
   const handleSaveHeroImage = async (file: File) => {
-    // This would call a new API function like api.uploadHeroImage(file)
-    alert("A funcionalidade de alterar a imagem principal será implementada em breve.");
-    // const newUrl = await api.uploadHeroImage(file);
-    // if (newUrl) {
-    //   setHeroImageUrl(newUrl);
-    // }
-    // return newUrl;
-    return null; // Returning null as it's not implemented yet
+    const newUrl = await api.uploadHeroImage(file);
+    if (newUrl) {
+      setHeroImageUrl(newUrl);
+    }
+    return newUrl;
   };
 
   return (

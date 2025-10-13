@@ -198,8 +198,6 @@ export const uploadAvatar = async (userId: string, file: File): Promise<string |
 export const uploadLogo = async (file: File): Promise<string | null> => {
     const filePath = 'logo-marilia-manuela.jpeg'; // Manter o nome do arquivo consistente
     
-    // Trocando para o método `update` que é mais apropriado para substituir um arquivo existente.
-    // `upsert: true` garante que o arquivo seja criado se ainda não existir.
     const { error } = await supabase.storage
         .from('assets')
         .update(filePath, file, {
@@ -215,7 +213,28 @@ export const uploadLogo = async (file: File): Promise<string | null> => {
 
     const { data } = supabase.storage.from('assets').getPublicUrl(filePath);
     
-    // Adicionar um timestamp para evitar problemas de cache do navegador
+    const newUrl = `${data.publicUrl}?t=${new Date().getTime()}`;
+    return newUrl;
+};
+
+export const uploadHeroImage = async (file: File): Promise<string | null> => {
+    const filePath = 'hero-image.jpeg'; // Nome de arquivo consistente para a imagem principal
+    
+    const { error } = await supabase.storage
+        .from('assets')
+        .update(filePath, file, {
+            contentType: file.type,
+            upsert: true,
+        });
+
+    if (error) {
+        console.error('Error uploading hero image:', error);
+        alert(`Erro ao enviar imagem principal: ${error.message}`);
+        return null;
+    }
+
+    const { data } = supabase.storage.from('assets').getPublicUrl(filePath);
+    
     const newUrl = `${data.publicUrl}?t=${new Date().getTime()}`;
     return newUrl;
 };
@@ -240,7 +259,6 @@ export const adminCreateUser = async (userData: Partial<User> & { password?: str
 
     let profile = data.user;
     
-    // If an avatar URL was provided (e.g., uploaded separately), update the profile
     if (userData.avatarUrl && profile.id) {
         const updatedProfile = await updateUserProfile(profile.id, { avatarUrl: userData.avatarUrl });
         if (updatedProfile) {
