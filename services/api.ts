@@ -195,6 +195,25 @@ export const uploadAvatar = async (userId: string, file: File): Promise<string |
     return data.publicUrl;
 };
 
+export const uploadLogo = async (file: File): Promise<string | null> => {
+    const filePath = 'logo-marilia-manuela.jpeg'; // Manter o nome do arquivo consistente
+    const { error } = await supabase.storage
+        .from('assets')
+        .upload(filePath, file, { upsert: true, contentType: file.type });
+
+    if (error) {
+        console.error('Error uploading logo:', error);
+        alert(`Erro ao enviar logo: ${error.message}`);
+        return null;
+    }
+
+    const { data } = supabase.storage.from('assets').getPublicUrl(filePath);
+    
+    // Adicionar um timestamp para evitar problemas de cache do navegador
+    const newUrl = `${data.publicUrl}?t=${new Date().getTime()}`;
+    return newUrl;
+};
+
 export const adminCreateUser = async (userData: Partial<User> & { password?: string, avatarUrl?: string }): Promise<User | null> => {
     const { data, error } = await supabase.functions.invoke('admin-create-user', {
         body: {

@@ -25,6 +25,8 @@ interface AppContextType {
   addOrUpdateService: (service: Service) => Promise<Service | null>;
   deleteService: (serviceId: string) => Promise<void>;
   loading: boolean;
+  logoUrl: string;
+  setLogoUrl: (url: string) => void;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -57,6 +59,7 @@ export default function App() {
   const [reschedulingBooking, setReschedulingBooking] = useState<Booking | null>(null);
 
   const [showWhatsApp, setShowWhatsApp] = useState(false);
+  const [logoUrl, setLogoUrl] = useState('https://mdxqiozhqmcriiqspbqf.supabase.co/storage/v1/object/public/assets/logo-marilia-manuela.jpeg');
 
   useEffect(() => {
     const initializeApp = async () => {
@@ -238,7 +241,7 @@ export default function App() {
     setServices(prevServices => prevServices.filter(s => s.id !== serviceId));
   }, []);
 
-  const appContextValue = useMemo(() => ({ currentUser, setCurrentUser, currentPage, setCurrentPage, logout, services, packages, professionals, addOrUpdateService, deleteService, loading }), [currentUser, currentPage, logout, services, packages, professionals, addOrUpdateService, deleteService, loading]);
+  const appContextValue = useMemo(() => ({ currentUser, setCurrentUser, currentPage, setCurrentPage, logout, services, packages, professionals, addOrUpdateService, deleteService, loading, logoUrl, setLogoUrl }), [currentUser, currentPage, logout, services, packages, professionals, addOrUpdateService, deleteService, loading, logoUrl]);
 
   const renderPage = () => {
     if(loading) {

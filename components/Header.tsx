@@ -3,7 +3,7 @@ import { useApp } from '../App';
 import { Page, Role } from '../types';
 
 export default function Header() {
-  const { currentUser, currentPage, setCurrentPage, logout } = useApp();
+  const { currentUser, currentPage, setCurrentPage, logout, logoUrl } = useApp();
 
   const navItemClasses = (page: Page) => 
     `cursor-pointer transition-colors duration-300 ${currentPage === page ? 'text-pink-400' : 'hover:text-pink-400'}`;
@@ -12,7 +12,7 @@ export default function Header() {
     <header className="bg-white/80 backdrop-blur-md shadow-sm sticky top-0 z-50">
       <nav className="container mx-auto px-6 py-4 flex justify-between items-center">
         <div className="cursor-pointer" onClick={() => setCurrentPage(Page.HOME)}>
-          <img src="https://mdxqiozhqmcriiqspbqf.supabase.co/storage/v1/object/public/assets/logo-marilia-manuela.jpeg" alt="Marília Manuela Logo" className="h-12 w-auto" />
+          <img src={logoUrl} alt="Marília Manuela Logo" className="h-12 w-auto" />
         </div>
         <ul className="hidden md:flex items-center space-x-8 font-medium">
           <li className={navItemClasses(Page.HOME)} onClick={() => setCurrentPage(Page.HOME)}>Início</li>
