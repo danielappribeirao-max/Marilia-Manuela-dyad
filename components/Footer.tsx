@@ -1,4 +1,5 @@
 import React from 'react';
+import logo from '../assets/logo.png';
 
 const SocialIcon: React.FC<{ href: string, children: React.ReactNode }> = ({ href, children }) => (
   <a href={href} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-pink-400 transition-colors duration-300">
@@ -12,7 +13,7 @@ export default function Footer() {
       <div className="container mx-auto px-6 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div>
-            <img src="/logo_marilia_manuela-semfundo.png" alt="Marília Manuela Logo" className="h-12 mb-4" />
+            <img src={logo} alt="Marília Manuela Logo" className="h-12 mb-4" />
             <p className="text-gray-400">Sua beleza, nossa paixão. Agende seu momento de cuidado conosco.</p>
           </div>
           <div>
