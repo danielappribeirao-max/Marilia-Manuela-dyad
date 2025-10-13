@@ -1,8 +1,9 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import * as api from '../../services/api';
-import { User, Role } from '../../types';
+import { User, Role, Service } from '../../types';
 import UserModal from '../../components/UserModal';
 import ConfirmationModal from '../../components/ConfirmationModal';
+import { useApp } from '../../App';
 
 export default function AdminManageUsers() {
     const [users, setUsers] = useState<User[]>([]);
@@ -10,6 +11,7 @@ export default function AdminManageUsers() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedUser, setSelectedUser] = useState<Partial<User> | null>(null);
     const [userToDelete, setUserToDelete] = useState<User | null>(null);
+    const { services } = useApp();
 
 
     const fetchUsers = async () => {
@@ -121,6 +123,7 @@ export default function AdminManageUsers() {
                     user={selectedUser}
                     onClose={() => setIsModalOpen(false)}
                     onSave={handleSaveUser}
+                    services={services}
                 />
             )}
             {userToDelete && (

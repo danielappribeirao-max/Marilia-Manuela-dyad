@@ -1,14 +1,16 @@
-import React, { useState } from 'react';
-import { User, Role } from '../types';
+import React, { useState, useEffect, useMemo } from 'react';
+import { User, Role, Service, Booking } from '../types';
 import { formatCPF, formatPhone } from '../utils/formatters';
+import * as api from '../services/api';
 
 interface UserModalProps {
   user: Partial<User> | null;
   onClose: () => void;
   onSave: (userData: Partial<User> & { password?: string }) => void;
+  services: Service[];
 }
 
-const UserModal: React.FC<UserModalProps> = ({ user, onClose, onSave }) => {
+const UserModal: React.FC<UserModalProps> = ({ user, onClose, onSave, services }) => {
   const [formData, setFormData] = useState({
     id: user?.id || '',
     name: user?.name || '',
@@ -19,8 +21,57 @@ const UserModal: React.FC<UserModalProps> = ({ user, onClose, onSave }) => {
     role: user?.role || Role.CLIENT,
   });
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [loadingCredits, setLoadingCredits] = useState(false);
 
   const isEditing = !!user;
+
+  useEffect(() => {
+    if (isEditing && user?.id) {
+      const fetchBookings = async () => {
+        setLoadingCredits(true);
+        const userBookings = await api.getUserBookings(user.id);
+        setBookings(userBookings || []);
+        setLoadingCredits(false);
+      };
+      fetchBookings();
+    }
+  }, [isEditing, user?.id]);
+
+  const creditDetails = useMemo(() => {
+    if (!isEditing || !user) return [];
+
+    const completedBookings = bookings.filter(b => b.status === 'completed');
+    const usedCreditsMap = completedBookings.reduce((acc, booking) => {
+      acc[booking.serviceId] = (acc[booking.serviceId] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+
+    const remainingCreditsMap = user.credits || {};
+
+    const allServiceIds = new Set([
+      ...Object.keys(remainingCreditsMap).filter(id => (remainingCreditsMap[id] as number) > 0),
+      ...Object.keys(usedCreditsMap)
+    ]);
+
+    return Array.from(allServiceIds).map(serviceId => {
+      const service = services.find(s => s.id === serviceId);
+      if (!service) return null;
+
+      const remaining = (remainingCreditsMap[serviceId] as number) || 0;
+      const used = usedCreditsMap[serviceId] || 0;
+      const total = remaining + used;
+
+      if (total === 0) return null;
+
+      return {
+        serviceName: service.name,
+        total,
+        used,
+        remaining,
+      };
+    }).filter(Boolean) as { serviceName: string; total: number; used: number; remaining: number }[];
+  }, [isEditing, user, bookings, services]);
 
   const validate = () => {
     const newErrors: { [key: string]: string } = {};
@@ -78,19 +129,17 @@ const UserModal: React.FC<UserModalProps> = ({ user, onClose, onSave }) => {
         </div>
         <form onSubmit={handleSubmit} noValidate>
           <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
-            {/* Name */}
+            {/* Form fields */}
             <div>
               <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">Nome Completo</label>
               <input type="text" id="name" name="name" value={formData.name} onChange={handleChange} className={`w-full p-2 border bg-white text-gray-900 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500 ${errors.name ? 'border-red-500' : 'border-gray-300'}`} />
               {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
             </div>
-            {/* Email */}
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">Email</label>
               <input type="email" id="email" name="email" value={formData.email} onChange={handleChange} disabled={isEditing} className={`w-full p-2 border bg-white text-gray-900 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500 ${errors.email ? 'border-red-500' : 'border-gray-300'} ${isEditing ? 'bg-gray-100 cursor-not-allowed' : ''}`} />
               {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
             </div>
-            {/* Password (only for new users) */}
             {!isEditing && (
               <div>
                 <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">Senha</label>
@@ -99,19 +148,16 @@ const UserModal: React.FC<UserModalProps> = ({ user, onClose, onSave }) => {
                 {errors.password && <p className="text-red-500 text-xs mt-1">{errors.password}</p>}
               </div>
             )}
-            {/* Phone */}
             <div>
               <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">Telefone</label>
               <input type="tel" id="phone" name="phone" value={formData.phone} onChange={handleChange} placeholder="(XX) XXXXX-XXXX" className={`w-full p-2 border bg-white text-gray-900 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500 ${errors.phone ? 'border-red-500' : 'border-gray-300'}`} />
               {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone}</p>}
             </div>
-            {/* CPF */}
             <div>
               <label htmlFor="cpf" className="block text-sm font-medium text-gray-700 mb-1">CPF</label>
               <input type="text" id="cpf" name="cpf" value={formData.cpf} onChange={handleChange} placeholder="XXX.XXX.XXX-XX" className={`w-full p-2 border bg-white text-gray-900 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500 ${errors.cpf ? 'border-red-500' : 'border-gray-300'}`} />
               {errors.cpf && <p className="text-red-500 text-xs mt-1">{errors.cpf}</p>}
             </div>
-            {/* Role */}
             <div>
                 <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-1">Função</label>
                 <select id="role" name="role" value={formData.role} onChange={handleChange} className="w-full p-2 border bg-white text-gray-900 border-gray-300 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500">
@@ -120,6 +166,40 @@ const UserModal: React.FC<UserModalProps> = ({ user, onClose, onSave }) => {
                     <option value={Role.STAFF}>Profissional</option>
                 </select>
             </div>
+
+            {/* Credit History Section */}
+            {isEditing && user && (
+              <div className="pt-4 mt-4 border-t border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-800 mb-3">Histórico de Créditos</h3>
+                {loadingCredits ? (
+                  <p className="text-gray-500">Carregando histórico...</p>
+                ) : creditDetails.length > 0 ? (
+                  <div className="space-y-4">
+                    {creditDetails.map((detail, index) => (
+                      <div key={index} className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                        <p className="font-bold text-gray-800">{detail.serviceName}</p>
+                        <div className="mt-2 grid grid-cols-3 gap-2 text-center text-sm">
+                          <div>
+                            <p className="text-xs text-gray-500">Comprados</p>
+                            <p className="font-semibold text-lg">{detail.total}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-500">Utilizados</p>
+                            <p className="font-semibold text-lg text-red-600">{detail.used}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-500">Restantes</p>
+                            <p className="font-semibold text-lg text-green-600">{detail.remaining}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-500 text-sm">Nenhum crédito ou procedimento registrado para este cliente.</p>
+                )}
+              </div>
+            )}
           </div>
           <div className="p-6 bg-gray-50 border-t flex justify-end gap-3">
             <button type="button" onClick={onClose} className="px-5 py-2 bg-gray-200 text-gray-800 rounded-full font-semibold hover:bg-gray-300">
