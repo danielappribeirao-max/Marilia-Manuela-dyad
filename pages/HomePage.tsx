@@ -11,14 +11,14 @@ interface HomePageProps {
 }
 
 export default function HomePage({ onPurchaseOrBook, onPurchasePackage }: HomePageProps) {
-  const { setCurrentPage, services, packages } = useApp();
+  const { setCurrentPage, services, packages, heroImageUrl } = useApp();
   const featuredServices = services.slice(0, 3);
   const featuredPackages = packages.slice(0, 2);
 
   return (
     <div>
       {/* Hero Section */}
-      <section className="relative bg-cover bg-center h-[60vh] text-white" style={{ backgroundImage: "url('https://picsum.photos/seed/spa/1600/900')" }}>
+      <section className="relative bg-cover bg-center h-[60vh] text-white" style={{ backgroundImage: `url('${heroImageUrl}')` }}>
         <div className="absolute inset-0 bg-black bg-opacity-40"></div>
         <div className="relative container mx-auto px-6 h-full flex flex-col justify-center items-start">
           <h1 className="text-5xl md:text-6xl font-bold leading-tight">Sua Beleza, Nosso Compromisso.</h1>
