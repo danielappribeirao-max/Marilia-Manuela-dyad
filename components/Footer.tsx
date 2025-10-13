@@ -1,5 +1,4 @@
 import React from 'react';
-import { useApp } from '../App';
 
 const SocialIcon: React.FC<{ href: string, children: React.ReactNode }> = ({ href, children }) => (
   <a href={href} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-pink-400 transition-colors duration-300">
@@ -8,7 +7,7 @@ const SocialIcon: React.FC<{ href: string, children: React.ReactNode }> = ({ hre
 );
 
 export default function Footer() {
-  const { logoUrl } = useApp();
+  const logoUrl = 'https://mdxqiozhqmcriiqspbqf.supabase.co/storage/v1/object/public/assets/logo-marilia-manuela.jpeg';
   return (
     <footer className="bg-gray-800 text-white">
       <div className="container mx-auto px-6 py-12">

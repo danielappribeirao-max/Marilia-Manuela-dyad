@@ -3,7 +3,8 @@ import { useApp } from '../App';
 import { Page, Role } from '../types';
 
 export default function Header() {
-  const { currentUser, currentPage, setCurrentPage, logout, logoUrl } = useApp();
+  const { currentUser, currentPage, setCurrentPage, logout } = useApp();
+  const logoUrl = 'https://mdxqiozhqmcriiqspbqf.supabase.co/storage/v1/object/public/assets/logo-marilia-manuela.jpeg';
 
   const navItemClasses = (page: Page) => 
     `cursor-pointer transition-colors duration-300 ${currentPage === page ? 'text-pink-400' : 'hover:text-pink-400'}`;
