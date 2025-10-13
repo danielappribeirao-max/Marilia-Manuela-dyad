@@ -115,10 +115,16 @@ export default function AdminReports() {
     }, [filteredSales]);
     
     const kpiDescription = useMemo(() => {
+        const rangeText = formatDateRange();
+        // Safety check to prevent crash
+        if (typeof rangeText !== 'string') {
+            return 'no período selecionado.';
+        }
+
         switch(activeRange) {
             case 'today': return 'para hoje.';
             case 'custom': return `de ${startDate.toLocaleDateString('pt-BR')} a ${endDate.toLocaleDateString('pt-BR')}`;
-            default: return `no período (${formatDateRange().toLowerCase()}).`;
+            default: return `no período (${rangeText.toLowerCase()}).`;
         }
     }, [activeRange, startDate, endDate]);
 
