@@ -115,17 +115,19 @@ export default function AdminReports() {
     }, [filteredSales]);
     
     const kpiDescription = useMemo(() => {
-        const rangeText = formatDateRange();
-        // Safety check to prevent crash
-        if (typeof rangeText !== 'string') {
-            return 'no período selecionado.';
-        }
+        const rangeMap: Record<string, string> = {
+            today: 'para hoje.',
+            yesterday: 'para ontem.',
+            '7days': 'nos últimos 7 dias.',
+            '30days': 'nos últimos 30 dias.',
+            this_month: 'neste mês.',
+            this_year: 'neste ano.',
+            all: 'em todo o período.',
+            custom: `de ${startDate.toLocaleDateString('pt-BR')} a ${endDate.toLocaleDateString('pt-BR')}`
+        };
+        
+        return rangeMap[activeRange] || 'no período selecionado.';
 
-        switch(activeRange) {
-            case 'today': return 'para hoje.';
-            case 'custom': return `de ${startDate.toLocaleDateString('pt-BR')} a ${endDate.toLocaleDateString('pt-BR')}`;
-            default: return `no período (${rangeText.toLowerCase()}).`;
-        }
     }, [activeRange, startDate, endDate]);
 
     const salesTrendData = useMemo(() => {
@@ -181,7 +183,7 @@ export default function AdminReports() {
         }
         return null;
     };
-    // Fix: Add explicit type to ensure `range` is `DateRange`, not `string`.
+    
     const dateRanges: { label: string; range: DateRange }[] = [ { label: 'Hoje', range: 'today' }, { label: 'Ontem', range: 'yesterday' }, { label: 'Últimos 7 dias', range: '7days' }, { label: 'Últimos 30 dias', range: '30days' }, { label: 'Este Mês', range: 'this_month' }, { label: 'Este Ano', range: 'this_year' }, { label: 'Todo o Período', range: 'all' }];
 
     if (loading) return <div>Carregando relatórios...</div>;
