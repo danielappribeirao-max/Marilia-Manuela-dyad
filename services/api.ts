@@ -235,13 +235,128 @@ export const updateUserProfile = async (userId: string, updates: Partial<User>):
 };
 
 // ==================
-// CREDITS & BOOKINGS & REPORTS (unchanged)
+// CREDITS & BOOKINGS & REPORTS
 // ==================
 export const addCreditsToUser = async (userId: string, serviceId: string, quantity: number, sessionsPerPackage: number = 1): Promise<User | null> => { const userProfile = await getUserProfile(userId); if (!userProfile) return null; const totalCreditsToAdd = (sessionsPerPackage || 1) * quantity; const existingCredits = userProfile.credits?.[serviceId] || 0; const newCredits = { ...userProfile.credits, [serviceId]: existingCredits + totalCreditsToAdd, }; return await updateUserProfile(userId, { credits: newCredits }); };
 export const addPackageCreditsToUser = async (userId: string, pkg: ServicePackage): Promise<User | null> => { const userProfile = await getUserProfile(userId); if (!userProfile) return null; const newCredits = { ...(userProfile.credits || {}) }; pkg.services.forEach(item => { const existingCredits = newCredits[item.serviceId] || 0; newCredits[item.serviceId] = existingCredits + item.quantity; }); return await updateUserProfile(userId, { credits: newCredits }); };
 export const deductCreditFromUser = async (userId: string, serviceId: string): Promise<User | null> => { const userProfile = await getUserProfile(userId); if (!userProfile) return null; const existingCredits = userProfile.credits?.[serviceId] || 0; if (existingCredits <= 0) return userProfile; const newCredits = { ...userProfile.credits, [serviceId]: existingCredits - 1, }; return await updateUserProfile(userId, { credits: newCredits }); };
-const mapBooking = (b: any): Booking => ({ ...b, date: new Date(b.appointment_date + 'T' + b.start_time) });
-export const getAllBookings = async (): Promise<Booking[]> => { const { data, error } = await supabase.from('appointments').select('*'); if (error) { console.error("Error fetching all bookings:", error); return []; } return data.map(mapBooking); };
-export const getUserBookings = async (userId: string): Promise<Booking[]> => { const { data, error } = await supabase.from('appointments').select('*').eq('client_id', userId); if (error) { console.error("Error fetching user bookings:", error); return []; } return data.map(mapBooking); };
-export const addOrUpdateBooking = async (booking: Partial<Booking>): Promise<Booking | null> => { const appointmentDate = booking.date?.toISOString().split('T')[0]; const startTime = booking.date?.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }); const bookingData = { client_id: booking.userId, service_id: booking.serviceId, professional_id: booking.professionalId, appointment_date: appointmentDate, start_time: startTime, end_time: new Date(booking.date!.getTime() + (booking.duration || 0) * 60000).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }), status: booking.status, notes: booking.comment, }; if (booking.id) { const { data, error } = await supabase.from('appointments').update(bookingData).eq('id', booking.id).select().single(); if (error) { console.error("Error updating booking:", error); return null; } return mapBooking(data); } else { const { data, error } = await supabase.from('appointments').insert(bookingData).select().single(); if (error) { console.error("Error creating booking:", error); return null; } return mapBooking(data); } };
-export const getSalesData = async (): Promise<Sale[]> => { const { data: payments, error: paymentsError } = await supabase.from('payments').select(`*, appointments (client_id, service_id, profiles (full_name), services (name, price))`).eq('status', 'paid'); if (paymentsError) { console.error("Error fetching sales data:", paymentsError); return []; } return payments.map((payment: any) => { const serviceName = payment.appointments?.services?.name || 'Serviço Desconhecido'; const clientName = payment.appointments?.profiles?.full_name || 'Cliente Desconhecido'; const amount = payment.amount || payment.appointments?.services?.price || 0; return { id: payment.id, serviceName: serviceName, clientName: clientName, amount: amount, date: new Date(payment.paid_at || payment.created_at), }; }); };
+
+const mapDbToBooking = (dbBooking: any): Booking => {
+    const timePart = dbBooking.booking_time || '00:00:00';
+    const bookingDate = new Date(`${dbBooking.booking_date}T${timePart}`);
+    
+    let status: 'confirmed' | 'completed' | 'canceled' = 'confirmed';
+    if (dbBooking.status === 'Concluído' || dbBooking.status === 'completed') {
+        status = 'completed';
+    } else if (dbBooking.status === 'Cancelado' || dbBooking.status === 'canceled') {
+        status = 'canceled';
+    } else if (dbBooking.status === 'Agendado' || dbBooking.status === 'confirmed') {
+        status = 'confirmed';
+    }
+
+    return {
+        id: String(dbBooking.id),
+        userId: dbBooking.user_id,
+        serviceId: dbBooking.service_id,
+        professionalId: dbBooking.professional_id,
+        date: bookingDate,
+        status: status,
+        rating: dbBooking.rating,
+        comment: dbBooking.notes,
+        duration: dbBooking.duration,
+    };
+};
+
+export const getAllBookings = async (): Promise<Booking[]> => {
+    const { data, error } = await supabase.from('bookings').select('*');
+    if (error) {
+        console.error("Error fetching all bookings:", error);
+        return [];
+    }
+    return data.map(mapDbToBooking);
+};
+
+export const getUserBookings = async (userId: string): Promise<Booking[]> => {
+    const { data, error } = await supabase.from('bookings').select('*').eq('user_id', userId);
+    if (error) {
+        console.error("Error fetching user bookings:", error);
+        return [];
+    }
+    return data.map(mapDbToBooking);
+};
+
+export const addOrUpdateBooking = async (booking: Partial<Booking> & { serviceName?: string }): Promise<Booking | null> => {
+    let serviceName = booking.serviceName;
+    if (!serviceName && booking.serviceId) {
+        // This is a mock implementation. In a real scenario, you'd fetch from the 'services' table.
+        const service = MOCK_SERVICES.find(s => s.id === booking.serviceId);
+        if (service) {
+            serviceName = service.name;
+        } else {
+            console.error("Service not found for booking:", booking.serviceId);
+            serviceName = 'Serviço não encontrado';
+        }
+    }
+
+    const bookingDateStr = booking.date?.toISOString().split('T')[0];
+    const bookingTimeStr = booking.date?.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+    let dbStatus = 'Agendado';
+    if (booking.status === 'completed') dbStatus = 'Concluído';
+    else if (booking.status === 'canceled') dbStatus = 'Cancelado';
+
+    const bookingData: { [key: string]: any } = {
+        user_id: booking.userId,
+        service_id: booking.serviceId,
+        professional_id: booking.professionalId,
+        booking_date: bookingDateStr,
+        booking_time: bookingTimeStr,
+        status: dbStatus,
+        notes: booking.comment,
+        rating: booking.rating,
+        duration: booking.duration,
+        service_name: serviceName,
+    };
+
+    Object.keys(bookingData).forEach(key => bookingData[key] === undefined && delete bookingData[key]);
+
+    if (booking.id) {
+        const { data, error } = await supabase.from('bookings').update(bookingData).eq('id', booking.id).select().single();
+        if (error) { console.error("Error updating booking:", error); return null; }
+        return mapDbToBooking(data);
+    } else {
+        if (!bookingData.user_id || !bookingData.service_id || !bookingData.service_name || !bookingData.booking_date || !bookingData.booking_time) {
+            console.error("Missing required fields for new booking:", bookingData);
+            return null;
+        }
+        const { data, error } = await supabase.from('bookings').insert(bookingData).select().single();
+        if (error) { console.error("Error creating booking:", error); return null; }
+        return mapDbToBooking(data);
+    }
+};
+
+export const getSalesData = async (): Promise<Sale[]> => {
+    const { data: completedBookings, error } = await supabase
+        .from('bookings')
+        .select(`*, profiles (full_name)`)
+        .in('status', ['Concluído', 'completed']);
+
+    if (error) {
+        console.error("Error fetching sales data from bookings:", error);
+        return [];
+    }
+
+    return completedBookings.map((booking: any) => {
+        // Since we can't join with mock services, we find the price from the mock data.
+        const service = MOCK_SERVICES.find(s => s.id === booking.service_id);
+        const amount = service?.price || 0;
+
+        return {
+            id: String(booking.id),
+            serviceName: booking.service_name,
+            clientName: booking.profiles?.full_name || 'Cliente Desconhecido',
+            amount: amount,
+            date: new Date(booking.booking_date),
+        };
+    });
+};
