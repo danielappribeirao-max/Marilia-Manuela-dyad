@@ -4,8 +4,8 @@ import AdminReports from './Admin/Reports';
 import AdminManageServices from './Admin/ManageServices';
 import AdminManageUsers from './Admin/ManageUsers';
 import AdminNotifications from './Admin/Notifications';
-import { useApp } from '../../App';
-import { Role } from '../../types';
+import { useApp } from '../App';
+import { Role } from '../types';
 
 type AdminTab = 'agenda' | 'reports' | 'services' | 'users' | 'notifications';
 
