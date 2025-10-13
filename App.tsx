@@ -127,10 +127,12 @@ export default function App() {
     if (error) {
       alert(`Ocorreu um erro ao sair: ${error.message}`);
       console.error("Logout error:", error);
+    } else {
+      // Manually update state for immediate UI feedback
+      setCurrentUser(null);
+      setCurrentPage(Page.HOME);
     }
-    // The onAuthStateChange listener will automatically handle
-    // setting the user to null and navigating to the home page.
-  }, []);
+  }, [setCurrentUser, setCurrentPage]);
 
   const handlePurchaseOrBook = useCallback((service: Service, quantity: number) => {
     if (!currentUser) {
