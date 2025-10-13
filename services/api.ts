@@ -511,3 +511,35 @@ export const getSalesData = async (): Promise<Sale[]> => {
             };
         });
 };
+
+// ==================
+// NOTIFICATIONS
+// ==================
+
+interface SendWhatsappReminderProps {
+    to: string; // Número de telefone formatado
+    message: string;
+}
+
+export const sendWhatsappReminder = async ({ to, message }: SendWhatsappReminderProps): Promise<{ success: boolean, error: string | null }> => {
+    try {
+        const { data, error } = await supabase.functions.invoke('send-whatsapp-reminder', {
+            body: { to, message },
+        });
+
+        if (error) {
+            console.error("Error invoking send-whatsapp-reminder function:", error);
+            return { success: false, error: error.message };
+        }
+        
+        if (data.error) {
+            return { success: false, error: data.error };
+        }
+
+        return { success: true, error: null };
+
+    } catch (e) {
+        console.error("Unexpected error during whatsapp invocation:", e);
+        return { success: false, error: "Erro inesperado ao tentar enviar o lembrete." };
+    }
+};

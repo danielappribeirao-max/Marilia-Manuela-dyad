@@ -32,6 +32,7 @@ Mal podemos esperar para vê-lo(a)!
 Equipe Marília Manuela`
     );
     const [templateError, setTemplateError] = useState('');
+    const [isTesting, setIsTesting] = useState(false);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -74,22 +75,27 @@ Equipe Marília Manuela`
         alert("Configurações salvas com sucesso!");
     };
 
-    const handleTest = () => {
+    const handleTest = async () => {
+        setIsTesting(true);
+        
         // 1. Check for enabled channels
         if (!channels.email && !channels.whatsapp) {
             alert("Por favor, selecione pelo menos um canal de envio (E-mail ou WhatsApp) para testar.");
+            setIsTesting(false);
             return;
         }
         
         // 2. Check for timings
         if (timings.length === 0) {
             alert("Por favor, selecione pelo menos um horário para o envio do lembrete.");
+            setIsTesting(false);
             return;
         }
 
         // 3. Get mock data
         if (bookings.length === 0 || users.length === 0) {
             alert("Dados de teste não disponíveis ou ainda carregando. Tente novamente.");
+            setIsTesting(false);
             return;
         }
         const mockBooking = bookings[0];
@@ -99,6 +105,7 @@ Equipe Marília Manuela`
 
         if (!client || !service || !professional) {
             alert("Não foi possível gerar a mensagem de teste. Dados de mock não encontrados.");
+            setIsTesting(false);
             return;
         }
 
@@ -116,21 +123,37 @@ Equipe Marília Manuela`
         // 6. Build simulation message
         let finalAlertMessage = "--- Visualização do Lembrete de Teste ---\n";
         finalAlertMessage += `(Configurado para enviar ${timingsString} do agendamento)\n\n`;
+        
+        let whatsappSuccess = true;
+        let whatsappError = '';
 
+        if (channels.whatsapp) {
+            // 7. Call Edge Function for WhatsApp simulation
+            const phoneToSend = client.phone.replace(/\D/g, ''); // Remove formatação
+            if (phoneToSend.length < 10) {
+                whatsappError = `O telefone do cliente (${client.phone}) é inválido para envio.`;
+                whatsappSuccess = false;
+            } else {
+                const result = await api.sendWhatsappReminder({ to: phoneToSend, message: personalizedMessage });
+                whatsappSuccess = result.success;
+                whatsappError = result.error || '';
+            }
+            
+            finalAlertMessage += `📱 WHATSAPP:\n`;
+            finalAlertMessage += `Status: ${whatsappSuccess ? 'SUCESSO (Simulado)' : `FALHA: ${whatsappError}`}\n`;
+            finalAlertMessage += `Mensagem enviada para ${client.phone}:\n`;
+            finalAlertMessage += `--------------------------------\n${personalizedMessage}\n--------------------------------\n\n`;
+        }
+        
         if (channels.email) {
             finalAlertMessage += `📧 E-MAIL:\n`;
             finalAlertMessage += `Um e-mail seria enviado para ${client.email} com o conteúdo:\n`;
             finalAlertMessage += `--------------------------------\n${personalizedMessage}\n--------------------------------\n\n`;
         }
 
-        if (channels.whatsapp) {
-            finalAlertMessage += `📱 WHATSAPP:\n`;
-            finalAlertMessage += `Uma mensagem seria enviada para ${client.phone} com o conteúdo:\n`;
-            finalAlertMessage += `--------------------------------\n${personalizedMessage}\n--------------------------------\n`;
-        }
-
-        // 7. Show alert
+        // 8. Show alert
         alert(finalAlertMessage);
+        setIsTesting(false);
     };
 
     return (
@@ -209,8 +232,8 @@ Equipe Marília Manuela`
 
                 {/* Actions */}
                 <div className="flex justify-end gap-4 mt-8">
-                    <button onClick={handleTest} className="px-6 py-2 bg-gray-200 text-gray-800 rounded-full font-semibold hover:bg-gray-300 transition-colors">
-                        Enviar Teste
+                    <button onClick={handleTest} disabled={isTesting} className="px-6 py-2 bg-gray-200 text-gray-800 rounded-full font-semibold hover:bg-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                        {isTesting ? 'Enviando Teste...' : 'Enviar Teste'}
                     </button>
                     <button onClick={handleSave} className="px-6 py-2 bg-pink-500 text-white rounded-full font-semibold hover:bg-pink-600 transition-colors shadow">
                         Salvar Alterações
