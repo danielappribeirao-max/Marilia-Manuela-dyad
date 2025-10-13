@@ -11,7 +11,7 @@ interface HomePageProps {
 }
 
 export default function HomePage({ onPurchaseOrBook, onPurchasePackage }: HomePageProps) {
-  const { setCurrentPage, services, packages, heroImageUrl } = useApp();
+  const { setCurrentPage, services, packages, heroImageUrl, aboutImageUrl } = useApp();
   const featuredServices = services.slice(0, 3);
   const featuredPackages = packages.slice(0, 2);
 
@@ -61,7 +61,7 @@ export default function HomePage({ onPurchaseOrBook, onPurchasePackage }: HomePa
       <section className="py-20 bg-pink-50">
         <div className="container mx-auto px-6 flex flex-col md:flex-row items-center gap-12">
             <div className="md:w-1/2">
-                <img src="https://picsum.photos/seed/clinic/600/400" alt="Interior da clínica" className="rounded-lg shadow-xl"/>
+                <img src={aboutImageUrl} alt="Interior da clínica" className="rounded-lg shadow-xl"/>
             </div>
             <div className="md:w-1/2">
                 <h2 className="text-4xl font-bold text-gray-800 mb-4">Bem-vinda à Marília Manuela</h2>

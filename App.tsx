@@ -29,6 +29,8 @@ interface AppContextType {
   setLogoUrl: (url: string) => void;
   heroImageUrl: string;
   setHeroImageUrl: (url: string) => void;
+  aboutImageUrl: string;
+  setAboutImageUrl: (url: string) => void;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -64,6 +66,7 @@ export default function App() {
   
   const [logoUrl, setLogoUrl] = useState('https://mdxqiozhqmcriiqspbqf.supabase.co/storage/v1/object/public/assets/logo-marilia-manuela.jpeg');
   const [heroImageUrl, setHeroImageUrl] = useState('https://picsum.photos/seed/spa/1600/900');
+  const [aboutImageUrl, setAboutImageUrl] = useState('https://picsum.photos/seed/clinic/600/400');
 
 
   useEffect(() => {
@@ -246,7 +249,7 @@ export default function App() {
     setServices(prevServices => prevServices.filter(s => s.id !== serviceId));
   }, []);
 
-  const appContextValue = useMemo(() => ({ currentUser, setCurrentUser, currentPage, setCurrentPage, logout, services, packages, professionals, addOrUpdateService, deleteService, loading, logoUrl, setLogoUrl, heroImageUrl, setHeroImageUrl }), [currentUser, currentPage, logout, services, packages, professionals, addOrUpdateService, deleteService, loading, logoUrl, heroImageUrl]);
+  const appContextValue = useMemo(() => ({ currentUser, setCurrentUser, currentPage, setCurrentPage, logout, services, packages, professionals, addOrUpdateService, deleteService, loading, logoUrl, setLogoUrl, heroImageUrl, setHeroImageUrl, aboutImageUrl, setAboutImageUrl }), [currentUser, currentPage, logout, services, packages, professionals, addOrUpdateService, deleteService, loading, logoUrl, heroImageUrl, aboutImageUrl]);
 
   const renderPage = () => {
     if(loading) {

@@ -83,7 +83,7 @@ const ImageUploadCard: React.FC<{
 
 
 export default function AdminSettingsPage() {
-  const { logoUrl, setLogoUrl, heroImageUrl, setHeroImageUrl } = useApp();
+  const { logoUrl, setLogoUrl, heroImageUrl, setHeroImageUrl, aboutImageUrl, setAboutImageUrl } = useApp();
 
   const handleSaveLogo = async (file: File) => {
     const newUrl = await api.uploadLogo(file);
@@ -97,6 +97,14 @@ export default function AdminSettingsPage() {
     const newUrl = await api.uploadHeroImage(file);
     if (newUrl) {
       setHeroImageUrl(newUrl);
+    }
+    return newUrl;
+  };
+
+  const handleSaveAboutImage = async (file: File) => {
+    const newUrl = await api.uploadAboutImage(file);
+    if (newUrl) {
+      setAboutImageUrl(newUrl);
     }
     return newUrl;
   };
@@ -116,6 +124,12 @@ export default function AdminSettingsPage() {
           description="A imagem principal que aparece no topo da home page. Use uma imagem de alta qualidade (ex: 1600x900 pixels)."
           currentImageUrl={heroImageUrl}
           onSave={handleSaveHeroImage}
+        />
+        <ImageUploadCard
+          title="Imagem da Seção 'Sobre'"
+          description="A imagem que aparece ao lado do texto 'Bem-vinda à Marília Manuela' na página inicial."
+          currentImageUrl={aboutImageUrl}
+          onSave={handleSaveAboutImage}
         />
       </div>
     </div>

@@ -239,6 +239,28 @@ export const uploadHeroImage = async (file: File): Promise<string | null> => {
     return newUrl;
 };
 
+export const uploadAboutImage = async (file: File): Promise<string | null> => {
+    const filePath = 'about-image.jpeg'; // Nome de arquivo consistente para a imagem "Sobre"
+    
+    const { error } = await supabase.storage
+        .from('assets')
+        .update(filePath, file, {
+            contentType: file.type,
+            upsert: true,
+        });
+
+    if (error) {
+        console.error('Error uploading about image:', error);
+        alert(`Erro ao enviar imagem da seção Sobre: ${error.message}`);
+        return null;
+    }
+
+    const { data } = supabase.storage.from('assets').getPublicUrl(filePath);
+    
+    const newUrl = `${data.publicUrl}?t=${new Date().getTime()}`;
+    return newUrl;
+};
+
 export const adminCreateUser = async (userData: Partial<User> & { password?: string, avatarUrl?: string }): Promise<User | null> => {
     const { data, error } = await supabase.functions.invoke('admin-create-user', {
         body: {
