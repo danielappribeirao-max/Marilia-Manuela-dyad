@@ -111,25 +111,67 @@ export const sendPasswordResetEmail = async (email: string) => {
 };
 
 // ==================
-// SERVICES & PACKAGES (Mock data)
+// SERVICES & PACKAGES
 // ==================
-const MOCK_SERVICES: Service[] = [
-    { id: 'a1b2c3d4-e5f6-7890-1234-567890abcdef', name: 'Limpeza de Pele Profunda', description: 'Tratamento facial completo para remover impurezas, cravos e células mortas, deixando a pele limpa, macia e revitalizada. Ideal para todos os tipos de pele.', duration: 90, price: 180.00, imageUrl: 'https://picsum.photos/seed/limpezapele/400/300', category: 'Facial' },
-    { id: 'd4c3b2a1-f6e5-0987-4321-fedcba098765', name: 'Massagem Relaxante Clássica', description: 'Uma massagem corporal com movimentos suaves e firmes que aliviam a tensão muscular, reduzem o estresse e promovem uma profunda sensação de bem-estar e tranquilidade.', duration: 60, price: 150.00, imageUrl: 'https://picsum.photos/seed/massagem/400/300', category: 'Corporal' },
-    { id: 'b2c3d4a1-f6e5-7890-1234-abcdef567890', name: 'Peeling de Diamante', description: 'Esfoliação mecânica profunda que promove a renovação celular, melhora a textura da pele, atenua manchas, rugas finas e cicatrizes de acne.', duration: 45, price: 250.00, imageUrl: 'https://picsum.photos/seed/peeling/400/300', category: 'Facial' },
-    { id: 'c3d4a1b2-f6e5-0987-4321-abcdef098765', name: 'Drenagem Linfática Corporal', description: 'Técnica de massagem que estimula o sistema linfático, ajudando a eliminar toxinas, reduzir o inchaço e a retenção de líquidos, e combater a celulite.', duration: 60, price: 160.00, imageUrl: 'https://picsum.photos/seed/drenagem/400/300', category: 'Corporal' },
-    { id: 'e6f5d4c3-b2a1-0987-6543-210987fedcba', name: 'Design de Sobrancelhas', description: 'Modelagem e alinhamento das sobrancelhas de acordo com a simetria facial, realçando o olhar. Inclui depilação com pinça ou cera.', duration: 30, price: 50.00, imageUrl: 'https://picsum.photos/seed/sobrancelha/400/300', category: 'Beleza do Olhar' },
-    { id: 'f5e6d4c3-b2a1-9876-5432-109876abcdef', name: 'Pacote 4x Massagem Modeladora', description: 'Tratamento intensivo com 4 sessões de massagem modeladora para remodelar o contorno corporal e reduzir medidas.', duration: 50, price: 540.00, imageUrl: 'https://picsum.photos/seed/modeladora/400/300', category: 'Corporal', sessions: 4 }
-];
 const MOCK_PACKAGES: ServicePackage[] = [
   { id: 'pkg_relax_total', name: 'Pacote Relax Total', description: 'Uma combinação perfeita de massagem relaxante e limpeza de pele para renovar suas energias e cuidar da sua pele.', services: [{ serviceId: 'a1b2c3d4-e5f6-7890-1234-567890abcdef', quantity: 1 }, { serviceId: 'd4c3b2a1-f6e5-0987-4321-fedcba098765', quantity: 2 }], price: 420.00, imageUrl: 'https://picsum.photos/seed/relaxpack/400/300' },
   { id: 'pkg_pele_renovada', name: 'Pacote Pele Renovada', description: 'Tratamento intensivo para revitalização facial, combinando limpeza profunda com o poder do peeling de diamante.', services: [{ serviceId: 'a1b2c3d4-e5f6-7890-1234-567890abcdef', quantity: 2 }, { serviceId: 'b2c3d4a1-f6e5-7890-1234-abcdef567890', quantity: 1 }], price: 550.00, imageUrl: 'https://picsum.photos/seed/skinpack/400/300' },
   { id: 'pkg_corpo_leve', name: 'Pacote Corpo Leve', description: 'Sinta-se mais leve e relaxada com sessões de drenagem linfática e massagem para aliviar a tensão e o inchaço.', services: [{ serviceId: 'c3d4a1b2-f6e5-0987-4321-abcdef098765', quantity: 3 }, { serviceId: 'd4c3b2a1-f6e5-0987-4321-fedcba098765', quantity: 1 }], price: 600.00, imageUrl: 'https://picsum.photos/seed/bodypack/400/300' }
 ];
-export const getServices = async (): Promise<Service[]> => Promise.resolve(MOCK_SERVICES);
+
+const mapDbToService = (dbService: any): Service => ({
+    id: dbService.id,
+    name: dbService.name,
+    description: dbService.description,
+    duration: dbService.duration,
+    price: Number(dbService.price),
+    imageUrl: dbService.image,
+    category: dbService.category,
+    sessions: dbService.sessions,
+});
+
+export const getServices = async (): Promise<Service[]> => {
+    const { data, error } = await supabase.from('services').select('*');
+    if (error) {
+        console.error("Error fetching services:", error);
+        return [];
+    }
+    return data.map(mapDbToService);
+};
+
 export const getServicePackages = async (): Promise<ServicePackage[]> => Promise.resolve(MOCK_PACKAGES);
-export const addOrUpdateService = async (service: Service): Promise<Service | null> => { const serviceWithId = { ...service, id: service.id || `service-${Date.now()}` }; const index = MOCK_SERVICES.findIndex(s => s.id === serviceWithId.id); if (index > -1) MOCK_SERVICES[index] = serviceWithId; else MOCK_SERVICES.push(serviceWithId); return serviceWithId; };
-export const deleteService = async (serviceId: string) => { const index = MOCK_SERVICES.findIndex(s => s.id === serviceId); if (index > -1) MOCK_SERVICES.splice(index, 1); };
+
+export const addOrUpdateService = async (service: Service): Promise<Service | null> => {
+    const serviceData = {
+        id: service.id,
+        name: service.name,
+        description: service.description,
+        price: service.price,
+        duration: service.duration,
+        category: service.category,
+        image: service.imageUrl,
+        sessions: service.sessions,
+    };
+
+    const { data, error } = await supabase
+        .from('services')
+        .upsert(serviceData)
+        .select()
+        .single();
+
+    if (error) {
+        console.error("Error adding/updating service:", error);
+        return null;
+    }
+    return mapDbToService(data);
+};
+
+export const deleteService = async (serviceId: string) => {
+    const { error } = await supabase.from('services').delete().eq('id', serviceId);
+    if (error) {
+        console.error("Error deleting service:", error);
+    }
+};
 
 // ==================
 // USERS & PROFESSIONALS
@@ -288,13 +330,17 @@ export const getUserBookings = async (userId: string): Promise<Booking[]> => {
 export const addOrUpdateBooking = async (booking: Partial<Booking> & { serviceName?: string }): Promise<Booking | null> => {
     let serviceName = booking.serviceName;
     if (!serviceName && booking.serviceId) {
-        // This is a mock implementation. In a real scenario, you'd fetch from the 'services' table.
-        const service = MOCK_SERVICES.find(s => s.id === booking.serviceId);
-        if (service) {
-            serviceName = service.name;
-        } else {
-            console.error("Service not found for booking:", booking.serviceId);
+        const { data: serviceData, error: serviceError } = await supabase
+            .from('services')
+            .select('name')
+            .eq('id', booking.serviceId)
+            .single();
+        
+        if (serviceError || !serviceData) {
+            console.error("Service not found for booking:", booking.serviceId, serviceError);
             serviceName = 'Serviço não encontrado';
+        } else {
+            serviceName = serviceData.name;
         }
     }
 
@@ -338,7 +384,7 @@ export const addOrUpdateBooking = async (booking: Partial<Booking> & { serviceNa
 export const getSalesData = async (): Promise<Sale[]> => {
     const { data: completedBookings, error } = await supabase
         .from('bookings')
-        .select(`*, profiles (full_name)`)
+        .select(`*, profiles (full_name), services (price)`)
         .in('status', ['Concluído', 'completed']);
 
     if (error) {
@@ -347,15 +393,11 @@ export const getSalesData = async (): Promise<Sale[]> => {
     }
 
     return completedBookings.map((booking: any) => {
-        // Since we can't join with mock services, we find the price from the mock data.
-        const service = MOCK_SERVICES.find(s => s.id === booking.service_id);
-        const amount = service?.price || 0;
-
         return {
             id: String(booking.id),
             serviceName: booking.service_name,
             clientName: booking.profiles?.full_name || 'Cliente Desconhecido',
-            amount: amount,
+            amount: booking.services?.price || 0,
             date: new Date(booking.booking_date),
         };
     });
