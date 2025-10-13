@@ -479,9 +479,14 @@ export const addOrUpdateBooking = async (booking: Partial<Booking> & { serviceNa
 };
 
 export const getSalesData = async (): Promise<Sale[]> => {
+    // 1. Buscar todos os agendamentos concluídos, juntando com o perfil do cliente e o preço do serviço
     const { data: completedBookings, error } = await supabase
         .from('bookings')
-        .select(`*, profiles (full_name), services (price)`)
+        .select(`
+            *, 
+            profiles (full_name), 
+            services (price)
+        `)
         .in('status', ['Concluído', 'completed']);
 
     if (error) {
@@ -489,13 +494,20 @@ export const getSalesData = async (): Promise<Sale[]> => {
         return [];
     }
 
-    return completedBookings.map((booking: any) => {
-        return {
-            id: String(booking.id),
-            serviceName: booking.service_name,
-            clientName: booking.profiles?.full_name || 'Cliente Desconhecido',
-            amount: booking.services?.price || 0,
-            date: new Date(booking.booking_date),
-        };
-    });
+    // 2. Mapear para o tipo Sale, garantindo que o valor da venda seja o preço do serviço
+    return completedBookings
+        .filter((booking: any) => booking.services?.price !== undefined && booking.services.price !== null)
+        .map((booking: any) => {
+            // Se o agendamento foi concluído, assumimos que ele foi pago (ou consumiu um crédito pago anteriormente).
+            // Se o preço do serviço for 0, ele não entra no faturamento.
+            const amount = Number(booking.services.price);
+            
+            return {
+                id: String(booking.id),
+                serviceName: booking.service_name,
+                clientName: booking.profiles?.full_name || 'Cliente Desconhecido',
+                amount: amount,
+                date: new Date(booking.booking_date),
+            };
+        });
 };

@@ -33,6 +33,7 @@ const UserModal: React.FC<UserModalProps> = ({ user, onClose, onSave, services }
     if (isEditing && user?.id) {
       const fetchBookings = async () => {
         setLoadingCredits(true);
+        // Busca todos os agendamentos do usuário para calcular os créditos utilizados
         const userBookings = await api.getUserBookings(user.id);
         setBookings(userBookings || []);
         setLoadingCredits(false);
@@ -43,20 +44,35 @@ const UserModal: React.FC<UserModalProps> = ({ user, onClose, onSave, services }
 
   const creditDetails = useMemo(() => {
     if (!isEditing || !user) return [];
-    const completedBookings = bookings.filter(b => b.status === 'completed');
-    const usedCreditsMap = completedBookings.reduce((acc, booking) => {
-      acc[booking.serviceId] = (acc[booking.serviceId] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+    
+    // 1. Calcular créditos utilizados (agendamentos concluídos que usaram crédito)
+    const usedCreditsMap = bookings
+      .filter(b => b.status === 'completed')
+      .reduce((acc, booking) => {
+        // Assumimos que um agendamento concluído consome 1 crédito do serviço
+        acc[booking.serviceId] = (acc[booking.serviceId] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+      
+    // 2. Créditos restantes (do perfil do usuário)
     const remainingCreditsMap = user.credits || {};
-    const allServiceIds = new Set([...Object.keys(remainingCreditsMap).filter(id => (remainingCreditsMap[id] as number) > 0), ...Object.keys(usedCreditsMap)]);
+    
+    // 3. Combinar todos os IDs de serviço que têm créditos (restantes ou utilizados)
+    const allServiceIds = new Set([
+        ...Object.keys(remainingCreditsMap), 
+        ...Object.keys(usedCreditsMap)
+    ]);
+    
     return Array.from(allServiceIds).map(serviceId => {
       const service = services.find(s => s.id === serviceId);
       if (!service) return null;
+      
       const remaining = (remainingCreditsMap[serviceId] as number) || 0;
       const used = usedCreditsMap[serviceId] || 0;
       const total = remaining + used;
-      if (total === 0) return null;
+      
+      if (total === 0) return null; // Não mostrar serviços sem histórico de créditos
+      
       return { serviceName: service.name, total, used, remaining };
     }).filter(Boolean) as { serviceName: string; total: number; used: number; remaining: number }[];
   }, [isEditing, user, bookings, services]);
