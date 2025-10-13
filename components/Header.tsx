@@ -12,7 +12,7 @@ export default function Header() {
     <header className="bg-white/80 backdrop-blur-md shadow-sm sticky top-0 z-50">
       <nav className="container mx-auto px-6 py-4 flex justify-between items-center">
         <div className="cursor-pointer" onClick={() => setCurrentPage(Page.HOME)}>
-          <img src="/logo marilia manuela.jpeg" alt="Marília Manuela Logo" className="h-14" />
+          <img src="/logo-marilia-manuela.jpeg" alt="Marília Manuela Logo" className="h-14" />
         </div>
         <ul className="hidden md:flex items-center space-x-8 font-medium">
           <li className={navItemClasses(Page.HOME)} onClick={() => setCurrentPage(Page.HOME)}>Início</li>

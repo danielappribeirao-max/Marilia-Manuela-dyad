@@ -12,7 +12,7 @@ export default function Footer() {
       <div className="container mx-auto px-6 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div>
-            <img src="/logo marilia manuela.jpeg" alt="Marília Manuela Logo" className="h-12 mb-4" />
+            <img src="/logo-marilia-manuela.jpeg" alt="Marília Manuela Logo" className="h-12 mb-4" />
             <p className="text-gray-400">Sua beleza, nossa paixão. Agende seu momento de cuidado conosco.</p>
           </div>
           <div>
