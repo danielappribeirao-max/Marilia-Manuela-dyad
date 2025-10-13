@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../App';
 import * as api from '../services/api';
@@ -169,7 +168,6 @@ export default function UserDashboardPage({ onBookWithCredit, onReschedule }: Us
         .filter(b => b.status !== 'confirmed')
         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         
-    // Fix: Cast `count` to number to allow comparison. `Object.entries` on an indexed object can result in `unknown`.
     const userCredits = currentUser.credits && Object.entries(currentUser.credits).filter(([, count]) => (count as number) > 0);
 
     return (
@@ -190,7 +188,6 @@ export default function UserDashboardPage({ onBookWithCredit, onReschedule }: Us
                                             <div key={serviceId} className="bg-white p-6 rounded-lg shadow-md flex items-center justify-between">
                                                 <div>
                                                     <h3 className="text-xl font-bold text-gray-800">{service.name}</h3>
-                                                    {/* Fix: Cast `count` to number to allow comparison. */}
                                                     <p className="text-green-600 font-semibold">{count as number} {(count as number) > 1 ? 'sessões restantes' : 'sessão restante'}</p>
                                                 </div>
                                                 <button onClick={() => onBookWithCredit(service)} className="px-5 py-2 bg-pink-500 text-white rounded-full font-semibold hover:bg-pink-600 transition-colors">Agendar</button>
@@ -225,9 +222,14 @@ export default function UserDashboardPage({ onBookWithCredit, onReschedule }: Us
                     </div>
                     
                     <aside>
-                        <div className="bg-white p-6 rounded-lg shadow-md sticky top-28">
+                        <div className="bg-white p-6 rounded-lg shadow-md sticky top-28 text-center">
+                            <img 
+                                src={currentUser.avatarUrl || `https://ui-avatars.com/api/?name=${currentUser.name.replace(/\s/g, '+')}&background=e9d5ff&color=7c3aed`} 
+                                alt="Avatar" 
+                                className="w-24 h-24 rounded-full object-cover mx-auto mb-4 border-4 border-pink-200"
+                            />
                             <h3 className="text-xl font-bold mb-4">{currentUser.name}</h3>
-                            <div className="space-y-2 text-gray-600">
+                            <div className="space-y-2 text-gray-600 text-left">
                                 <p><span className="font-semibold">Email:</span> {currentUser.email}</p>
                                 <p><span className="font-semibold">Telefone:</span> {currentUser.phone}</p>
                                 <p><span className="font-semibold">CPF:</span> {currentUser.cpf}</p>

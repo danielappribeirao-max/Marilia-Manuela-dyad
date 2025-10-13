@@ -20,6 +20,7 @@ const toAppUser = (supabaseUser: SupabaseAuthUser, profile: any | null): User =>
         cpf: profile?.cpf || '',
         role: appRole,
         credits: profile?.credits || profile?.procedure_credits || {},
+        avatarUrl: profile?.avatar_url || '',
     };
 };
 
@@ -85,7 +86,7 @@ export const signUp = async (email: string, password: string, name: string) => {
         return { user: null, error };
     }
     if (data.user) {
-        return { user: { id: data.user.id, email: data.user.email || '', name: name, phone: '', cpf: '', role: Role.CLIENT }, error: null };
+        return { user: { id: data.user.id, email: data.user.email || '', name: name, phone: '', cpf: '', role: Role.CLIENT, avatarUrl: '' }, error: null };
     }
     return { user: null, error: { message: "Sign up failed." } };
 };
@@ -176,7 +177,25 @@ export const deleteService = async (serviceId: string) => {
 // ==================
 // USERS & PROFESSIONALS
 // ==================
-export const adminCreateUser = async (userData: Partial<User> & { password?: string }): Promise<User | null> => {
+export const uploadAvatar = async (userId: string, file: File): Promise<string | null> => {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${userId}-${Date.now()}.${fileExt}`;
+    const filePath = `${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file, { upsert: true });
+
+    if (uploadError) {
+        console.error('Error uploading avatar:', uploadError);
+        return null;
+    }
+
+    const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
+    return data.publicUrl;
+};
+
+export const adminCreateUser = async (userData: Partial<User> & { password?: string, avatarUrl?: string }): Promise<User | null> => {
     const { data, error } = await supabase.functions.invoke('admin-create-user', {
         body: {
             email: userData.email,
@@ -194,7 +213,16 @@ export const adminCreateUser = async (userData: Partial<User> & { password?: str
         return null;
     }
 
-    const profile = data.user;
+    let profile = data.user;
+    
+    // If an avatar URL was provided (e.g., uploaded separately), update the profile
+    if (userData.avatarUrl && profile.id) {
+        const updatedProfile = await updateUserProfile(profile.id, { avatarUrl: userData.avatarUrl });
+        if (updatedProfile) {
+            profile = { ...profile, avatar_url: updatedProfile.avatarUrl };
+        }
+    }
+
     const createdUser: User = {
         id: profile.id,
         email: profile.email,
@@ -203,6 +231,7 @@ export const adminCreateUser = async (userData: Partial<User> & { password?: str
         cpf: profile.cpf,
         role: profile.role === 'admin' ? Role.ADMIN : profile.role === 'staff' ? Role.STAFF : Role.CLIENT,
         credits: profile.procedure_credits || {},
+        avatarUrl: profile.avatar_url || '',
     };
 
     return createdUser;
@@ -217,11 +246,12 @@ export const getUsersWithRoles = async (): Promise<User[]> => {
     return data.map((profile: any) => ({
         id: profile.id,
         email: profile.email || '',
-        name: profile.full_name || '',
+        name: profile.full_name || profile.email || '',
         phone: profile.phone || '',
         cpf: profile.cpf || '',
         role: profile.role === 'admin' ? Role.ADMIN : profile.role === 'staff' ? Role.STAFF : Role.CLIENT,
         credits: profile.credits || {},
+        avatarUrl: profile.avatar_url || '',
     }));
 };
 
@@ -239,6 +269,7 @@ export const getProfessionals = async (): Promise<User[]> => {
         cpf: profile.cpf || '',
         role: Role.STAFF,
         credits: profile.credits || {},
+        avatarUrl: profile.avatar_url || '',
     }));
 };
 
@@ -248,6 +279,7 @@ export const updateUserProfile = async (userId: string, updates: Partial<User>):
     if (updates.phone) dbUpdates.phone = updates.phone.replace(/\D/g, '');
     if (updates.cpf) dbUpdates.cpf = updates.cpf.replace(/\D/g, '');
     if (updates.credits) dbUpdates.procedure_credits = updates.credits;
+    if (updates.avatarUrl) dbUpdates.avatar_url = updates.avatarUrl;
 
     if (updates.role) {
         let dbRole = 'user';

@@ -1,4 +1,3 @@
-
 export enum Role {
   CLIENT = 'CLIENT',
   ADMIN = 'ADMIN',
@@ -21,6 +20,7 @@ export interface User {
   cpf: string;
   role: Role;
   credits?: { [serviceId: string]: number };
+  avatarUrl?: string;
 }
 
 export interface Professional {
