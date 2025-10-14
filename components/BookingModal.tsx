@@ -1,5 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Service, Booking, User } from '../types';
+import * as api from '../services/api';
 
 interface BookingModalProps {
   service: Service;
@@ -10,25 +11,106 @@ interface BookingModalProps {
   professionals: User[];
 }
 
+// Função utilitária para converter HH:MM para minutos desde a meia-noite
+const timeToMinutes = (time: string) => {
+    const [h, m] = time.split(':').map(Number);
+    return h * 60 + m;
+};
+
+// Função utilitária para converter minutos para HH:MM
+const minutesToTime = (minutes: number) => {
+    const h = Math.floor(minutes / 60);
+    const m = minutes % 60;
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+};
+
 const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, isCreditBooking = false, booking = null, onConfirmBooking, professionals }) => {
   const isRescheduling = !!booking;
 
   const [step, setStep] = useState(1);
   const [selectedDate, setSelectedDate] = useState<Date | null>(booking ? new Date(booking.date) : new Date());
-  const [selectedTime, setSelectedTime] = useState<string | null>(booking ? new Date(booking.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : null);
+  const [selectedTime, setSelectedTime] = useState<string | null>(booking ? new Date(booking.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }).slice(0, 5) : null);
   const [selectedProfessionalId, setSelectedProfessionalId] = useState<string | null>(booking?.professionalId || null);
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [occupiedSlots, setOccupiedSlots] = useState<{ professional_id: string, booking_time: string, duration: number }[]>([]);
+  const [loadingAvailability, setLoadingAvailability] = useState(false);
+
+  const serviceDuration = service.duration;
+  const minBookingDate = useMemo(() => new Date().toISOString().split('T')[0], []);
+
+  const fetchAvailability = useCallback(async (date: Date) => {
+    setLoadingAvailability(true);
+    const dateString = date.toISOString().split('T')[0];
+    const slots = await api.getOccupiedSlots(dateString);
+    setOccupiedSlots(slots);
+    setLoadingAvailability(false);
+  }, []);
+
+  useEffect(() => {
+    if (selectedDate) {
+      fetchAvailability(selectedDate);
+    }
+  }, [selectedDate, fetchAvailability]);
 
   const availableTimes = useMemo(() => {
-    // Mock availability. A real app would fetch this from an API.
-    return ["09:00", "10:00", "11:00", "14:00", "15:00", "16:00", "17:00"];
-  }, [selectedDate]);
+    if (!selectedDate || !selectedProfessionalId) return [];
+
+    const startDayMinutes = timeToMinutes("08:00"); // 8:00 AM
+    const endDayMinutes = timeToMinutes("20:00");   // 8:00 PM
+    const interval = 30; // Slots de 30 minutos
+    
+    const times: string[] = [];
+    
+    // 1. Filtrar agendamentos ocupados para o profissional selecionado
+    const professionalOccupiedSlots = occupiedSlots.filter(slot => slot.professional_id === selectedProfessionalId);
+
+    // 2. Gerar todos os slots possíveis e verificar conflitos
+    for (let minutes = startDayMinutes; minutes < endDayMinutes; minutes += interval) {
+        const slotStartTime = minutes;
+        const slotEndTime = minutes + serviceDuration;
+        
+        // Se o serviço for muito longo e ultrapassar o horário de fechamento, pular
+        if (slotEndTime > endDayMinutes) continue;
+
+        let isAvailable = true;
+
+        // Verificar conflito com agendamentos existentes
+        for (const occupied of professionalOccupiedSlots) {
+            const occupiedStart = timeToMinutes(occupied.booking_time);
+            const occupiedEnd = occupiedStart + occupied.duration;
+            
+            // Se estiver reagendando o mesmo booking, ignore o conflito com ele mesmo
+            if (isRescheduling && booking?.id === occupied.id) continue;
+
+            // Conflito se o novo slot começar durante um agendamento existente OU
+            // se o novo slot terminar durante um agendamento existente OU
+            // se o novo slot englobar um agendamento existente
+            const overlaps = (slotStartTime < occupiedEnd && occupiedStart < slotEndTime);
+
+            if (overlaps) {
+                isAvailable = false;
+                break;
+            }
+        }
+
+        if (isAvailable) {
+            times.push(minutesToTime(minutes));
+        }
+    }
+
+    return times;
+  }, [selectedDate, selectedProfessionalId, occupiedSlots, serviceDuration, isRescheduling, booking?.id]);
 
   const handleDateChange = (dateString: string) => {
     if (!dateString) return;
     const newDate = new Date(dateString + 'T00:00:00');
     setSelectedDate(newDate);
-    setSelectedTime(null);
+    setSelectedTime(null); // Resetar horário ao mudar a data
+  };
+  
+  const handleProfessionalChange = (id: string) => {
+    setSelectedProfessionalId(id);
+    setSelectedTime(null); // Resetar horário ao mudar o profissional
   };
   
   const handleBookingConfirm = async () => {
@@ -36,6 +118,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, isCreditB
 
     const [hours, minutes] = selectedTime.split(':').map(Number);
     const finalDate = new Date(selectedDate);
+    // Ajustar para o horário selecionado (o input date é sempre 00:00:00)
     finalDate.setHours(hours, minutes, 0, 0);
 
     const success = await onConfirmBooking({
@@ -85,25 +168,15 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, isCreditB
                       className="p-2 border border-gray-300 bg-white text-gray-900 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500 w-full"
                       value={selectedDate ? selectedDate.toISOString().split('T')[0] : ''}
                       onChange={(e) => handleDateChange(e.target.value)}
-                      min={new Date().toISOString().split('T')[0]}
+                      min={minBookingDate}
                   />
               </div>
             </div>
             <div>
-              <h3 className="text-lg font-semibold mb-2 text-center">2. Escolha o horário</h3>
-              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                {availableTimes.map(time => (
-                  <button key={time} onClick={() => setSelectedTime(time)} className={`p-2 rounded-md text-sm transition-colors ${selectedTime === time ? 'bg-pink-500 text-white' : 'bg-gray-100 hover:bg-pink-100'}`}>
-                    {time}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold mb-2 text-center">3. Escolha o profissional</h3>
+              <h3 className="text-lg font-semibold mb-2 text-center">2. Escolha o profissional</h3>
               <select
                 value={selectedProfessionalId || ''}
-                onChange={(e) => setSelectedProfessionalId(e.target.value)}
+                onChange={(e) => handleProfessionalChange(e.target.value)}
                 className="w-full p-2 border bg-white text-gray-900 border-gray-300 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500"
               >
                 <option value="" disabled>Selecione um profissional</option>
@@ -111,6 +184,24 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, isCreditB
                   <option key={prof.id} value={prof.id}>{prof.name}</option>
                 ))}
               </select>
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold mb-2 text-center">3. Escolha o horário ({serviceDuration} min)</h3>
+              {loadingAvailability ? (
+                  <div className="text-center text-gray-500">Carregando horários...</div>
+              ) : !selectedProfessionalId ? (
+                  <div className="text-center text-gray-500">Selecione um profissional para ver os horários.</div>
+              ) : availableTimes.length > 0 ? (
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-48 overflow-y-auto p-1">
+                    {availableTimes.map(time => (
+                      <button key={time} onClick={() => setSelectedTime(time)} className={`p-2 rounded-md text-sm transition-colors ${selectedTime === time ? 'bg-pink-500 text-white' : 'bg-gray-100 hover:bg-pink-100'}`}>
+                        {time}
+                      </button>
+                    ))}
+                  </div>
+              ) : (
+                  <div className="text-center text-red-500 p-4 bg-red-50 rounded-lg">Nenhum horário disponível para este profissional na data selecionada.</div>
+              )}
             </div>
           </div>
         );

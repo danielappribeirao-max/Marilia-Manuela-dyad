@@ -435,6 +435,24 @@ export const getUserBookings = async (userId: string): Promise<Booking[]> => {
     return data.map(mapDbToBooking);
 };
 
+export const getOccupiedSlots = async (dateString: string): Promise<{ professional_id: string, booking_time: string, duration: number }[]> => {
+    const { data, error } = await supabase
+        .from('bookings')
+        .select('professional_id, booking_time, duration')
+        .eq('booking_date', dateString)
+        .eq('status', 'Agendado'); // Apenas agendamentos confirmados/agendados
+
+    if (error) {
+        console.error("Error fetching occupied slots:", error);
+        return [];
+    }
+    return data.map(d => ({
+        professional_id: d.professional_id,
+        booking_time: d.booking_time,
+        duration: d.duration,
+    }));
+};
+
 export const addOrUpdateBooking = async (booking: Partial<Booking> & { serviceName?: string }): Promise<Booking | null> => {
     let serviceName = booking.serviceName;
     if (!serviceName && booking.serviceId) {
