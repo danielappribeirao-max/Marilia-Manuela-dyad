@@ -1,5 +1,5 @@
 import React, { useState, createContext, useContext, useCallback, useMemo, useEffect } from 'react';
-import { User, Role, Page, Service, Booking, ServicePackage, ClinicSettings, OperatingHours } from './types';
+import { User, Role, Page, Service, Booking, ServicePackage, ClinicSettings, OperatingHours, HolidayException } from './types';
 import * as api from './services/api';
 import Header from './components/Header';
 import Footer from './components/Footer';
@@ -33,6 +33,7 @@ interface AppContextType {
   setAboutImageUrl: (url: string) => void;
   clinicSettings: ClinicSettings | null;
   updateClinicSettings: (hours: OperatingHours) => Promise<void>;
+  updateClinicHolidayExceptions: (exceptions: HolidayException[]) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -261,7 +262,17 @@ function AppContent() {
     }
   }, []);
 
-  const appContextValue = useMemo(() => ({ currentUser, setCurrentUser, currentPage, setCurrentPage, logout, services, packages, professionals, addOrUpdateService, deleteService, loading, logoUrl, setLogoUrl, heroImageUrl, setHeroImageUrl, aboutImageUrl, setAboutImageUrl, clinicSettings, updateClinicSettings }), [currentUser, currentPage, logout, services, packages, professionals, addOrUpdateService, deleteService, loading, logoUrl, heroImageUrl, aboutImageUrl, clinicSettings, updateClinicSettings]);
+  const updateClinicHolidayExceptions = useCallback(async (exceptions: HolidayException[]) => {
+    const updatedSettings = await api.updateClinicHolidayExceptions(exceptions);
+    if (updatedSettings) {
+        setClinicSettings(updatedSettings);
+        alert("Exceções de feriados atualizadas com sucesso!");
+    } else {
+        alert("Erro ao atualizar exceções de feriados.");
+    }
+  }, []);
+
+  const appContextValue = useMemo(() => ({ currentUser, setCurrentUser, currentPage, setCurrentPage, logout, services, packages, professionals, addOrUpdateService, deleteService, loading, logoUrl, setLogoUrl, heroImageUrl, setHeroImageUrl, aboutImageUrl, setAboutImageUrl, clinicSettings, updateClinicSettings, updateClinicHolidayExceptions }), [currentUser, currentPage, logout, services, packages, professionals, addOrUpdateService, deleteService, loading, logoUrl, heroImageUrl, aboutImageUrl, clinicSettings, updateClinicSettings, updateClinicHolidayExceptions]);
 
   const renderPage = () => {
     if(loading) {

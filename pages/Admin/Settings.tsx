@@ -86,7 +86,7 @@ const ImageUploadCard: React.FC<{
 
 
 export default function AdminSettingsPage() {
-  const { logoUrl, setLogoUrl, heroImageUrl, setHeroImageUrl, aboutImageUrl, setAboutImageUrl, clinicSettings, updateClinicSettings } = useApp();
+  const { logoUrl, setLogoUrl, heroImageUrl, setHeroImageUrl, aboutImageUrl, setAboutImageUrl, clinicSettings, updateClinicSettings, updateClinicHolidayExceptions } = useApp();
 
   const handleSaveLogo = async (file: File) => {
     const newUrl = await api.uploadLogo(file);
@@ -110,15 +110,6 @@ export default function AdminSettingsPage() {
       setAboutImageUrl(newUrl);
     }
     return newUrl;
-  };
-  
-  const handleSaveHolidayExceptions = async (exceptions: HolidayException[]) => {
-    const updatedSettings = await api.updateClinicHolidayExceptions(exceptions);
-    if (updatedSettings) {
-        alert("Exceções de feriados atualizadas com sucesso!");
-    } else {
-        alert("Erro ao atualizar exceções de feriados.");
-    }
   };
 
   const defaultOperatingHours: OperatingHours = {
@@ -148,7 +139,7 @@ export default function AdminSettingsPage() {
             <h3 className="text-xl font-semibold text-gray-800 mb-4">Exceções de Feriados e Datas Especiais</h3>
             <HolidayExceptionForm
                 initialExceptions={clinicSettings?.holidayExceptions || []}
-                onSave={handleSaveHolidayExceptions}
+                onSave={updateClinicHolidayExceptions}
             />
         </div>
         
