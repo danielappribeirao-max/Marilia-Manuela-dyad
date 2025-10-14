@@ -9,7 +9,8 @@ interface OperatingHoursFormProps {
 const dayNames = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
 
 const OperatingHoursForm: React.FC<OperatingHoursFormProps> = ({ initialHours, onSave }) => {
-  // Função para garantir que todos os dias tenham a estrutura completa, incluindo almoço
+  
+  // Função para garantir que todos os dias tenham a estrutura completa, inicializando almoço como vazio se ausente
   const normalizeHours = (hours: OperatingHours): OperatingHours => {
     const normalized: OperatingHours = {};
     for (let i = 0; i < 7; i++) {
@@ -18,10 +19,10 @@ const OperatingHoursForm: React.FC<OperatingHoursFormProps> = ({ initialHours, o
         
         normalized[key] = {
             open: existing.open,
-            start: existing.start || '08:00',
-            end: existing.end || '20:00',
-            lunchStart: existing.lunchStart || '12:00',
-            lunchEnd: existing.lunchEnd || '13:00',
+            start: existing.start || '',
+            end: existing.end || '',
+            lunchStart: existing.lunchStart || '',
+            lunchEnd: existing.lunchEnd || '',
         };
         // Se estiver fechado, remove os horários para evitar salvar dados desnecessários
         if (!existing.open) {
@@ -50,11 +51,11 @@ const OperatingHoursForm: React.FC<OperatingHoursFormProps> = ({ initialHours, o
       };
       
       if (open) {
-        // Define valores padrão se estiver abrindo
+        // Define valores padrão se estiver abrindo, mas deixa almoço vazio
         newDayHours.start = newDayHours.start || '08:00';
         newDayHours.end = newDayHours.end || '20:00';
-        newDayHours.lunchStart = newDayHours.lunchStart || '12:00';
-        newDayHours.lunchEnd = newDayHours.lunchEnd || '13:00';
+        newDayHours.lunchStart = newDayHours.lunchStart || '';
+        newDayHours.lunchEnd = newDayHours.lunchEnd || '';
       } else {
         // Remove horários se estiver fechando
         delete newDayHours.start;
@@ -102,11 +103,18 @@ const OperatingHoursForm: React.FC<OperatingHoursFormProps> = ({ initialHours, o
           isValid = false;
         }
         
-        if (day.lunchStart && day.lunchEnd) {
-            const startMinutes = timeToMinutes(day.start);
-            const endMinutes = timeToMinutes(day.end);
-            const lunchStartMinutes = timeToMinutes(day.lunchStart);
-            const lunchEndMinutes = timeToMinutes(day.lunchEnd);
+        const hasLunchStart = !!day.lunchStart?.trim();
+        const hasLunchEnd = !!day.lunchEnd?.trim();
+
+        if (hasLunchStart !== hasLunchEnd) {
+            newErrors[key] = 'Ambos os horários de início e fim do almoço devem ser preenchidos, ou ambos vazios.';
+            isValid = false;
+        } else if (hasLunchStart && hasLunchEnd) {
+            // Validação de almoço completo
+            const startMinutes = timeToMinutes(day.start!);
+            const endMinutes = timeToMinutes(day.end!);
+            const lunchStartMinutes = timeToMinutes(day.lunchStart!);
+            const lunchEndMinutes = timeToMinutes(day.lunchEnd!);
 
             if (lunchStartMinutes >= lunchEndMinutes) {
                 newErrors[key] = 'O início do almoço deve ser antes do fim do almoço.';
@@ -115,9 +123,6 @@ const OperatingHoursForm: React.FC<OperatingHoursFormProps> = ({ initialHours, o
                 newErrors[key] = 'O horário de almoço deve estar dentro do horário de funcionamento.';
                 isValid = false;
             }
-        } else if (day.lunchStart || day.lunchEnd) {
-            newErrors[key] = 'Ambos os horários de início e fim do almoço devem ser preenchidos.';
-            isValid = false;
         }
       }
     }
@@ -128,14 +133,20 @@ const OperatingHoursForm: React.FC<OperatingHoursFormProps> = ({ initialHours, o
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (validate()) {
-      // Remove as chaves de horário se o dia estiver fechado antes de salvar
+      // Remove as chaves de horário se o dia estiver fechado ou se o almoço estiver vazio antes de salvar
       const finalHours: OperatingHours = Object.fromEntries(
           Object.entries(hours).map(([key, value]) => {
               if (!value.open) {
                   const { start, end, lunchStart, lunchEnd, ...rest } = value;
                   return [key, rest];
               }
-              return [key, value];
+              
+              // Remove lunchStart/lunchEnd se estiverem vazios
+              const cleanedValue = { ...value };
+              if (!cleanedValue.lunchStart?.trim()) delete cleanedValue.lunchStart;
+              if (!cleanedValue.lunchEnd?.trim()) delete cleanedValue.lunchEnd;
+              
+              return [key, cleanedValue];
           })
       );
       onSave(finalHours);
@@ -145,7 +156,7 @@ const OperatingHoursForm: React.FC<OperatingHoursFormProps> = ({ initialHours, o
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-        <p className="text-sm text-gray-600">Defina os horários em que a clínica está aberta para agendamentos, incluindo o intervalo de almoço.</p>
+        <p className="text-sm text-gray-600">Defina os horários em que a clínica está aberta para agendamentos, incluindo o intervalo de almoço (opcional).</p>
       </div>
       
       <div className="space-y-4">
@@ -179,11 +190,11 @@ const OperatingHoursForm: React.FC<OperatingHoursFormProps> = ({ initialHours, o
                   </div>
                   <div className="mt-3 grid grid-cols-2 gap-4 pt-3 border-t border-gray-200">
                     <div>
-                      <label htmlFor={`lunchStart-${key}`} className="block text-xs font-medium text-gray-500 mb-1">Início Almoço</label>
+                      <label htmlFor={`lunchStart-${key}`} className="block text-xs font-medium text-gray-500 mb-1">Início Almoço (Opcional)</label>
                       <input type="time" id={`lunchStart-${key}`} value={dayHours.lunchStart || ''} onChange={(e) => handleTimeChange(index, 'lunchStart', e.target.value)} className={`w-full p-2 border rounded-md shadow-sm text-gray-900 ${isError ? 'border-red-500' : 'border-gray-300'}`} />
                     </div>
                     <div>
-                      <label htmlFor={`lunchEnd-${key}`} className="block text-xs font-medium text-gray-500 mb-1">Fim Almoço</label>
+                      <label htmlFor={`lunchEnd-${key}`} className="block text-xs font-medium text-gray-500 mb-1">Fim Almoço (Opcional)</label>
                       <input type="time" id={`lunchEnd-${key}`} value={dayHours.lunchEnd || ''} onChange={(e) => handleTimeChange(index, 'lunchEnd', e.target.value)} className={`w-full p-2 border rounded-md shadow-sm text-gray-900 ${isError ? 'border-red-500' : 'border-gray-300'}`} />
                     </div>
                   </div>

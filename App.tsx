@@ -12,6 +12,7 @@ import BookingModal from './components/BookingModal';
 import PurchaseConfirmationModal from './components/PurchaseConfirmationModal';
 import PackagePurchaseConfirmationModal from './components/PackagePurchaseConfirmationModal';
 import PostPurchaseModal from './components/PostPurchaseModal';
+import QuickRegistrationModal from './components/QuickRegistrationModal';
 import { supabase } from './supabase/client';
 import { FREE_CONSULTATION_SERVICE_ID, FREE_CONSULTATION_SERVICE } from './constants';
 
@@ -68,6 +69,10 @@ function AppContent() {
   const [creditBookingService, setCreditBookingService] = useState<Service | null>(null);
   const [reschedulingBooking, setReschedulingBooking] = useState<Booking | null>(null);
   const [postPurchaseService, setPostPurchaseService] = useState<Service | null>(null);
+  
+  // Novo estado para o fluxo de consulta gratuita
+  const [isQuickRegisterModalOpen, setIsQuickRegisterModalOpen] = useState(false);
+  const [tempClientData, setTempClientData] = useState<{ name: string; phone: string; description: string } | null>(null);
 
   const [showWhatsApp, setShowWhatsApp] = useState(false);
   
@@ -87,8 +92,10 @@ function AppContent() {
           api.getClinicSettings(),
         ]);
         
-        // Remove a lógica de adicionar o serviço de consulta gratuita
-        setServices(servicesData || []);
+        // Adiciona o serviço de consulta gratuita à lista de serviços
+        const allServices = [FREE_CONSULTATION_SERVICE, ...(servicesData || [])];
+        
+        setServices(allServices);
         setProfessionals(professionalsData || []);
         setPackages(packagesData || []);
         setClinicSettings(settingsData);
@@ -210,9 +217,27 @@ function AppContent() {
   const handleStartReschedule = useCallback((booking: Booking) => {
     setReschedulingBooking(booking);
   }, []);
+  
+  // NOVO: Inicia o fluxo de consulta gratuita
+  const handleStartFreeConsultation = useCallback(() => {
+      if (currentUser) {
+          // Se o usuário estiver logado, pula o cadastro rápido e vai direto para o agendamento
+          setBookingService(FREE_CONSULTATION_SERVICE);
+      } else {
+          // Se não estiver logado, abre o modal de cadastro rápido
+          setIsQuickRegisterModalOpen(true);
+      }
+  }, [currentUser]);
+  
+  // NOVO: Lida com o cadastro rápido e abre o modal de agendamento
+  const handleQuickRegisterAndBook = useCallback((data: { name: string; phone: string; description: string }) => {
+      setTempClientData(data);
+      setIsQuickRegisterModalOpen(false);
+      setBookingService(FREE_CONSULTATION_SERVICE);
+  }, []);
 
   const handleConfirmFinalBooking = useCallback(async (details: { date: Date, professionalId: string }) => {
-    if (!currentUser) return false;
+    if (!currentUser && !tempClientData) return false;
     let success = false;
     
     const serviceToBook = bookingService || creditBookingService;
@@ -223,26 +248,34 @@ function AppContent() {
       const result = await api.addOrUpdateBooking(updatedBooking);
       if(result) success = true;
     } else {
-      const newBooking: Omit<Booking, 'id'> = { 
-          userId: currentUser.id, 
-          serviceId: serviceToBook.id, 
-          professionalId: details.professionalId, 
-          date: details.date, 
-          status: 'confirmed', 
-          duration: serviceToBook.duration,
-          serviceName: serviceToBook.name, // Adiciona o nome do serviço
-      };
-      const result = await api.addOrUpdateBooking(newBooking);
-      if(result) success = true;
-      
-      // Dedução de crédito
-      if (creditBookingService) {
-        const updatedUser = await api.deductCreditFromUser(currentUser.id, creditBookingService.id);
-        if (updatedUser) setCurrentUser(updatedUser);
+      // Se for agendamento normal (logado ou crédito)
+      if (currentUser) {
+          const newBooking: Omit<Booking, 'id'> = { 
+              userId: currentUser.id, 
+              serviceId: serviceToBook.id, 
+              professionalId: details.professionalId, 
+              date: details.date, 
+              status: 'confirmed', 
+              duration: serviceToBook.duration,
+              serviceName: serviceToBook.name,
+          };
+          const result = await api.addOrUpdateBooking(newBooking);
+          if(result) success = true;
+          
+          // Dedução de crédito
+          if (creditBookingService) {
+            const updatedUser = await api.deductCreditFromUser(currentUser.id, creditBookingService.id);
+            if (updatedUser) setCurrentUser(updatedUser);
+          }
+      } else if (tempClientData && serviceToBook.id === FREE_CONSULTATION_SERVICE_ID) {
+          // Se for agendamento de consulta gratuita para novo usuário, a lógica é tratada no BookingModal
+          // O BookingModal chamará a Edge Function, então aqui apenas retornamos true para fechar o modal
+          // A Edge Function fará a criação do usuário e do agendamento.
+          success = true;
       }
     }
     return success;
-  }, [currentUser, bookingService, creditBookingService, reschedulingBooking]);
+  }, [currentUser, bookingService, creditBookingService, reschedulingBooking, tempClientData]);
 
   const handleCloseModals = () => {
     setBookingService(null);
@@ -251,6 +284,8 @@ function AppContent() {
     setCreditBookingService(null);
     setReschedulingBooking(null);
     setPostPurchaseService(null);
+    setIsQuickRegisterModalOpen(false);
+    setTempClientData(null); // Limpa dados temporários
   };
   
   const handleScheduleNow = () => {
@@ -312,12 +347,12 @@ function AppContent() {
         return <div className="flex justify-center items-center h-screen"><div className="animate-spin rounded-full h-32 w-32 border-b-2 border-pink-500"></div></div>
     }
     switch (currentPage) {
-      case Page.HOME: return <HomePage onPurchaseOrBook={handlePurchaseOrBook} onPurchasePackage={handlePurchasePackage} />;
+      case Page.HOME: return <HomePage onPurchaseOrBook={handlePurchaseOrBook} onPurchasePackage={handlePurchasePackage} onStartFreeConsultation={handleStartFreeConsultation} />;
       case Page.SERVICES: return <ServicesPage onPurchaseOrBook={handlePurchaseOrBook} onPurchasePackage={handlePurchasePackage} />;
       case Page.LOGIN: return <LoginPage />;
       case Page.USER_DASHBOARD: return <UserDashboardPage onBookWithCredit={handleStartCreditBooking} onReschedule={handleStartReschedule} />;
       case Page.ADMIN_DASHBOARD: return <AdminDashboardPage />;
-      default: return <HomePage onPurchaseOrBook={handlePurchaseOrBook} onPurchasePackage={handlePurchasePackage} />;
+      default: return <HomePage onPurchaseOrBook={handlePurchaseOrBook} onPurchasePackage={handlePurchasePackage} onStartFreeConsultation={handleStartFreeConsultation} />;
     }
   };
 
@@ -338,10 +373,12 @@ function AppContent() {
             professionals={professionals} 
             clinicOperatingHours={clinicSettings?.operatingHours} 
             clinicHolidayExceptions={clinicSettings?.holidayExceptions}
+            tempClientData={tempClientData} // Passa os dados temporários
         />}
         {purchaseConfirmation && <PurchaseConfirmationModal service={purchaseConfirmation.service} quantity={purchaseConfirmation.quantity} onConfirm={handleConfirmPurchase} onClose={handleCloseModals} />}
         {purchasePackageConfirmation && <PackagePurchaseConfirmationModal servicePackage={purchasePackageConfirmation} services={services} onConfirm={handleConfirmPackagePurchase} onClose={handleCloseModals} />}
         {postPurchaseService && <PostPurchaseModal service={postPurchaseService} onScheduleNow={handleScheduleNow} onScheduleLater={handleScheduleLater} />}
+        {isQuickRegisterModalOpen && <QuickRegistrationModal onClose={handleCloseModals} onRegister={handleQuickRegisterAndBook} />}
         <a href="https://wa.me/5511999999999" target="_blank" rel="noopener noreferrer" className={`fixed bottom-6 right-6 bg-green-500 rounded-full p-3 shadow-lg hover:bg-green-600 transition-transform duration-300 transform ${showWhatsApp ? 'scale-100' : 'scale-0'}`} aria-label="Contact us on WhatsApp"><WhatsAppIcon /></a>
       </div>
     </AppContext.Provider>

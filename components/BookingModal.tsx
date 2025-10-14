@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Service, Booking, User, OperatingHours, DayOperatingHours, HolidayException } from '../types';
 import { useAvailability } from '../hooks/useAvailability';
+import * as api from '../services/api'; // Importar a API
 
 interface BookingModalProps {
   service: Service;
@@ -11,16 +12,20 @@ interface BookingModalProps {
   professionals: User[];
   clinicOperatingHours: OperatingHours | undefined;
   clinicHolidayExceptions: HolidayException[] | undefined;
+  tempClientData?: { name: string; phone: string; description: string } | null; // Novo: Dados temporários do cliente
 }
 
-const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, isCreditBooking = false, booking = null, onConfirmBooking, professionals, clinicOperatingHours, clinicHolidayExceptions }) => {
+const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, isCreditBooking = false, booking = null, onConfirmBooking, professionals, clinicOperatingHours, clinicHolidayExceptions, tempClientData = null }) => {
   const isRescheduling = !!booking;
+  const isFreeConsultation = service.id === '00000000-0000-0000-0000-000000000000'; // Usar o ID da constante
+  const isNewUserFreeBooking = isFreeConsultation && !!tempClientData;
 
   const [step, setStep] = useState(1);
   const [selectedDate, setSelectedDate] = useState<Date | null>(booking ? new Date(booking.date) : new Date());
   const [selectedTime, setSelectedTime] = useState<string | null>(booking ? new Date(booking.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }).slice(0, 5) : null);
   const [selectedProfessionalId, setSelectedProfessionalId] = useState<string | null>(booking?.professionalId || null);
   const [showConfirmation, setShowConfirmation] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const serviceDuration = service.duration;
   const minBookingDate = useMemo(() => new Date().toISOString().split('T')[0], []);
@@ -58,20 +63,53 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, isCreditB
   const handleBookingConfirm = async () => {
     if (!selectedDate || !selectedTime || !selectedProfessionalId) return;
 
+    setIsProcessing(true);
+    
     const [hours, minutes] = selectedTime.split(':').map(Number);
     // Cria a data final no fuso horário local
     const finalDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), hours, minutes, 0, 0);
 
-    const success = await onConfirmBooking({
-        date: finalDate,
-        professionalId: selectedProfessionalId,
-    });
+    let success = false;
+
+    if (isNewUserFreeBooking && tempClientData) {
+        // Fluxo 1: Agendamento de Consulta Gratuita para Novo Usuário
+        const result = await api.bookFreeConsultationForNewUser({
+            name: tempClientData.name,
+            phone: tempClientData.phone,
+            description: tempClientData.description,
+            date: finalDate,
+            professionalId: selectedProfessionalId,
+            serviceId: service.id,
+            serviceName: service.name,
+            duration: service.duration,
+        });
+        
+        if (result.success) {
+            alert(`Consulta agendada com sucesso! Um usuário temporário foi criado para você. Seu agendamento foi confirmado.`);
+            success = true;
+        } else {
+            alert(`Erro ao agendar consulta: ${result.error}`);
+        }
+
+    } else {
+        // Fluxo 2: Agendamento Normal (Logado, Crédito ou Reagendamento)
+        success = await onConfirmBooking({
+            date: finalDate,
+            professionalId: selectedProfessionalId,
+        });
+    }
     
+    setIsProcessing(false);
+
     if (success) {
         setShowConfirmation(true);
-        setTimeout(onClose, 3000);
+        // Se for um novo usuário, damos mais tempo para ler a mensagem
+        setTimeout(onClose, isNewUserFreeBooking ? 5000 : 3000); 
     } else {
-        alert("Ocorreu um erro ao confirmar o agendamento. Por favor, verifique se todos os dados estão corretos e tente novamente.");
+        // Se o erro já foi alertado no fluxo 1, não alertamos novamente.
+        if (!isNewUserFreeBooking) {
+            alert("Ocorreu um erro ao confirmar o agendamento. Por favor, verifique se todos os dados estão corretos e tente novamente.");
+        }
     }
   }
 
@@ -86,13 +124,20 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, isCreditB
                 <svg className="w-16 h-16 mx-auto text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                 <h3 className="text-2xl font-bold mt-4">{isRescheduling ? 'Agendamento Reagendado!' : 'Agendamento Confirmado!'}</h3>
                 <p className="text-gray-600 mt-2">
-                    {isRescheduling
+                    {isNewUserFreeBooking
+                        ? `Sua consulta gratuita foi agendada com sucesso! Entraremos em contato pelo WhatsApp ${tempClientData?.phone}.`
+                        : isRescheduling
                         ? "Seu agendamento foi atualizado com sucesso. Nos vemos em breve!"
                         : isCreditBooking 
                         ? "Um crédito foi utilizado com sucesso. Mal podemos esperar para te ver!" 
                         : "Você receberá um e-mail com os detalhes. Obrigado por escolher a Marília Manuela!"
                     }
                 </p>
+                {isNewUserFreeBooking && (
+                    <p className="text-sm text-pink-600 mt-4 font-semibold">
+                        Você pode fazer login usando o e-mail temporário ({tempClientData?.phone}@mariliamanuela.com) e a senha padrão (senhaPadrao123) para gerenciar seu agendamento.
+                    </p>
+                )}
             </div>
         );
     }
@@ -123,6 +168,11 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, isCreditB
       case 1: // Date, Time, and Professional
         return (
           <div className="space-y-6">
+            {isNewUserFreeBooking && (
+                <div className="bg-pink-50 p-3 rounded-lg text-sm text-pink-800 font-semibold">
+                    Agendando consulta gratuita para: {tempClientData?.name} ({tempClientData?.phone})
+                </div>
+            )}
             <div>
               <h3 className="text-lg font-semibold mb-2 text-center">1. Escolha a data</h3>
               <div className="flex justify-center">
@@ -182,11 +232,17 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, isCreditB
                 <div className="flex justify-between"><span className="font-semibold">Data:</span><span>{selectedDate?.toLocaleDateString('pt-BR')}</span></div>
                 <div className="flex justify-between"><span className="font-semibold">Horário:</span><span>{selectedTime}</span></div>
                 <hr className="my-3"/>
-                {isRescheduling ? (<div className="flex justify-between text-xl font-bold text-gray-800"><span>Custo da Alteração:</span><span className="text-green-600">Grátis</span></div>
-                ) : isCreditBooking ? (<div className="flex justify-between text-xl font-bold text-gray-800"><span>Custo:</span><span className="text-green-600">1 Crédito</span></div>
-                ) : (<div className="flex justify-between text-xl font-bold text-gray-800"><span>Total:</span><span className="text-pink-600">R$ {service.price.toFixed(2).replace('.', ',')}</span></div>)}
+                {isFreeConsultation ? (
+                    <div className="flex justify-between text-xl font-bold text-gray-800"><span>Custo:</span><span className="text-green-600">GRATUITO</span></div>
+                ) : isRescheduling ? (
+                    <div className="flex justify-between text-xl font-bold text-gray-800"><span>Custo da Alteração:</span><span className="text-green-600">Grátis</span></div>
+                ) : isCreditBooking ? (
+                    <div className="flex justify-between text-xl font-bold text-gray-800"><span>Custo:</span><span className="text-green-600">1 Crédito</span></div>
+                ) : (
+                    <div className="flex justify-between text-xl font-bold text-gray-800"><span>Total:</span><span className="text-pink-600">R$ {service.price.toFixed(2).replace('.', ',')}</span></div>
+                )}
             </div>
-            {!isCreditBooking && !isRescheduling && <p className="text-xs text-gray-500 mt-4 text-center">O pagamento será processado de forma segura. Após a confirmação, o horário será reservado para você.</p>}
+            {!isCreditBooking && !isRescheduling && !isFreeConsultation && <p className="text-xs text-gray-500 mt-4 text-center">O pagamento será processado de forma segura. Após a confirmação, o horário será reservado para você.</p>}
           </div>
         );
       default: return null;
@@ -206,7 +262,9 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, isCreditB
           {step < 2 ? (
             <button onClick={() => setStep(s => s + 1)} disabled={!selectedTime || !selectedProfessionalId || !isClinicOpen} className="px-6 py-2 bg-pink-500 text-white rounded-full font-semibold hover:bg-pink-600 disabled:bg-gray-300 ml-auto">Avançar</button>
           ) : (
-            <button onClick={handleBookingConfirm} className="w-full px-6 py-3 bg-green-500 text-white rounded-full font-bold text-lg hover:bg-green-600">{isRescheduling ? 'Confirmar Reagendamento' : (isCreditBooking ? 'Confirmar Agendamento' : 'Confirmar e Pagar')}</button>
+            <button onClick={handleBookingConfirm} disabled={isProcessing} className="w-full px-6 py-3 bg-green-500 text-white rounded-full font-bold text-lg hover:bg-green-600 disabled:bg-gray-400">
+                {isProcessing ? 'Processando...' : (isRescheduling ? 'Confirmar Reagendamento' : 'Confirmar Agendamento')}
+            </button>
           )}
         </div>}
       </div>

@@ -398,12 +398,12 @@ const mapDbToClinicSettings = (dbSettings: any): ClinicSettings => ({
 
 const DEFAULT_OPERATING_HOURS: OperatingHours = {
     0: { open: false }, 
-    1: { open: true, start: '08:00', end: '20:00', lunchStart: '12:00', lunchEnd: '13:00' }, 
-    2: { open: true, start: '08:00', end: '20:00', lunchStart: '12:00', lunchEnd: '13:00' }, 
-    3: { open: true, start: '08:00', end: '20:00', lunchStart: '12:00', lunchEnd: '13:00' }, 
-    4: { open: true, start: '08:00', end: '20:00', lunchStart: '12:00', lunchEnd: '13:00' }, 
-    5: { open: true, start: '08:00', end: '20:00', lunchStart: '12:00', lunchEnd: '13:00' }, 
-    6: { open: false }
+    1: { open: true, start: '07:00', end: '20:00', lunchStart: '13:00', lunchEnd: '14:00' }, 
+    2: { open: true, start: '07:00', end: '20:00', lunchStart: '13:00', lunchEnd: '14:00' }, 
+    3: { open: true, start: '07:00', end: '20:00', lunchStart: '13:00', lunchEnd: '14:00' }, 
+    4: { open: true, start: '07:00', end: '20:00', lunchStart: '13:00', lunchEnd: '14:00' }, 
+    5: { open: true, start: '07:00', end: '20:00', lunchStart: '13:00', lunchEnd: '14:00' }, 
+    6: { open: true, start: '07:00', end: '13:00' }
 };
 
 export const getClinicSettings = async (): Promise<ClinicSettings | null> => {
@@ -469,7 +469,7 @@ export const updateClinicHolidayExceptions = async (holidayExceptions: HolidayEx
 
     if (error) {
         console.error("Error updating holiday exceptions:", error);
-        alert(`Erro do Supabase: ${error.message}`);
+        alert(`Erro ao atualizar exceções de feriados: ${error.message}`);
         return null;
     }
     
@@ -550,15 +550,16 @@ export const getUserBookings = async (userId: string): Promise<Booking[]> => {
 export const getOccupiedSlots = async (dateString: string): Promise<{ professional_id: string, booking_time: string, duration: number }[]> => {
     const { data, error } = await supabase
         .from('bookings')
-        .select('professional_id, booking_time, duration')
+        .select('professional_id, booking_time, duration, id')
         .eq('booking_date', dateString)
-        .eq('status', 'Agendado'); // Apenas agendamentos confirmados/agendados
+        .in('status', ['Agendado', 'confirmed']); // Apenas agendamentos confirmados/agendados
 
     if (error) {
         console.error("Error fetching occupied slots:", error);
         return [];
     }
     return data.map(d => ({
+        id: String(d.id),
         professional_id: d.professional_id,
         booking_time: d.booking_time,
         duration: d.duration,
@@ -611,8 +612,37 @@ export const addOrUpdateBooking = async (booking: Partial<Booking> & { serviceNa
     }
 };
 
-// Removendo a função bookFreeConsultationForNewUser
-// export const bookFreeConsultationForNewUser = async (details: { name: string; phone: string; description: string; date: Date; professionalId: string; }): Promise<Booking | null> => { ... };
+export const bookFreeConsultationForNewUser = async (details: { name: string; phone: string; description: string; date: Date; professionalId: string; serviceId: string; serviceName: string; duration: number }): Promise<{ success: boolean, error: string | null, newUserId?: string }> => {
+    try {
+        const { data, error } = await supabase.functions.invoke('book-free-consultation', {
+            body: {
+                name: details.name,
+                phone: details.phone.replace(/\D/g, ''), // Envia apenas dígitos
+                description: details.description,
+                date: details.date.toISOString(),
+                professionalId: details.professionalId,
+                serviceId: details.serviceId,
+                serviceName: details.serviceName,
+                duration: details.duration,
+            },
+        });
+
+        if (error) {
+            console.error("Error invoking book-free-consultation function:", error);
+            return { success: false, error: error.message };
+        }
+        
+        if (data.error) {
+            return { success: false, error: data.error };
+        }
+
+        return { success: true, error: null, newUserId: data.newUserId };
+
+    } catch (e) {
+        console.error("Unexpected error during free consultation booking:", e);
+        return { success: false, error: "Erro inesperado ao tentar agendar a consulta gratuita." };
+    }
+};
 
 export const getSalesData = async (): Promise<Sale[]> => {
     // 1. Buscar todos os agendamentos concluídos, juntando com o perfil do cliente e o preço do serviço
