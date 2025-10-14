@@ -83,6 +83,8 @@ export interface DayOperatingHours {
   open: boolean;
   start?: string; // HH:MM
   end?: string; // HH:MM
+  lunchStart?: string; // HH:MM
+  lunchEnd?: string; // HH:MM
 }
 
 export interface OperatingHours {
