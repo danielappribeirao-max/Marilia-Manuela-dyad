@@ -37,9 +37,9 @@ serve(async (req) => {
     const tempPassword = `temp${phoneDigits}`;
     let userId;
 
-    const { data: existingUserData, error: getUserError } = await supabaseAdmin.auth.admin.getUserByEmail(tempEmail);
+    const { data: existingUserData, error: userFetchError } = await supabaseAdmin.auth.admin.getUserByEmail(tempEmail);
     
-    if (getUserError && getUserError.message !== 'User not found') {
+    if (userFetchError && userFetchError.message !== 'User not found') {
         throw new Error(`Erro ao verificar usuário: ${getUserError.message}`);
     }
 
@@ -94,9 +94,10 @@ serve(async (req) => {
   } catch (error) {
     // 8. Return Detailed Error Response
     console.error('!!! Erro crítico na Edge Function:', error);
+    // Retorna 400 para que o cliente saiba que a requisição falhou
     return new Response(JSON.stringify({ error: error.message || 'Ocorreu um erro inesperado no servidor.' }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 500,
+      status: 400, 
     })
   }
 })

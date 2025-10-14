@@ -641,6 +641,11 @@ export const bookFreeConsultationForNewUser = async (details: { name: string; ph
             // Se a resposta não for 2xx, lançamos o erro vindo do corpo da resposta da função
             throw new Error(responseData.error || `O servidor retornou um erro: ${response.status}`);
         }
+        
+        // Verifica se a propriedade 'booking' existe antes de tentar mapear
+        if (!responseData.booking) {
+             throw new Error("Resposta do servidor incompleta: Agendamento não encontrado na resposta.");
+        }
 
         return mapDbToBooking(responseData.booking);
 
