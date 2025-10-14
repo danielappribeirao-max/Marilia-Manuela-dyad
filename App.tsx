@@ -305,7 +305,7 @@ function AppContent() {
 }
 
 export default function App() {
-  const googleClientId = process.env.VITE_GOOGLE_CLIENT_ID || '';
+  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
 
   if (!googleClientId) {
     console.warn("VITE_GOOGLE_CLIENT_ID não está definido. A integração com o Google Calendar não funcionará.");
