@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { Service, Booking, User, OperatingHours, DayOperatingHours } from '../types';
+import { Service, Booking, User, OperatingHours, DayOperatingHours, HolidayException } from '../types';
 import * as api from '../services/api';
 
 interface BookingModalProps {
@@ -10,7 +10,7 @@ interface BookingModalProps {
   onConfirmBooking: (details: { date: Date, professionalId: string }) => Promise<boolean>;
   professionals: User[];
   clinicOperatingHours: OperatingHours | undefined;
-  clinicHolidayExceptions: { date: string, open: boolean, start?: string, end?: string }[] | undefined;
+  clinicHolidayExceptions: HolidayException[] | undefined;
 }
 
 // Função utilitária para converter HH:MM para minutos desde a meia-noite
@@ -34,7 +34,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, isCreditB
   const [selectedTime, setSelectedTime] = useState<string | null>(booking ? new Date(booking.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }).slice(0, 5) : null);
   const [selectedProfessionalId, setSelectedProfessionalId] = useState<string | null>(booking?.professionalId || null);
   const [showConfirmation, setShowConfirmation] = useState(false);
-  const [occupiedSlots, setOccupiedSlots] = useState<{ professional_id: string, booking_time: string, duration: number }[]>([]);
+  const [occupiedSlots, setOccupiedSlots] = useState<{ id: string, professional_id: string, booking_time: string, duration: number }[]>([]);
   const [loadingAvailability, setLoadingAvailability] = useState(false);
 
   const serviceDuration = service.duration;
@@ -59,14 +59,12 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, isCreditB
     
     const dateString = selectedDate.toISOString().split('T')[0];
     
-    // 1. Verificar se é uma exceção de feriado
     const holidayException = clinicHolidayExceptions?.find(ex => ex.date === dateString);
     if (holidayException) {
         return holidayException;
     }
 
-    // 2. Usar horário padrão semanal
-    const dayOfWeek = selectedDate.getDay(); // 0 = Sunday, 6 = Saturday
+    const dayOfWeek = selectedDate.getDay();
     return clinicOperatingHours?.[dayOfWeek];
     
   }, [selectedDate, clinicOperatingHours, clinicHolidayExceptions]);
@@ -79,39 +77,31 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, isCreditB
     const daySettings = currentDaySettings;
     
     if (!daySettings.start || !daySettings.end) {
-        return []; // Aberto, mas sem horários definidos (erro de configuração)
+        return [];
     }
 
     const startDayMinutes = timeToMinutes(daySettings.start);
     const endDayMinutes = timeToMinutes(daySettings.end);
-    const interval = 30; // Slots de 30 minutos
+    const interval = 30;
     
     const times: string[] = [];
     
-    // 1. Filtrar agendamentos ocupados para o profissional selecionado
     const professionalOccupiedSlots = occupiedSlots.filter(slot => slot.professional_id === selectedProfessionalId);
 
-    // 2. Gerar todos os slots possíveis e verificar conflitos
     for (let minutes = startDayMinutes; minutes < endDayMinutes; minutes += interval) {
         const slotStartTime = minutes;
         const slotEndTime = minutes + serviceDuration;
         
-        // Se o serviço for muito longo e ultrapassar o horário de fechamento, pular
         if (slotEndTime > endDayMinutes) continue;
 
         let isAvailable = true;
 
-        // Verificar conflito com agendamentos existentes
         for (const occupied of professionalOccupiedSlots) {
             const occupiedStart = timeToMinutes(occupied.booking_time);
             const occupiedEnd = occupiedStart + occupied.duration;
             
-            // Se estiver reagendando o mesmo booking, ignore o conflito com ele mesmo
             if (isRescheduling && booking?.id === occupied.id) continue;
 
-            // Conflito se o novo slot começar durante um agendamento existente OU
-            // se o novo slot terminar durante um agendamento existente OU
-            // se o novo slot englobar um agendamento existente
             const overlaps = (slotStartTime < occupiedEnd && occupiedStart < slotEndTime);
 
             if (overlaps) {
@@ -130,14 +120,16 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, isCreditB
 
   const handleDateChange = (dateString: string) => {
     if (!dateString) return;
-    const newDate = new Date(dateString + 'T00:00:00');
-    setSelectedDate(newDate);
-    setSelectedTime(null); // Resetar horário ao mudar a data
+    const newDate = new Date(dateString);
+    // Ajuste para o fuso horário local para evitar problemas de "um dia antes"
+    const userTimezoneOffset = newDate.getTimezoneOffset() * 60000;
+    setSelectedDate(new Date(newDate.getTime() + userTimezoneOffset));
+    setSelectedTime(null);
   };
   
   const handleProfessionalChange = (id: string) => {
     setSelectedProfessionalId(id);
-    setSelectedTime(null); // Resetar horário ao mudar o profissional
+    setSelectedTime(null);
   };
   
   const handleBookingConfirm = async () => {
@@ -145,7 +137,6 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, isCreditB
 
     const [hours, minutes] = selectedTime.split(':').map(Number);
     const finalDate = new Date(selectedDate);
-    // Ajustar para o horário selecionado (o input date é sempre 00:00:00)
     finalDate.setHours(hours, minutes, 0, 0);
 
     const success = await onConfirmBooking({
@@ -213,14 +204,14 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, isCreditB
                       min={minBookingDate}
                   />
               </div>
-              <p className={`text-center text-sm mt-2 ${isClinicOpen ? 'text-gray-600' : 'text-red-500'}`}>{clinicHoursMessage}</p>
+              <p className={`text-center text-sm mt-2 ${isClinicOpen ? 'text-gray-600' : 'text-red-500 font-semibold'}`}>{clinicHoursMessage}</p>
             </div>
             <div>
               <h3 className="text-lg font-semibold mb-2 text-center">2. Escolha o profissional</h3>
               <select
                 value={selectedProfessionalId || ''}
                 onChange={(e) => handleProfessionalChange(e.target.value)}
-                className="w-full p-2 border bg-white text-gray-900 border-gray-300 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500"
+                className="w-full p-2 border bg-white text-gray-900 border-gray-300 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500 disabled:bg-gray-100"
                 disabled={!isClinicOpen}
               >
                 <option value="" disabled>Selecione um profissional</option>
