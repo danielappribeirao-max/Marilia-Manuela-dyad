@@ -1,4 +1,3 @@
-1).">
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../App';
 import * as api from '../services/api';
