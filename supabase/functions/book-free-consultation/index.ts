@@ -20,36 +20,43 @@ serve(async (req) => {
     const { name, phone, description, bookingDate, professionalId } = await req.json()
 
     if (!name || !phone || !bookingDate || !professionalId) {
-      throw new Error("Dados insuficientes para criar o agendamento.")
+      throw new Error("Dados insuficientes: nome, telefone, data e profissional são obrigatórios.")
     }
 
-    // A. Gerar credenciais temporárias baseadas no telefone
     const phoneDigits = phone.replace(/\D/g, '');
     const tempEmail = `temp_${phoneDigits}@mariliamanuela.com`;
     const tempPassword = `temp${phoneDigits}`;
 
-    // B. Verificar se o usuário já existe pelo e-mail temporário
+    // Etapa B: Verificar se o usuário já existe (de forma mais segura)
     let userId;
-    const { data: { user: existingUser } } = await supabaseAdmin.auth.admin.getUserByEmail(tempEmail);
+    const { data: userData, error: userFetchError } = await supabaseAdmin.auth.admin.getUserByEmail(tempEmail);
+
+    // Se houver um erro que não seja "usuário não encontrado", lance-o.
+    if (userFetchError && userFetchError.message !== 'User not found') {
+        throw userFetchError;
+    }
+    
+    const existingUser = userData?.user;
 
     if (existingUser) {
         userId = existingUser.id;
     } else {
-        // C. Criar novo usuário se não existir
+        // Etapa C: Criar novo usuário se não existir
         const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
             email: tempEmail,
             password: tempPassword,
-            email_confirm: true, // Já cria como confirmado
+            email_confirm: true,
             user_metadata: { full_name: name, phone: phone },
         });
 
-        if (authError) throw authError;
+        if (authError) throw new Error(`Erro ao criar usuário: ${authError.message}`);
         userId = authData.user.id;
-        // O trigger 'handle_new_user' cria o perfil. Apenas garantimos que o telefone está lá.
+        
+        // O trigger 'handle_new_user' já cria o perfil. Esta linha é uma garantia.
         await supabaseAdmin.from('profiles').update({ phone: phone }).eq('id', userId);
     }
 
-    // D. Inserir o agendamento na tabela
+    // Etapa D: Inserir o agendamento
     const date = new Date(bookingDate);
     const bookingDateStr = date.toISOString().split('T')[0];
     const bookingTimeStr = `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
@@ -59,29 +66,29 @@ serve(async (req) => {
       .from('bookings')
       .insert({
         user_id: userId,
-        service_id: null, // Chave da solução: Inserir como nulo
+        service_id: null,
         service_name: 'Consulta de Avaliação Gratuita',
         professional_id: professionalId,
         booking_date: bookingDateStr,
         booking_time: bookingTimeStr,
         status: 'Agendado',
-        duration: 30, // Duração padrão da consulta
+        duration: 30,
         notes: notes,
       })
       .select()
       .single();
     
-    if (bookingError) throw bookingError;
+    if (bookingError) throw new Error(`Erro ao inserir agendamento: ${bookingError.message}`);
 
     return new Response(JSON.stringify({ success: true, booking: bookingData }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     })
   } catch (error) {
-    console.error('Error in book-free-consultation function:', error);
+    console.error('Erro na função book-free-consultation:', error);
     return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 400,
+      status: 500, // Usar 500 para indicar um erro do servidor
     })
   }
 })

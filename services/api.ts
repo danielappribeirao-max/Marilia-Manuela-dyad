@@ -622,8 +622,16 @@ export const bookFreeConsultationForNewUser = async (details: { name: string; ph
         },
     });
 
+    // Lógica aprimorada para extrair a mensagem de erro real
     if (error || (data && data.error)) {
-        const errorMessage = error ? error.message : data.error;
+        let errorMessage = "Ocorreu um erro desconhecido.";
+        if (error) {
+            errorMessage = error.message;
+        }
+        if (data && data.error) {
+            errorMessage = data.error;
+        }
+        
         console.error("Error booking free consultation:", errorMessage);
         alert(`Erro ao agendar consulta: ${errorMessage}`);
         return null;
