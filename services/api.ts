@@ -611,6 +611,26 @@ export const addOrUpdateBooking = async (booking: Partial<Booking> & { serviceNa
     }
 };
 
+export const bookFreeConsultationForNewUser = async (details: { name: string; phone: string; description: string; date: Date; professionalId: string; }): Promise<Booking | null> => {
+    const { data, error } = await supabase.functions.invoke('book-free-consultation', {
+        body: {
+            name: details.name,
+            phone: details.phone,
+            description: details.description,
+            bookingDate: details.date.toISOString(),
+            professionalId: details.professionalId,
+        },
+    });
+
+    if (error || (data && data.error)) {
+        const errorMessage = error ? error.message : data.error;
+        console.error("Error booking free consultation:", errorMessage);
+        alert(`Erro ao agendar consulta: ${errorMessage}`);
+        return null;
+    }
+    return mapDbToBooking(data.booking);
+};
+
 export const getSalesData = async (): Promise<Sale[]> => {
     // 1. Buscar todos os agendamentos concluídos, juntando com o perfil do cliente e o preço do serviço
     const { data: completedBookings, error } = await supabase

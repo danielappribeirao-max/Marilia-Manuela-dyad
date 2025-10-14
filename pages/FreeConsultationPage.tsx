@@ -6,115 +6,96 @@ import QuickRegistrationForm from '../components/QuickRegistrationForm';
 import { FREE_CONSULTATION_SERVICE } from '../constants';
 import * as api from '../services/api';
 
-// Tipos para o estado do usuário pré-agendamento
-interface TempUser extends Partial<User> {
+interface TempUserInfo {
+    name: string;
+    phone: string;
     description: string;
-    tempId?: string; // ID temporário para o agendamento
 }
 
 export default function FreeConsultationPage() {
     const { currentUser, setCurrentPage, professionals, clinicSettings, setCurrentUser } = useApp();
     
-    // Estado para gerenciar o fluxo de 2 etapas
-    const [step, setStep] = useState(currentUser ? 2 : 1); // 1: Cadastro Rápido, 2: Agendamento
-    const [tempUserData, setTempUserData] = useState<TempUser | null>(currentUser ? { ...currentUser, description: '' } : null);
+    const [step, setStep] = useState(currentUser ? 2 : 1);
+    const [tempUserInfo, setTempUserInfo] = useState<TempUserInfo | null>(null);
     
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isBookingConfirmed, setIsBookingConfirmed] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // Abre o modal de agendamento se estiver no passo 2
     React.useEffect(() => {
-        if (step === 2 && (currentUser || tempUserData) && !isBookingConfirmed) {
+        if (step === 2 && !isBookingConfirmed) {
             setIsModalOpen(true);
         }
-    }, [step, currentUser, tempUserData, isBookingConfirmed]);
+    }, [step, isBookingConfirmed]);
 
-    const handleQuickRegistrationSuccess = async (data: Partial<User> & { description: string }) => {
-        setIsSubmitting(true);
-        
-        const phoneDigits = data.phone?.replace(/\D/g, '') || Date.now().toString();
-        const tempEmail = `temp_${phoneDigits}@mariliamanuela.com`;
-        const tempPassword = `temp${phoneDigits}`;
-
-        // 1. Tenta criar o usuário
-        let newUser = await api.adminCreateUser({
-            email: tempEmail,
-            password: tempPassword,
-            name: data.name,
-            phone: data.phone,
-            role: 'CLIENT',
-        });
-
-        // 2. Se a criação falhar (provavelmente porque o e-mail já existe), tenta fazer login
-        if (!newUser) {
-            const loginResult = await api.signIn(tempEmail, tempPassword);
-            if (loginResult.user) {
-                newUser = loginResult.user;
-                alert("Detectamos que você já iniciou um cadastro. Prosseguindo com o agendamento.");
-            }
-        }
-
-        setIsSubmitting(false);
-
-        if (newUser) {
-            // 3. Se a criação ou login for bem-sucedido, atualiza o estado global e local
-            setCurrentUser(newUser);
-            setTempUserData({ ...newUser, description: data.description });
-            setStep(2); // Avança para o agendamento
-        } else {
-            alert("Não foi possível criar ou acessar o registro. Por favor, verifique seus dados e tente novamente.");
-        }
+    const handleQuickRegistrationSuccess = (data: TempUserInfo) => {
+        setTempUserInfo(data);
+        setStep(2);
     };
 
     const handleConfirmBooking = useCallback(async (details: { date: Date, professionalId: string }) => {
-        const userToBook = currentUser || tempUserData;
-        if (!userToBook || !userToBook.id) return false;
+        setIsSubmitting(true);
+        let result: Booking | null = null;
 
-        const service = FREE_CONSULTATION_SERVICE;
+        if (currentUser) {
+            // Fluxo para usuário logado
+            const service = FREE_CONSULTATION_SERVICE;
+            const newBooking: Partial<Booking> & { serviceName: string, notes: string } = { 
+                userId: currentUser.id, 
+                serviceId: service.id, 
+                professionalId: details.professionalId, 
+                date: details.date, 
+                status: 'confirmed', 
+                duration: service.duration,
+                serviceName: service.name,
+                notes: 'Consulta de avaliação agendada pelo próprio cliente.',
+            };
+            result = await api.addOrUpdateBooking(newBooking);
+        } else if (tempUserInfo) {
+            // Fluxo para novo usuário, usando a nova Edge Function
+            result = await api.bookFreeConsultationForNewUser({
+                ...tempUserInfo,
+                ...details,
+            });
+            // Tenta logar o usuário recém-criado para que ele tenha uma sessão
+            if (result) {
+                const phoneDigits = tempUserInfo.phone.replace(/\D/g, '');
+                const tempEmail = `temp_${phoneDigits}@mariliamanuela.com`;
+                const tempPassword = `temp${phoneDigits}`;
+                const loginResult = await api.signIn(tempEmail, tempPassword);
+                if (loginResult.user) {
+                    setCurrentUser(loginResult.user);
+                }
+            }
+        }
         
-        // A descrição dos serviços pretendidos será salva nas notas do agendamento
-        const notes = `Serviços de Interesse: ${tempUserData?.description || 'Não informado'}`;
-        
-        // Usamos Partial<Booking> & { serviceName: string, notes: string } para garantir que todos os campos necessários para a API estejam presentes.
-        const newBooking: Partial<Booking> & { serviceName: string, notes: string } = { 
-            userId: userToBook.id, 
-            serviceId: service.id, 
-            professionalId: details.professionalId, 
-            date: details.date, 
-            status: 'confirmed', 
-            duration: service.duration, // ESSENCIAL: Adicionar duration
-            serviceName: service.name, // ESSENCIAL: Adicionar serviceName
-            notes: notes,
-        };
-        
-        const result = await api.addOrUpdateBooking(newBooking);
-        
+        setIsSubmitting(false);
         if (result) {
             setIsBookingConfirmed(true);
             return true;
         }
         return false;
-    }, [currentUser, tempUserData]);
+    }, [currentUser, tempUserInfo, setCurrentUser]);
 
     const handleModalClose = () => {
         setIsModalOpen(false);
-        // Redireciona para a home ou dashboard após fechar o modal
         setCurrentPage(isBookingConfirmed ? Page.USER_DASHBOARD : Page.HOME);
     };
 
     const renderContent = () => {
         if (isBookingConfirmed) {
             return (
-                <div className="mt-8 p-6 bg-green-50 border border-green-200 rounded-lg max-w-md mx-auto">
-                    <p className="text-lg font-semibold text-green-700">Sua consulta foi agendada com sucesso!</p>
-                    <p className="text-sm text-gray-600 mt-2">Você receberá os detalhes por e-mail e WhatsApp.</p>
-                    <button onClick={() => setCurrentPage(Page.USER_DASHBOARD)} className="mt-4 px-4 py-2 bg-green-500 text-white rounded-full hover:bg-green-600">Ver Meus Agendamentos</button>
+                <div className="text-center py-12 px-6">
+                    <h1 className="text-3xl font-bold text-green-600">Agendamento Confirmado!</h1>
+                    <p className="text-gray-600 mt-2 max-w-md mx-auto">Sua consulta de avaliação gratuita foi agendada com sucesso. Entraremos em contato em breve com mais detalhes.</p>
+                    <button onClick={() => setCurrentPage(Page.USER_DASHBOARD)} className="mt-6 px-6 py-3 bg-pink-500 text-white rounded-full font-semibold hover:bg-pink-600">
+                        Ver Meus Agendamentos
+                    </button>
                 </div>
             );
         }
         
-        if (step === 1) {
+        if (step === 1 && !currentUser) {
             return (
                 <div className="py-12 px-4 sm:px-6 lg:px-8">
                     <QuickRegistrationForm 
@@ -126,9 +107,10 @@ export default function FreeConsultationPage() {
         }
         
         if (step === 2) {
+            const userName = currentUser?.name.split(' ')[0] || tempUserInfo?.name.split(' ')[0];
             return (
                 <div className="py-12 px-6 text-center">
-                    <h1 className="text-3xl font-bold text-gray-800">Quase lá, {currentUser?.name.split(' ')[0] || tempUserData?.name?.split(' ')[0]}!</h1>
+                    <h1 className="text-3xl font-bold text-gray-800">Quase lá, {userName}!</h1>
                     <p className="text-gray-600 mt-2">Agora, selecione o melhor horário para sua consulta gratuita.</p>
                 </div>
             );
