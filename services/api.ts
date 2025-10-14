@@ -566,25 +566,12 @@ export const getOccupiedSlots = async (dateString: string): Promise<{ profession
 };
 
 export const addOrUpdateBooking = async (booking: Partial<Booking> & { serviceName?: string, notes?: string }): Promise<Booking | null> => {
-    let serviceName = booking.serviceName;
-    if (!serviceName && booking.serviceId) {
-        const { data: serviceData, error: serviceError } = await supabase
-            .from('services')
-            .select('name')
-            .eq('id', booking.serviceId)
-            .single();
-        
-        if (serviceError || !serviceData) {
-            console.error("Service not found for booking:", booking.serviceId, serviceError);
-            serviceName = 'Serviço não encontrado';
-        } else {
-            serviceName = serviceData.name;
-        }
-    }
+    // O serviceName deve ser fornecido pelo componente de chamada, especialmente para novos agendamentos.
+    const serviceName = booking.serviceName;
 
     const bookingDateStr = booking.date?.toISOString().split('T')[0];
     
-    // Garantir que a hora seja formatada como HH:MM, independentemente do fuso horário local
+    // Garantir que a hora seja formatada como HH:MM
     const bookingTimeStr = booking.date ? 
         `${String(booking.date.getHours()).padStart(2, '0')}:${String(booking.date.getMinutes()).padStart(2, '0')}` : 
         undefined;
@@ -603,7 +590,7 @@ export const addOrUpdateBooking = async (booking: Partial<Booking> & { serviceNa
         notes: booking.notes || booking.comment, // Usar notes ou comment
         rating: booking.rating,
         duration: booking.duration,
-        service_name: serviceName,
+        service_name: serviceName, // Usar o serviceName fornecido
     };
 
     Object.keys(bookingData).forEach(key => bookingData[key] === undefined && delete bookingData[key]);
@@ -613,7 +600,8 @@ export const addOrUpdateBooking = async (booking: Partial<Booking> & { serviceNa
         if (error) { console.error("Error updating booking:", error); return null; }
         return mapDbToBooking(data);
     } else {
-        if (!bookingData.user_id || !bookingData.service_id || !bookingData.service_name || !bookingData.booking_date || !bookingData.booking_time) {
+        // Verificação rigorosa para inserção
+        if (!bookingData.user_id || !bookingData.service_id || !bookingData.service_name || !bookingData.booking_date || !bookingData.booking_time || !bookingData.duration) {
             console.error("Missing required fields for new booking:", bookingData);
             return null;
         }
