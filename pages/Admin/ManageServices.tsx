@@ -40,8 +40,13 @@ export default function AdminManageServices() {
     };
     
     const handleUseTemplate = (template: ServiceTemplate) => {
-        // The modal expects Partial<Service>, and ServiceTemplate fits this
-        setSelectedService(template);
+        // Ao usar um modelo, criamos um novo objeto Service com um ID temporário
+        // para que o ServiceModal o trate como um novo serviço a ser criado.
+        const newServiceFromTemplate: Partial<Service> = {
+            ...template,
+            id: `temp-service-${Date.now()}`, // Garante que o modal não pense que é uma edição
+        };
+        setSelectedService(newServiceFromTemplate);
         setIsServiceModalOpen(true);
     };
 
