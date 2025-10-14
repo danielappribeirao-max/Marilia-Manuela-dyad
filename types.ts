@@ -10,6 +10,7 @@ export enum Page {
   LOGIN = 'LOGIN',
   USER_DASHBOARD = 'USER_DASHBOARD',
   ADMIN_DASHBOARD = 'ADMIN_DASHBOARD',
+  FREE_CONSULTATION = 'FREE_CONSULTATION',
 }
 
 export interface User {

@@ -8,11 +8,13 @@ import ServicesPage from './pages/ServicesPage';
 import LoginPage from './pages/LoginPage';
 import UserDashboardPage from './pages/UserDashboardPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
+import FreeConsultationPage from './pages/FreeConsultationPage'; // Importando a nova página
 import BookingModal from './components/BookingModal';
 import PurchaseConfirmationModal from './components/PurchaseConfirmationModal';
 import PackagePurchaseConfirmationModal from './components/PackagePurchaseConfirmationModal';
-import PostPurchaseModal from './components/PostPurchaseModal'; // Importando o novo modal
+import PostPurchaseModal from './components/PostPurchaseModal';
 import { supabase } from './supabase/client';
+import { FREE_CONSULTATION_SERVICE_ID, FREE_CONSULTATION_SERVICE } from './constants';
 
 interface AppContextType {
   currentUser: User | null;
@@ -66,7 +68,7 @@ function AppContent() {
   const [purchasePackageConfirmation, setPurchasePackageConfirmation] = useState<ServicePackage | null>(null);
   const [creditBookingService, setCreditBookingService] = useState<Service | null>(null);
   const [reschedulingBooking, setReschedulingBooking] = useState<Booking | null>(null);
-  const [postPurchaseService, setPostPurchaseService] = useState<Service | null>(null); // Novo estado para o modal pós-compra
+  const [postPurchaseService, setPostPurchaseService] = useState<Service | null>(null);
 
   const [showWhatsApp, setShowWhatsApp] = useState(false);
   
@@ -85,7 +87,14 @@ function AppContent() {
           api.getServicePackages(),
           api.getClinicSettings(),
         ]);
-        setServices(servicesData || []);
+        
+        // Adiciona o serviço de consulta gratuita à lista de serviços se ainda não estiver lá
+        const finalServices = servicesData || [];
+        if (!finalServices.some(s => s.id === FREE_CONSULTATION_SERVICE_ID)) {
+            finalServices.push(FREE_CONSULTATION_SERVICE);
+        }
+        
+        setServices(finalServices);
         setProfessionals(professionalsData || []);
         setPackages(packagesData || []);
         setClinicSettings(settingsData);
@@ -111,6 +120,9 @@ function AppContent() {
         if (userProfile) {
           setCurrentUser(userProfile);
           if (event === 'SIGNED_IN') {
+            // Se o usuário acabou de logar e estava no fluxo de consulta gratuita, redireciona para lá
+            if (currentPage === Page.FREE_CONSULTATION) return; 
+            
             setCurrentPage(userProfile.role === Role.ADMIN ? Page.ADMIN_DASHBOARD : Page.USER_DASHBOARD);
           }
         }
@@ -154,7 +166,6 @@ function AppContent() {
         setCurrentPage(Page.LOGIN);
         return;
     }
-    // Sempre abre a confirmação de compra, pois agora tudo é compra de crédito
     setPurchaseConfirmation({ service, quantity });
   }, [currentUser]);
   
@@ -212,18 +223,29 @@ function AppContent() {
   const handleConfirmFinalBooking = useCallback(async (details: { date: Date, professionalId: string }) => {
     if (!currentUser) return false;
     let success = false;
+    
+    const serviceToBook = bookingService || creditBookingService;
+    if (!serviceToBook) return false;
+
     if (reschedulingBooking) {
       const updatedBooking = { ...reschedulingBooking, ...details, status: 'confirmed' as const };
       const result = await api.addOrUpdateBooking(updatedBooking);
       if(result) success = true;
     } else {
-      const serviceToBook = bookingService || creditBookingService;
-      if (!serviceToBook) return false;
-      const newBooking: Omit<Booking, 'id'> = { userId: currentUser.id, serviceId: serviceToBook.id, professionalId: details.professionalId, date: details.date, status: 'confirmed', duration: serviceToBook.duration };
+      const newBooking: Omit<Booking, 'id'> = { 
+          userId: currentUser.id, 
+          serviceId: serviceToBook.id, 
+          professionalId: details.professionalId, 
+          date: details.date, 
+          status: 'confirmed', 
+          duration: serviceToBook.duration,
+          serviceName: serviceToBook.name, // Adiciona o nome do serviço
+      };
       const result = await api.addOrUpdateBooking(newBooking);
       if(result) success = true;
-      if (creditBookingService) {
-        // Dedução de crédito
+      
+      // Dedução de crédito APENAS se não for a consulta gratuita (preço 0)
+      if (creditBookingService && serviceToBook.id !== FREE_CONSULTATION_SERVICE_ID) {
         const updatedUser = await api.deductCreditFromUser(currentUser.id, creditBookingService.id);
         if (updatedUser) setCurrentUser(updatedUser);
       }
@@ -237,19 +259,17 @@ function AppContent() {
     setPurchasePackageConfirmation(null);
     setCreditBookingService(null);
     setReschedulingBooking(null);
-    setPostPurchaseService(null); // Fechar o modal pós-compra
+    setPostPurchaseService(null);
   };
   
   const handleScheduleNow = () => {
       if (postPurchaseService) {
-          // Inicia o fluxo de agendamento usando o crédito recém-adquirido
           setCreditBookingService(postPurchaseService);
           setPostPurchaseService(null);
       }
   };
   
   const handleScheduleLater = () => {
-      // Fecha o modal e redireciona para o painel do usuário
       setPostPurchaseService(null);
       setCurrentPage(Page.USER_DASHBOARD);
   };
@@ -306,6 +326,7 @@ function AppContent() {
       case Page.LOGIN: return <LoginPage />;
       case Page.USER_DASHBOARD: return <UserDashboardPage onBookWithCredit={handleStartCreditBooking} onReschedule={handleStartReschedule} />;
       case Page.ADMIN_DASHBOARD: return <AdminDashboardPage />;
+      case Page.FREE_CONSULTATION: return <FreeConsultationPage />;
       default: return <HomePage onPurchaseOrBook={handlePurchaseOrBook} onPurchasePackage={handlePurchasePackage} />;
     }
   };

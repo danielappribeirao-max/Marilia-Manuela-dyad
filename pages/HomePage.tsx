@@ -23,11 +23,18 @@ export default function HomePage({ onPurchaseOrBook, onPurchasePackage }: HomePa
         <div className="relative container mx-auto px-6 h-full flex flex-col justify-center items-start">
           <h1 className="text-5xl md:text-6xl font-bold leading-tight">Sua Beleza, Nosso Compromisso.</h1>
           <p className="mt-4 text-xl max-w-lg">Descubra tratamentos estéticos de ponta e agende seu momento de cuidado em um ambiente de luxo e bem-estar.</p>
-          <button 
-            onClick={() => setCurrentPage(Page.SERVICES)}
-            className="mt-8 px-8 py-3 bg-pink-500 text-white rounded-full font-semibold text-lg hover:bg-pink-600 transition-transform hover:scale-105 duration-300 shadow-lg">
-            Ver Procedimentos
-          </button>
+          <div className="flex flex-col sm:flex-row gap-4 mt-8">
+            <button 
+              onClick={() => setCurrentPage(Page.SERVICES)}
+              className="px-8 py-3 bg-pink-500 text-white rounded-full font-semibold text-lg hover:bg-pink-600 transition-transform hover:scale-105 duration-300 shadow-lg">
+              Ver Procedimentos
+            </button>
+            <button 
+              onClick={() => setCurrentPage(Page.FREE_CONSULTATION)}
+              className="px-8 py-3 bg-white text-pink-500 rounded-full font-semibold text-lg hover:bg-gray-100 transition-transform hover:scale-105 duration-300 shadow-lg border border-pink-500">
+              Agende sua Consulta Gratuita
+            </button>
+          </div>
         </div>
       </section>
 
