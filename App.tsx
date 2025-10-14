@@ -11,8 +11,7 @@ import AdminDashboardPage from './pages/AdminDashboardPage';
 import BookingModal from './components/BookingModal';
 import PurchaseConfirmationModal from './components/PurchaseConfirmationModal';
 import PackagePurchaseConfirmationModal from './components/PackagePurchaseConfirmationModal';
-import PostPurchaseModal from './components/PostPurchaseModal';
-import FreeConsultationFlow from './components/FreeConsultationFlow'; // Importando o novo fluxo
+import PostPurchaseModal from './components/PostPurchaseModal'; // Importando o novo modal
 import { supabase } from './supabase/client';
 
 interface AppContextType {
@@ -67,8 +66,7 @@ function AppContent() {
   const [purchasePackageConfirmation, setPurchasePackageConfirmation] = useState<ServicePackage | null>(null);
   const [creditBookingService, setCreditBookingService] = useState<Service | null>(null);
   const [reschedulingBooking, setReschedulingBooking] = useState<Booking | null>(null);
-  const [postPurchaseService, setPostPurchaseService] = useState<Service | null>(null);
-  const [isFreeConsultationFlowOpen, setIsFreeConsultationFlowOpen] = useState(false); // Novo estado
+  const [postPurchaseService, setPostPurchaseService] = useState<Service | null>(null); // Novo estado para o modal pós-compra
 
   const [showWhatsApp, setShowWhatsApp] = useState(false);
   
@@ -210,21 +208,6 @@ function AppContent() {
   const handleStartReschedule = useCallback((booking: Booking) => {
     setReschedulingBooking(booking);
   }, []);
-  
-  const handleFreeConsultation = useCallback(() => {
-      if (currentUser) {
-          // Se já estiver logado, apenas abre o agendamento para o serviço de consulta gratuita
-          const freeService = services.find(s => s.id === 'free_consultation_service_id');
-          if (freeService) {
-              setBookingService(freeService);
-          } else {
-              alert("Serviço de consulta gratuita não configurado.");
-          }
-      } else {
-          // Se não estiver logado, abre o fluxo de cadastro/agendamento
-          setIsFreeConsultationFlowOpen(true);
-      }
-  }, [currentUser, services]);
 
   const handleConfirmFinalBooking = useCallback(async (details: { date: Date, professionalId: string }) => {
     if (!currentUser) return false;
@@ -254,8 +237,7 @@ function AppContent() {
     setPurchasePackageConfirmation(null);
     setCreditBookingService(null);
     setReschedulingBooking(null);
-    setPostPurchaseService(null);
-    setIsFreeConsultationFlowOpen(false); // Fechar o fluxo de consulta gratuita
+    setPostPurchaseService(null); // Fechar o modal pós-compra
   };
   
   const handleScheduleNow = () => {
@@ -319,12 +301,12 @@ function AppContent() {
         return <div className="flex justify-center items-center h-screen"><div className="animate-spin rounded-full h-32 w-32 border-b-2 border-pink-500"></div></div>
     }
     switch (currentPage) {
-      case Page.HOME: return <HomePage onPurchaseOrBook={handlePurchaseOrBook} onPurchasePackage={handlePurchasePackage} onFreeConsultation={handleFreeConsultation} />;
+      case Page.HOME: return <HomePage onPurchaseOrBook={handlePurchaseOrBook} onPurchasePackage={handlePurchasePackage} />;
       case Page.SERVICES: return <ServicesPage onPurchaseOrBook={handlePurchaseOrBook} onPurchasePackage={handlePurchasePackage} />;
       case Page.LOGIN: return <LoginPage />;
       case Page.USER_DASHBOARD: return <UserDashboardPage onBookWithCredit={handleStartCreditBooking} onReschedule={handleStartReschedule} />;
       case Page.ADMIN_DASHBOARD: return <AdminDashboardPage />;
-      default: return <HomePage onPurchaseOrBook={handlePurchaseOrBook} onPurchasePackage={handlePurchasePackage} onFreeConsultation={handleFreeConsultation} />;
+      default: return <HomePage onPurchaseOrBook={handlePurchaseOrBook} onPurchasePackage={handlePurchasePackage} />;
     }
   };
 
@@ -349,7 +331,6 @@ function AppContent() {
         {purchaseConfirmation && <PurchaseConfirmationModal service={purchaseConfirmation.service} quantity={purchaseConfirmation.quantity} onConfirm={handleConfirmPurchase} onClose={handleCloseModals} />}
         {purchasePackageConfirmation && <PackagePurchaseConfirmationModal servicePackage={purchasePackageConfirmation} services={services} onConfirm={handleConfirmPackagePurchase} onClose={handleCloseModals} />}
         {postPurchaseService && <PostPurchaseModal service={postPurchaseService} onScheduleNow={handleScheduleNow} onScheduleLater={handleScheduleLater} />}
-        {isFreeConsultationFlowOpen && <FreeConsultationFlow onClose={handleCloseModals} />}
         <a href="https://wa.me/5511999999999" target="_blank" rel="noopener noreferrer" className={`fixed bottom-6 right-6 bg-green-500 rounded-full p-3 shadow-lg hover:bg-green-600 transition-transform duration-300 transform ${showWhatsApp ? 'scale-100' : 'scale-0'}`} aria-label="Contact us on WhatsApp"><WhatsAppIcon /></a>
       </div>
     </AppContext.Provider>

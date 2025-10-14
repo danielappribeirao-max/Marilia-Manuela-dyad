@@ -1,1 +1,0 @@
-export const FREE_CONSULTATION_SERVICE_ID = 'free_consultation_service_id';

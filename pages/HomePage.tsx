@@ -8,10 +8,9 @@ import { Page } from '../types';
 interface HomePageProps {
     onPurchaseOrBook: (service: Service, quantity: number) => void;
     onPurchasePackage: (pkg: ServicePackage) => void;
-    onFreeConsultation: () => void; // Nova prop
 }
 
-export default function HomePage({ onPurchaseOrBook, onPurchasePackage, onFreeConsultation }: HomePageProps) {
+export default function HomePage({ onPurchaseOrBook, onPurchasePackage }: HomePageProps) {
   const { setCurrentPage, services, packages, heroImageUrl, aboutImageUrl } = useApp();
   const featuredServices = services.slice(0, 3);
   const featuredPackages = packages.slice(0, 2);
@@ -24,18 +23,11 @@ export default function HomePage({ onPurchaseOrBook, onPurchasePackage, onFreeCo
         <div className="relative container mx-auto px-6 h-full flex flex-col justify-center items-start">
           <h1 className="text-5xl md:text-6xl font-bold leading-tight">Sua Beleza, Nosso Compromisso.</h1>
           <p className="mt-4 text-xl max-w-lg">Descubra tratamentos estéticos de ponta e agende seu momento de cuidado em um ambiente de luxo e bem-estar.</p>
-          <div className="mt-8 flex flex-col sm:flex-row gap-4">
-            <button 
-              onClick={() => setCurrentPage(Page.SERVICES)}
-              className="px-8 py-3 bg-pink-500 text-white rounded-full font-semibold text-lg hover:bg-pink-600 transition-transform hover:scale-105 duration-300 shadow-lg">
-              Ver Procedimentos
-            </button>
-            <button 
-              onClick={onFreeConsultation}
-              className="px-8 py-3 bg-white text-gray-800 rounded-full font-semibold text-lg hover:bg-gray-200 transition-transform hover:scale-105 duration-300 shadow-lg border border-gray-300">
-              Agende sua Consulta Gratuita
-            </button>
-          </div>
+          <button 
+            onClick={() => setCurrentPage(Page.SERVICES)}
+            className="mt-8 px-8 py-3 bg-pink-500 text-white rounded-full font-semibold text-lg hover:bg-pink-600 transition-transform hover:scale-105 duration-300 shadow-lg">
+            Ver Procedimentos
+          </button>
         </div>
       </section>
 
