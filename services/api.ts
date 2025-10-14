@@ -441,43 +441,35 @@ export const getClinicSettings = async (): Promise<ClinicSettings | null> => {
 };
 
 export const updateClinicOperatingHours = async (operatingHours: OperatingHours): Promise<ClinicSettings | null> => {
-    // Garante que o objeto seja serializável e limpo (chaves como strings)
     const cleanOperatingHours = JSON.parse(JSON.stringify(operatingHours));
     
-    const { data, error } = await supabase
+    const { error } = await supabase
         .from('clinic_settings')
-        .update({ 
-            operating_hours: cleanOperatingHours, 
-            // Removendo updated_at para que o valor padrão do DB seja usado
-        })
-        .eq('id', SETTINGS_ID)
-        .select('id, operating_hours, holiday_exceptions')
-        .single();
+        .update({ operating_hours: cleanOperatingHours })
+        .eq('id', SETTINGS_ID);
 
     if (error) {
-        console.error("Error updating clinic operating hours:", error);
-        console.error("Supabase Error Details:", error.details, error.hint, error.message);
+        console.error("Error during clinic settings UPDATE:", error);
+        alert(`Erro do Supabase: ${error.message}`);
         return null;
     }
-    return mapDbToClinicSettings(data);
+    
+    return getClinicSettings();
 };
 
 export const updateClinicHolidayExceptions = async (holidayExceptions: HolidayException[]): Promise<ClinicSettings | null> => {
-    const { data, error } = await supabase
+    const { error } = await supabase
         .from('clinic_settings')
-        .update({ 
-            holiday_exceptions: holidayExceptions, 
-            // Removendo updated_at para que o valor padrão do DB seja usado
-        })
-        .eq('id', SETTINGS_ID)
-        .select('id, operating_hours, holiday_exceptions')
-        .single();
+        .update({ holiday_exceptions: holidayExceptions })
+        .eq('id', SETTINGS_ID);
 
     if (error) {
-        console.error("Error updating holiday exceptions:", error);
+        console.error("Error during holiday exceptions UPDATE:", error);
+        alert(`Erro do Supabase: ${error.message}`);
         return null;
     }
-    return mapDbToClinicSettings(data);
+    
+    return getClinicSettings();
 };
 
 
