@@ -33,29 +33,37 @@ export default function FreeConsultationPage() {
     const handleQuickRegistrationSuccess = async (data: Partial<User> & { description: string }) => {
         setIsSubmitting(true);
         
-        // Gerar um e-mail temporário para o Supabase, usando o telefone como identificador único
         const phoneDigits = data.phone?.replace(/\D/g, '') || Date.now().toString();
         const tempEmail = `temp_${phoneDigits}@mariliamanuela.com`;
-        
-        // 1. Criar o usuário no Supabase usando a função Admin (sem necessidade de senha real)
-        const newUser = await api.adminCreateUser({
+        const tempPassword = `temp${phoneDigits}`;
+
+        // 1. Tenta criar o usuário
+        let newUser = await api.adminCreateUser({
             email: tempEmail,
-            password: `temp${phoneDigits}`, // Senha temporária
+            password: tempPassword,
             name: data.name,
             phone: data.phone,
             role: 'CLIENT',
-            // CPF não é obrigatório neste fluxo rápido
         });
+
+        // 2. Se a criação falhar (provavelmente porque o e-mail já existe), tenta fazer login
+        if (!newUser) {
+            const loginResult = await api.signIn(tempEmail, tempPassword);
+            if (loginResult.user) {
+                newUser = loginResult.user;
+                alert("Detectamos que você já iniciou um cadastro. Prosseguindo com o agendamento.");
+            }
+        }
 
         setIsSubmitting(false);
 
         if (newUser) {
-            // 2. Se a criação for bem-sucedida, atualiza o estado global e local
+            // 3. Se a criação ou login for bem-sucedido, atualiza o estado global e local
             setCurrentUser(newUser);
             setTempUserData({ ...newUser, description: data.description });
             setStep(2); // Avança para o agendamento
         } else {
-            alert("Não foi possível criar o registro. Verifique se o telefone já está em uso.");
+            alert("Não foi possível criar ou acessar o registro. Por favor, verifique seus dados e tente novamente.");
         }
     };
 
