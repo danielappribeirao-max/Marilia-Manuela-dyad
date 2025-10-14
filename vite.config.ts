@@ -13,8 +13,6 @@ export default defineConfig(({ mode }) => {
       define: {
         'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
         'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
-        // Injeta a ID do cliente do Google diretamente como uma constante global
-        '__GOOGLE_CLIENT_ID__': JSON.stringify(env.VITE_GOOGLE_CLIENT_ID),
       },
       resolve: {
         alias: {
