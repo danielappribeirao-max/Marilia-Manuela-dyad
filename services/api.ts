@@ -496,8 +496,12 @@ export const addPackageCreditsToUser = async (userId: string, pkg: ServicePackag
 export const deductCreditFromUser = async (userId: string, serviceId: string): Promise<User | null> => { const userProfile = await getUserProfile(userId); if (!userProfile) return null; const existingCredits = userProfile.credits?.[serviceId] || 0; if (existingCredits <= 0) return userProfile; const newCredits = { ...userProfile.credits, [serviceId]: existingCredits - 1, }; return await updateUserProfile(userId, { credits: newCredits }); };
 
 const mapDbToBooking = (dbBooking: any): Booking => {
-    const timePart = dbBooking.booking_time || '00:00:00';
-    const bookingDate = new Date(`${dbBooking.booking_date}T${timePart}`);
+    const timePart = dbBooking.booking_time || '00:00';
+    const datePart = dbBooking.booking_date;
+    
+    // Cria a data combinada no fuso horário local
+    // Ex: '2024-10-16T09:00:00'
+    const bookingDate = new Date(`${datePart}T${timePart}:00`);
     
     let status: 'confirmed' | 'completed' | 'canceled';
 

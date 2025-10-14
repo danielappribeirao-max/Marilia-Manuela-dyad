@@ -23,11 +23,7 @@ serve(async (req) => {
         throw new Error("Todos os campos de agendamento são obrigatórios.");
     }
     
-    // 1. Tenta encontrar um usuário existente pelo telefone (opcional, mas útil para evitar duplicidade)
-    // Nota: O Supabase Auth não permite buscar por metadados, então vamos focar em criar um novo usuário
-    // e deixar o cliente fazer o login/recuperação de senha se ele já tiver uma conta.
-    
-    // 2. Criar um e-mail temporário e senha padrão para o novo usuário
+    // 1. Criar um e-mail temporário e senha padrão para o novo usuário
     const email = `${phone}@mariliamanuela.com`;
     const password = Math.random().toString(36).slice(-8); // Senha aleatória
 
@@ -54,10 +50,12 @@ serve(async (req) => {
 
     const userId = authData.user.id
     
-    // 3. Inserir o agendamento
-    const bookingDate = date.split('T')[0];
-    const bookingTime = date.split('T')[1].substring(0, 5); // HH:MM
+    // 2. Formatar data e hora corretamente
+    const bookingDateObj = new Date(date);
+    const bookingDate = bookingDateObj.toISOString().split('T')[0]; // YYYY-MM-DD
+    const bookingTime = `${String(bookingDateObj.getHours()).padStart(2, '0')}:${String(bookingDateObj.getMinutes()).padStart(2, '0')}`; // HH:MM
 
+    // 3. Inserir o agendamento
     const { data: bookingData, error: bookingError } = await supabaseAdmin
       .from('bookings')
       .insert({
@@ -66,7 +64,7 @@ serve(async (req) => {
         professional_id: professionalId,
         booking_date: bookingDate,
         booking_time: bookingTime,
-        status: 'Agendado',
+        status: 'Agendado', // Usando o valor padrão do banco
         duration: duration,
         service_name: serviceName,
         notes: `Consulta Gratuita. Interesse: ${description}`,
