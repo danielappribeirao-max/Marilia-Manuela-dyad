@@ -91,6 +91,7 @@ export default function AdminManageServices() {
                     service={selectedService}
                     onClose={() => setIsServiceModalOpen(false)}
                     onSave={handleSave}
+                    existingServices={services} // Passando a lista de serviços
                 />
             )}
             {serviceToDelete && (

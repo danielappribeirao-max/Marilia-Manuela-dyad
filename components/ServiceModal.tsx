@@ -1,15 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Service } from '../types';
 
 interface ServiceModalProps {
   service: Partial<Service> | null;
   onClose: () => void;
   onSave: (service: Service) => void;
+  existingServices: Service[];
 }
 
-const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave }) => {
+const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave, existingServices }) => {
   const [formData, setFormData] = useState<Partial<Service>>({
-    id: service?.id, // Não gera ID temporário se for novo
+    id: service?.id,
     name: service?.name || '',
     description: service?.description || '',
     price: service?.price || 0,
@@ -19,8 +20,14 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave })
     sessions: service?.sessions || 1,
   });
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [isNewCategory, setIsNewCategory] = useState(false);
 
   const isEditing = !!service?.id;
+  
+  const existingCategories = useMemo(() => {
+    const categories = new Set(existingServices.map(s => s.category).filter(Boolean));
+    return Array.from(categories).sort();
+  }, [existingServices]);
 
   const validate = () => {
     const newErrors: { [key: string]: string } = {};
@@ -35,14 +42,20 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave })
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
-    setFormData(prev => ({ 
-      ...prev, 
-      [name]: type === 'number' ? parseFloat(value) : value 
-    }));
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: '' }));
+    
+    if (name === 'category' && value === 'new-category') {
+        setIsNewCategory(true);
+        setFormData(prev => ({ ...prev, category: '' }));
+    } else {
+        setFormData(prev => ({ 
+            ...prev, 
+            [name]: type === 'number' ? parseFloat(value) : value 
+        }));
+        if (errors[name]) {
+            setErrors(prev => ({ ...prev, [name]: '' }));
+        }
     }
   };
   
@@ -108,11 +121,45 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave })
                 {errors.duration && <p className="text-red-500 text-xs mt-1">{errors.duration}</p>}
               </div>
             </div>
+            
+            {/* Category Field */}
             <div>
-              <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
-              <input type="text" id="category" name="category" value={formData.category} onChange={handleChange} className={`w-full p-2 border bg-white text-gray-900 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500 ${errors.category ? 'border-red-500' : 'border-gray-300'}`} />
-              {errors.category && <p className="text-red-500 text-xs mt-1">{errors.category}</p>}
+                <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
+                {isNewCategory || existingCategories.length === 0 ? (
+                    <div className="flex items-center gap-2">
+                        <input 
+                            type="text" 
+                            id="category" 
+                            name="category" 
+                            value={formData.category} 
+                            onChange={handleChange} 
+                            placeholder="Digite o nome da nova categoria"
+                            className={`w-full p-2 border bg-white text-gray-900 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500 ${errors.category ? 'border-red-500' : 'border-gray-300'}`} 
+                        />
+                        {isNewCategory && (
+                            <button type="button" onClick={() => { setIsNewCategory(false); setFormData(prev => ({ ...prev, category: existingCategories[0] || '' })); }} className="text-sm text-pink-600 hover:text-pink-800 whitespace-nowrap">
+                                Cancelar
+                            </button>
+                        )}
+                    </div>
+                ) : (
+                    <select 
+                        id="category" 
+                        name="category" 
+                        value={formData.category || 'new-category'} 
+                        onChange={handleChange} 
+                        className={`w-full p-2 border bg-white text-gray-900 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500 ${errors.category ? 'border-red-500' : 'border-gray-300'}`}
+                    >
+                        <option value="" disabled>Selecione ou crie uma categoria</option>
+                        {existingCategories.map(cat => (
+                            <option key={cat} value={cat}>{cat}</option>
+                        ))}
+                        <option value="new-category">--- Cadastrar Nova Categoria ---</option>
+                    </select>
+                )}
+                {errors.category && <p className="text-red-500 text-xs mt-1">{errors.category}</p>}
             </div>
+            
              <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Imagem do Serviço</label>
               <div className="mt-1 flex items-center gap-4">
