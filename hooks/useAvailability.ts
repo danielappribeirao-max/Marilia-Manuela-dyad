@@ -38,6 +38,7 @@ export const useAvailability = ({
         setLoadingAvailability(true);
         const dateString = date.toISOString().split('T')[0];
         const slots = await api.getOccupiedSlots(dateString);
+        // Garantir que o ID seja string para comparação
         setOccupiedSlots(slots.map(s => ({ ...s, id: String(s.id) })));
         setLoadingAvailability(false);
     }, []);
@@ -53,11 +54,13 @@ export const useAvailability = ({
         
         const dateString = selectedDate.toISOString().split('T')[0];
         
+        // 1. Verificar exceções de feriado
         const holidayException = clinicHolidayExceptions?.find(ex => ex.date === dateString);
         if (holidayException) {
             return holidayException;
         }
 
+        // 2. Usar horário padrão
         const dayOfWeek = selectedDate.getDay();
         return clinicOperatingHours?.[dayOfWeek];
         
@@ -90,12 +93,15 @@ export const useAvailability = ({
             const slotStartTime = minutes;
             const slotEndTime = minutes + serviceDuration;
             
+            // 1. Verificar se o serviço termina antes do fim do dia
             if (slotEndTime > endDayMinutes) continue;
 
             let isAvailable = true;
 
-            // 1. Verificar sobreposição com o horário de almoço
+            // 2. Verificar sobreposição com o horário de almoço
             if (hasLunchBreak) {
+                // Um slot se sobrepõe ao almoço se:
+                // O slot começar antes do fim do almoço E o almoço começar antes do fim do slot.
                 const overlapsWithLunch = (slotStartTime < lunchEndMinutes && lunchStartMinutes < slotEndTime);
                 if (overlapsWithLunch) {
                     isAvailable = false;
@@ -104,7 +110,7 @@ export const useAvailability = ({
 
             if (!isAvailable) continue;
 
-            // 2. Verificar sobreposição com agendamentos existentes
+            // 3. Verificar sobreposição com agendamentos existentes
             for (const occupied of professionalOccupiedSlots) {
                 const occupiedStart = timeToMinutes(occupied.booking_time);
                 const occupiedEnd = occupiedStart + occupied.duration;
@@ -112,6 +118,8 @@ export const useAvailability = ({
                 // Ignorar o agendamento que está sendo editado/reagendado
                 if (bookingToIgnoreId && bookingToIgnoreId === occupied.id) continue;
 
+                // Um slot se sobrepõe a um agendamento se:
+                // O slot começar antes do fim do agendamento E o agendamento começar antes do fim do slot.
                 const overlaps = (slotStartTime < occupiedEnd && occupiedStart < slotEndTime);
 
                 if (overlaps) {

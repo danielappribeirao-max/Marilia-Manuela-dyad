@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Service, Booking, User, OperatingHours, DayOperatingHours, HolidayException } from '../types';
-import * as api from '../services/api';
+import { useAvailability } from '../hooks/useAvailability';
 
 interface BookingModalProps {
   service: Service;
@@ -13,18 +13,6 @@ interface BookingModalProps {
   clinicHolidayExceptions: HolidayException[] | undefined;
 }
 
-const timeToMinutes = (time: string) => {
-    if (!time) return 0;
-    const [h, m] = time.split(':').map(Number);
-    return h * 60 + m;
-};
-
-const minutesToTime = (minutes: number) => {
-    const h = Math.floor(minutes / 60);
-    const m = minutes % 60;
-    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
-};
-
 const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, isCreditBooking = false, booking = null, onConfirmBooking, professionals, clinicOperatingHours, clinicHolidayExceptions }) => {
   const isRescheduling = !!booking;
 
@@ -33,114 +21,39 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, isCreditB
   const [selectedTime, setSelectedTime] = useState<string | null>(booking ? new Date(booking.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }).slice(0, 5) : null);
   const [selectedProfessionalId, setSelectedProfessionalId] = useState<string | null>(booking?.professionalId || null);
   const [showConfirmation, setShowConfirmation] = useState(false);
-  const [occupiedSlots, setOccupiedSlots] = useState<{ id: string, professional_id: string, booking_time: string, duration: number }[]>([]);
-  const [loadingAvailability, setLoadingAvailability] = useState(false);
 
   const serviceDuration = service.duration;
   const minBookingDate = useMemo(() => new Date().toISOString().split('T')[0], []);
 
-  const fetchAvailability = useCallback(async (date: Date) => {
-    setLoadingAvailability(true);
-    const dateString = date.toISOString().split('T')[0];
-    const slots = await api.getOccupiedSlots(dateString);
-    setOccupiedSlots(slots);
-    setLoadingAvailability(false);
-  }, []);
+  const {
+    availableTimes,
+    loadingAvailability,
+    currentDaySettings,
+    isClinicOpen,
+  } = useAvailability({
+    selectedDate,
+    selectedProfessionalId,
+    serviceDuration,
+    clinicOperatingHours,
+    clinicHolidayExceptions,
+    bookingToIgnoreId: booking?.id,
+  });
 
   useEffect(() => {
-    if (selectedDate) {
-      fetchAvailability(selectedDate);
-    }
-  }, [selectedDate, fetchAvailability]);
-  
-  const currentDaySettings = useMemo((): DayOperatingHours | undefined => {
-    if (!selectedDate) return undefined;
-    
-    const dateString = selectedDate.toISOString().split('T')[0];
-    
-    const holidayException = clinicHolidayExceptions?.find(ex => ex.date === dateString);
-    if (holidayException) {
-        return holidayException;
-    }
-
-    const dayOfWeek = selectedDate.getDay();
-    return clinicOperatingHours?.[dayOfWeek];
-    
-  }, [selectedDate, clinicOperatingHours, clinicHolidayExceptions]);
-
-  const isClinicOpen = currentDaySettings?.open;
-
-  const availableTimes = useMemo(() => {
-    if (!selectedDate || !selectedProfessionalId || !currentDaySettings || !isClinicOpen) return [];
-
-    const daySettings = currentDaySettings;
-    
-    if (!daySettings.start || !daySettings.end) {
-        return [];
-    }
-
-    const startDayMinutes = timeToMinutes(daySettings.start);
-    const endDayMinutes = timeToMinutes(daySettings.end);
-    const interval = 30;
-    
-    const lunchStartMinutes = daySettings.lunchStart ? timeToMinutes(daySettings.lunchStart) : -1;
-    const lunchEndMinutes = daySettings.lunchEnd ? timeToMinutes(daySettings.lunchEnd) : -1;
-    const hasLunchBreak = lunchStartMinutes !== -1 && lunchEndMinutes !== -1;
-
-    const times: string[] = [];
-    
-    const professionalOccupiedSlots = occupiedSlots.filter(slot => slot.professional_id === selectedProfessionalId);
-
-    for (let minutes = startDayMinutes; minutes < endDayMinutes; minutes += interval) {
-        const slotStartTime = minutes;
-        const slotEndTime = minutes + serviceDuration;
-        
-        if (slotEndTime > endDayMinutes) continue;
-
-        let isAvailable = true;
-
-        if (hasLunchBreak) {
-            const overlapsWithLunch = (slotStartTime < lunchEndMinutes && lunchStartMinutes < slotEndTime);
-            if (overlapsWithLunch) {
-                isAvailable = false;
-            }
-        }
-
-        if (!isAvailable) continue;
-
-        for (const occupied of professionalOccupiedSlots) {
-            const occupiedStart = timeToMinutes(occupied.booking_time);
-            const occupiedEnd = occupiedStart + occupied.duration;
-            
-            if (isRescheduling && booking?.id === occupied.id) continue;
-
-            const overlaps = (slotStartTime < occupiedEnd && occupiedStart < slotEndTime);
-
-            if (overlaps) {
-                isAvailable = false;
-                break;
-            }
-        }
-
-        if (isAvailable) {
-            times.push(minutesToTime(minutes));
-        }
-    }
-
-    return times;
-  }, [selectedDate, selectedProfessionalId, occupiedSlots, serviceDuration, isRescheduling, booking?.id, currentDaySettings, isClinicOpen]);
+    // Se a data mudar, resetar o horário selecionado
+    setSelectedTime(null);
+  }, [selectedDate, selectedProfessionalId]);
 
   const handleDateChange = (dateString: string) => {
     if (!dateString) return;
     const newDate = new Date(dateString);
+    // Ajuste para fuso horário para garantir que a data selecionada seja correta
     const userTimezoneOffset = newDate.getTimezoneOffset() * 60000;
     setSelectedDate(new Date(newDate.getTime() + userTimezoneOffset));
-    setSelectedTime(null);
   };
   
   const handleProfessionalChange = (id: string) => {
     setSelectedProfessionalId(id);
-    setSelectedTime(null);
   };
   
   const handleBookingConfirm = async () => {
@@ -197,6 +110,10 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, isCreditB
             clinicHoursMessage = isClinicOpen 
                 ? `Horário de funcionamento: ${currentDaySettings?.start} - ${currentDaySettings?.end}`
                 : 'Clínica fechada neste dia.';
+        }
+        
+        if (isClinicOpen && currentDaySettings?.lunchStart && currentDaySettings?.lunchEnd) {
+            clinicHoursMessage += ` (Almoço: ${currentDaySettings.lunchStart} - ${currentDaySettings.lunchEnd})`;
         }
     }
 

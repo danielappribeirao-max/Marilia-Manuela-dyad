@@ -1,8 +1,8 @@
-
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Booking, User, Service, Role } from '../types';
 import { useApp } from '../App';
 import * as api from '../services/api';
+import { useAvailability } from '../hooks/useAvailability';
 
 interface AdminBookingModalProps {
   booking: Booking | null;
@@ -13,20 +13,31 @@ interface AdminBookingModalProps {
   professionals: User[];
 }
 
+const timeToMinutes = (time: string) => {
+    if (!time) return 0;
+    const [h, m] = time.split(':').map(Number);
+    return h * 60 + m;
+};
+
 const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose, onSave, defaultDate, users, professionals }) => {
-  const { services } = useApp();
+  const { services, clinicSettings } = useApp();
   const isEditing = !!booking;
   
   const getInitialFormData = () => {
     const service = booking?.serviceId ? services.find(s => s.id === booking.serviceId) : null;
+    const initialDate = booking ? new Date(booking.date) : (defaultDate || new Date());
+    
+    // Ajuste para garantir que a data inicial seja apenas a data (sem hora)
+    const datePart = new Date(initialDate.getFullYear(), initialDate.getMonth(), initialDate.getDate());
+    
     return {
       userId: booking?.userId || '',
       serviceId: booking?.serviceId || '',
       professionalId: booking?.professionalId || '',
-      date: booking ? new Date(booking.date).toISOString().split('T')[0] : (defaultDate ? defaultDate.toISOString().split('T')[0] : ''),
+      date: datePart.toISOString().split('T')[0],
       time: booking ? new Date(booking.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }).slice(0, 5) : (defaultDate ? defaultDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }).slice(0, 5) : ''),
       status: booking?.status || 'confirmed',
-      duration: booking?.duration || service?.duration || 0,
+      duration: booking?.duration || service?.duration || 30,
       quantity: 1,
     };
   };
@@ -37,6 +48,23 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
   const selectedService = useMemo(() => services.find(s => s.id === formData.serviceId), [formData.serviceId, services]);
   const sessionsPerPackage = selectedService?.sessions || 1;
   const isPackageSale = !isEditing && (sessionsPerPackage > 1 || Number(formData.quantity) > 1);
+  
+  const selectedDate = useMemo(() => {
+      if (!formData.date) return null;
+      const d = new Date(formData.date);
+      // Ajuste de fuso horário para garantir que a data seja correta
+      const userTimezoneOffset = d.getTimezoneOffset() * 60000;
+      return new Date(d.getTime() + userTimezoneOffset);
+  }, [formData.date]);
+
+  const { availableTimes, isClinicOpen, currentDaySettings, loadingAvailability } = useAvailability({
+      selectedDate,
+      selectedProfessionalId: formData.professionalId,
+      serviceDuration: Number(formData.duration),
+      clinicOperatingHours: clinicSettings?.operatingHours,
+      clinicHolidayExceptions: clinicSettings?.holidayExceptions,
+      bookingToIgnoreId: booking?.id,
+  });
 
   const validate = () => {
     const newErrors: { [key: string]: string } = {};
@@ -50,6 +78,15 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
         if (!formData.date) newErrors.date = 'Selecione uma data.';
         if (!formData.time) newErrors.time = 'Selecione um horário.';
         if (!formData.duration || formData.duration <= 0) newErrors.duration = 'A duração deve ser maior que zero.';
+        
+        // Validação de disponibilidade (apenas para agendamentos)
+        if (formData.date && formData.time && formData.professionalId && !isEditing) {
+            if (!isClinicOpen) {
+                newErrors.date = 'A clínica está fechada neste dia.';
+            } else if (!availableTimes.includes(formData.time)) {
+                newErrors.time = 'Horário indisponível. O profissional está ocupado ou o horário está fora do expediente/almoço.';
+            }
+        }
     }
     
     setErrors(newErrors);
@@ -61,11 +98,18 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
     setFormData(prev => {
       const newFormData = { ...prev, [name]: value };
       if (name === 'serviceId' && !isPackageSale) {
-        newFormData.duration = services.find(s => s.id === value)?.duration || 0;
+        newFormData.duration = services.find(s => s.id === value)?.duration || 30;
       }
+      
+      // Se mudar a data, profissional ou duração, resetar o horário
+      if (['date', 'professionalId', 'duration'].includes(name)) {
+          newFormData.time = '';
+      }
+      
       return newFormData;
     });
     if (errors[name]) setErrors(prev => ({ ...prev, [name]: '' }));
+    if (name === 'date' || name === 'time') setErrors(prev => ({ ...prev, date: '', time: '' }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -76,7 +120,7 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
         const user = users.find(u => u.id === formData.userId);
         if (!user || !selectedService) return;
         
-        await api.addCreditsToUser(user.id, selectedService.id, formData.quantity, selectedService.sessions);
+        await api.addCreditsToUser(user.id, selectedService.id, Number(formData.quantity), selectedService.sessions);
         const totalCreditsToAdd = sessionsPerPackage * Number(formData.quantity);
         alert(`${totalCreditsToAdd} créditos de "${selectedService?.name}" adicionados com sucesso para ${user.name}.`);
         onClose();
@@ -85,6 +129,7 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
     
     const [hours, minutes] = formData.time.split(':').map(Number);
     const bookingDate = new Date(formData.date);
+    // Ajuste de fuso horário para garantir que a hora seja a selecionada
     bookingDate.setMinutes(bookingDate.getMinutes() + bookingDate.getTimezoneOffset());
     bookingDate.setHours(hours, minutes, 0, 0);
 
@@ -104,6 +149,17 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
   const submitButtonText = isPackageSale ? 'Adicionar Créditos' : 'Salvar Agendamento';
 
   const clientUsers = useMemo(() => users.filter(u => u.role === Role.CLIENT), [users]);
+  
+  const clinicHoursMessage = useMemo(() => {
+      if (!selectedDate) return 'Selecione uma data.';
+      if (!isClinicOpen) return 'Clínica fechada neste dia.';
+      
+      let message = `Aberto das ${currentDaySettings?.start} às ${currentDaySettings?.end}.`;
+      if (currentDaySettings?.lunchStart && currentDaySettings?.lunchEnd) {
+          message += ` (Almoço: ${currentDaySettings.lunchStart} - ${currentDaySettings.lunchEnd})`;
+      }
+      return message;
+  }, [selectedDate, isClinicOpen, currentDaySettings]);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
@@ -158,10 +214,20 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
                     <label htmlFor="date" className="block text-sm font-medium text-gray-700 mb-1">Data</label>
                     <input type="date" id="date" name="date" value={formData.date} onChange={handleChange} className={`w-full p-2 border bg-white text-gray-900 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500 ${errors.date ? 'border-red-500' : 'border-gray-300'}`} />
                     {errors.date && <p className="text-red-500 text-xs mt-1">{errors.date}</p>}
+                    {formData.date && <p className={`text-xs mt-1 ${isClinicOpen ? 'text-gray-600' : 'text-red-500 font-semibold'}`}>{clinicHoursMessage}</p>}
                   </div>
                   <div>
                     <label htmlFor="time" className="block text-sm font-medium text-gray-700 mb-1">Horário</label>
-                    <input type="time" id="time" name="time" value={formData.time} onChange={handleChange} className={`w-full p-2 border bg-white text-gray-900 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500 ${errors.time ? 'border-red-500' : 'border-gray-300'}`} />
+                    <select id="time" name="time" value={formData.time} onChange={handleChange} disabled={!formData.date || !formData.professionalId || loadingAvailability || !isClinicOpen} className={`w-full p-2 border bg-white text-gray-900 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500 ${errors.time ? 'border-red-500' : 'border-gray-300'} disabled:bg-gray-100`}>
+                        <option value="" disabled>Selecione o horário</option>
+                        {loadingAvailability ? (
+                            <option disabled>Carregando...</option>
+                        ) : availableTimes.length > 0 ? (
+                            availableTimes.map(time => <option key={time} value={time}>{time}</option>)
+                        ) : (
+                            <option disabled>Indisponível</option>
+                        )}
+                    </select>
                     {errors.time && <p className="text-red-500 text-xs mt-1">{errors.time}</p>}
                   </div>
                 </div>
