@@ -37,6 +37,8 @@ interface AppContextType {
   clinicSettings: ClinicSettings | null;
   updateClinicSettings: (hours: OperatingHours) => Promise<void>;
   updateClinicHolidayExceptions: (exceptions: HolidayException[]) => Promise<void>;
+  // Adicionando função de recarregamento para a agenda
+  refreshAdminData: () => void;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -79,6 +81,12 @@ function AppContent() {
   const [logoUrl, setLogoUrl] = useState('https://mdxqiozhqmcriiqspbqf.supabase.co/storage/v1/object/public/assets/logo-marilia-manuela.jpeg');
   const [heroImageUrl, setHeroImageUrl] = useState('https://picsum.photos/seed/spa/1600/900');
   const [aboutImageUrl, setAboutImageUrl] = useState('https://picsum.photos/seed/clinic/600/400');
+  
+  // Estado para forçar o recarregamento de dados administrativos (Agenda, Usuários)
+  const [adminDataRefreshKey, setAdminDataRefreshKey] = useState(0);
+  const refreshAdminData = useCallback(() => {
+      setAdminDataRefreshKey(prev => prev + 1);
+  }, []);
 
 
   useEffect(() => {
@@ -236,9 +244,8 @@ function AppContent() {
       setBookingService(FREE_CONSULTATION_SERVICE);
   }, []);
 
-  const handleConfirmFinalBooking = useCallback(async (details: { date: Date, professionalId: string }) => {
+  const handleConfirmFinalBooking = useCallback(async (details: { date: Date, professionalId: string }): Promise<boolean> => {
     if (!currentUser && !tempClientData) return false;
-    let success = false;
     
     const serviceToBook = bookingService || creditBookingService;
     if (!serviceToBook) return false;
@@ -246,7 +253,8 @@ function AppContent() {
     if (reschedulingBooking) {
       const updatedBooking = { ...reschedulingBooking, ...details, status: 'confirmed' as const };
       const result = await api.addOrUpdateBooking(updatedBooking);
-      if(result) success = true;
+      if(result) return true;
+      return false;
     } else {
       // Se for agendamento normal (logado ou crédito)
       if (currentUser) {
@@ -260,22 +268,40 @@ function AppContent() {
               serviceName: serviceToBook.name,
           };
           const result = await api.addOrUpdateBooking(newBooking);
-          if(result) success = true;
           
           // Dedução de crédito
-          if (creditBookingService) {
+          if (result && creditBookingService) {
             const updatedUser = await api.deductCreditFromUser(currentUser.id, creditBookingService.id);
             if (updatedUser) setCurrentUser(updatedUser);
           }
+          return !!result;
+          
       } else if (tempClientData && serviceToBook.id === FREE_CONSULTATION_SERVICE_ID) {
-          // Se for agendamento de consulta gratuita para novo usuário, a lógica é tratada no BookingModal
-          // O BookingModal chamará a Edge Function, então aqui apenas retornamos true para fechar o modal
+          // Fluxo de Consulta Gratuita para Novo Usuário
           // A Edge Function fará a criação do usuário e do agendamento.
-          success = true;
+          const result = await api.bookFreeConsultationForNewUser({
+              name: tempClientData.name,
+              phone: tempClientData.phone,
+              description: tempClientData.description,
+              date: details.date,
+              professionalId: details.professionalId,
+              serviceId: serviceToBook.id,
+              serviceName: serviceToBook.name,
+              duration: serviceToBook.duration,
+          });
+          
+          if (result.success) {
+              // Força o recarregamento dos dados administrativos para que o AdminAgenda veja o novo agendamento
+              refreshAdminData();
+              return true;
+          } else {
+              alert(`Erro ao agendar consulta: ${result.error}`);
+              return false;
+          }
       }
     }
-    return success;
-  }, [currentUser, bookingService, creditBookingService, reschedulingBooking, tempClientData]);
+    return false;
+  }, [currentUser, bookingService, creditBookingService, reschedulingBooking, tempClientData, refreshAdminData]);
 
   const handleCloseModals = () => {
     setBookingService(null);
@@ -340,7 +366,7 @@ function AppContent() {
     }
   }, []);
 
-  const appContextValue = useMemo(() => ({ currentUser, setCurrentUser, currentPage, setCurrentPage, logout, services, packages, professionals, addOrUpdateService, deleteService, loading, logoUrl, setLogoUrl, heroImageUrl, setHeroImageUrl, aboutImageUrl, setAboutImageUrl, clinicSettings, updateClinicSettings, updateClinicHolidayExceptions }), [currentUser, currentPage, logout, services, packages, professionals, addOrUpdateService, deleteService, loading, logoUrl, heroImageUrl, aboutImageUrl, clinicSettings, updateClinicSettings, updateClinicHolidayExceptions]);
+  const appContextValue = useMemo(() => ({ currentUser, setCurrentUser, currentPage, setCurrentPage, logout, services, packages, professionals, addOrUpdateService, deleteService, loading, logoUrl, setLogoUrl, heroImageUrl, setHeroImageUrl, aboutImageUrl, setAboutImageUrl, clinicSettings, updateClinicSettings, updateClinicHolidayExceptions, refreshAdminData }), [currentUser, currentPage, logout, services, packages, professionals, addOrUpdateService, deleteService, loading, logoUrl, heroImageUrl, aboutImageUrl, clinicSettings, updateClinicSettings, updateClinicHolidayExceptions, refreshAdminData]);
 
   const renderPage = () => {
     if(loading) {
@@ -351,7 +377,7 @@ function AppContent() {
       case Page.SERVICES: return <ServicesPage onPurchaseOrBook={handlePurchaseOrBook} onPurchasePackage={handlePurchasePackage} />;
       case Page.LOGIN: return <LoginPage />;
       case Page.USER_DASHBOARD: return <UserDashboardPage onBookWithCredit={handleStartCreditBooking} onReschedule={handleStartReschedule} />;
-      case Page.ADMIN_DASHBOARD: return <AdminDashboardPage />;
+      case Page.ADMIN_DASHBOARD: return <AdminDashboardPage adminDataRefreshKey={adminDataRefreshKey} />;
       default: return <HomePage onPurchaseOrBook={handlePurchaseOrBook} onPurchasePackage={handlePurchasePackage} onStartFreeConsultation={handleStartFreeConsultation} />;
     }
   };

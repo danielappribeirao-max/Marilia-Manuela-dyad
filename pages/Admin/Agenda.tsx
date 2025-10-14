@@ -18,8 +18,13 @@ const getWeekRange = (date: Date) => {
     return { start, end };
 };
 
+interface AdminAgendaProps {
+    // Propriedade injetada pelo AdminDashboardPage para forçar o recarregamento
+    key: number; 
+}
+
 export default function AdminAgenda() {
-    const { services, professionals } = useApp();
+    const { services, professionals, refreshAdminData } = useApp();
     const [currentDate, setCurrentDate] = useState(new Date());
     const [view, setView] = useState<AgendaView>('week');
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -40,6 +45,9 @@ export default function AdminAgenda() {
         setLoading(false);
     }, []);
 
+    // Usa a chave de atualização do AppContext para forçar o recarregamento
+    // O AdminDashboardPage passa a chave via prop 'key', que força a remontagem do componente,
+    // mas o useEffect abaixo garante que o fetchData seja chamado.
     useEffect(() => {
         fetchData();
     }, [fetchData]);
@@ -164,7 +172,11 @@ export default function AdminAgenda() {
             {isModalOpen && (
                 <AdminBookingModal 
                     booking={selectedBooking}
-                    onClose={() => setIsModalOpen(false)}
+                    onClose={() => {
+                        setIsModalOpen(false);
+                        // Força o recarregamento da agenda ao fechar o modal, caso tenha havido alteração
+                        fetchData(); 
+                    }}
                     onSave={handleSaveBooking}
                     defaultDate={defaultDateForNewBooking}
                     users={users}
