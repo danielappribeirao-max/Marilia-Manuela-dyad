@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { Service, Booking, User, OperatingHours } from '../types';
+import { Service, Booking, User, OperatingHours, DayOperatingHours } from '../types';
 import * as api from '../services/api';
 
 interface BookingModalProps {
@@ -10,6 +10,7 @@ interface BookingModalProps {
   onConfirmBooking: (details: { date: Date, professionalId: string }) => Promise<boolean>;
   professionals: User[];
   clinicOperatingHours: OperatingHours | undefined;
+  clinicHolidayExceptions: { date: string, open: boolean, start?: string, end?: string }[] | undefined;
 }
 
 // Função utilitária para converter HH:MM para minutos desde a meia-noite
@@ -25,7 +26,7 @@ const minutesToTime = (minutes: number) => {
     return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
 };
 
-const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, isCreditBooking = false, booking = null, onConfirmBooking, professionals, clinicOperatingHours }) => {
+const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, isCreditBooking = false, booking = null, onConfirmBooking, professionals, clinicOperatingHours, clinicHolidayExceptions }) => {
   const isRescheduling = !!booking;
 
   const [step, setStep] = useState(1);
@@ -52,15 +53,33 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, isCreditB
       fetchAvailability(selectedDate);
     }
   }, [selectedDate, fetchAvailability]);
+  
+  const currentDaySettings = useMemo((): DayOperatingHours | undefined => {
+    if (!selectedDate) return undefined;
+    
+    const dateString = selectedDate.toISOString().split('T')[0];
+    
+    // 1. Verificar se é uma exceção de feriado
+    const holidayException = clinicHolidayExceptions?.find(ex => ex.date === dateString);
+    if (holidayException) {
+        return holidayException;
+    }
+
+    // 2. Usar horário padrão semanal
+    const dayOfWeek = selectedDate.getDay(); // 0 = Sunday, 6 = Saturday
+    return clinicOperatingHours?.[dayOfWeek];
+    
+  }, [selectedDate, clinicOperatingHours, clinicHolidayExceptions]);
+
+  const isClinicOpen = currentDaySettings?.open;
 
   const availableTimes = useMemo(() => {
-    if (!selectedDate || !selectedProfessionalId || !clinicOperatingHours) return [];
+    if (!selectedDate || !selectedProfessionalId || !currentDaySettings || !isClinicOpen) return [];
 
-    const dayOfWeek = selectedDate.getDay(); // 0 = Sunday, 6 = Saturday
-    const daySettings = clinicOperatingHours[dayOfWeek];
-
-    if (!daySettings || !daySettings.open || !daySettings.start || !daySettings.end) {
-        return []; // Clínica fechada neste dia
+    const daySettings = currentDaySettings;
+    
+    if (!daySettings.start || !daySettings.end) {
+        return []; // Aberto, mas sem horários definidos (erro de configuração)
     }
 
     const startDayMinutes = timeToMinutes(daySettings.start);
@@ -107,7 +126,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, isCreditB
     }
 
     return times;
-  }, [selectedDate, selectedProfessionalId, occupiedSlots, serviceDuration, isRescheduling, booking?.id, clinicOperatingHours]);
+  }, [selectedDate, selectedProfessionalId, occupiedSlots, serviceDuration, isRescheduling, booking?.id, currentDaySettings, isClinicOpen]);
 
   const handleDateChange = (dateString: string) => {
     if (!dateString) return;
@@ -164,12 +183,20 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, isCreditB
         );
     }
 
-    const dayOfWeek = selectedDate?.getDay();
-    const daySettings = clinicOperatingHours?.[dayOfWeek as number];
-    const isClinicOpen = daySettings?.open;
-    const clinicHoursMessage = isClinicOpen 
-        ? `Horário de funcionamento: ${daySettings?.start} - ${daySettings?.end}`
-        : 'Clínica fechada neste dia.';
+    const holidayName = clinicHolidayExceptions?.find(ex => ex.date === selectedDate?.toISOString().split('T')[0])?.name;
+    
+    let clinicHoursMessage = 'Selecione uma data.';
+    if (selectedDate) {
+        if (holidayName) {
+            clinicHoursMessage = isClinicOpen 
+                ? `Exceção: ${holidayName}. Aberto das ${currentDaySettings?.start} às ${currentDaySettings?.end}.`
+                : `Exceção: ${holidayName}. Fechado o dia todo.`;
+        } else {
+            clinicHoursMessage = isClinicOpen 
+                ? `Horário de funcionamento: ${currentDaySettings?.start} - ${currentDaySettings?.end}`
+                : 'Clínica fechada neste dia.';
+        }
+    }
 
     switch (step) {
       case 1: // Date, Time, and Professional

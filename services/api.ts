@@ -1,5 +1,5 @@
 import { supabase } from '../supabase/client';
-import { User, Service, Booking, Role, Sale, ServicePackage, ClinicSettings, OperatingHours } from '../types';
+import { User, Service, Booking, Role, Sale, ServicePackage, ClinicSettings, OperatingHours, HolidayException } from '../types';
 import { User as SupabaseAuthUser } from '@supabase/supabase-js'; // Importar o tipo User do Supabase
 
 // Helper to map Supabase user and profile to our app's User type
@@ -393,12 +393,13 @@ const SETTINGS_ID = '00000000-0000-0000-0000-000000000001';
 const mapDbToClinicSettings = (dbSettings: any): ClinicSettings => ({
     id: dbSettings.id,
     operatingHours: dbSettings.operating_hours,
+    holidayExceptions: dbSettings.holiday_exceptions || [],
 });
 
 export const getClinicSettings = async (): Promise<ClinicSettings | null> => {
     const { data, error } = await supabase
         .from('clinic_settings')
-        .select('id, operating_hours')
+        .select('id, operating_hours, holiday_exceptions')
         .eq('id', SETTINGS_ID)
         .single();
 
@@ -417,11 +418,26 @@ export const updateClinicOperatingHours = async (operatingHours: OperatingHours)
         .from('clinic_settings')
         .update({ operating_hours: operatingHours, updated_at: new Date().toISOString() })
         .eq('id', SETTINGS_ID)
-        .select('id, operating_hours')
+        .select('id, operating_hours, holiday_exceptions')
         .single();
 
     if (error) {
         console.error("Error updating clinic operating hours:", error);
+        return null;
+    }
+    return mapDbToClinicSettings(data);
+};
+
+export const updateClinicHolidayExceptions = async (holidayExceptions: HolidayException[]): Promise<ClinicSettings | null> => {
+    const { data, error } = await supabase
+        .from('clinic_settings')
+        .update({ holiday_exceptions: holidayExceptions, updated_at: new Date().toISOString() })
+        .eq('id', SETTINGS_ID)
+        .select('id, operating_hours, holiday_exceptions')
+        .single();
+
+    if (error) {
+        console.error("Error updating holiday exceptions:", error);
         return null;
     }
     return mapDbToClinicSettings(data);

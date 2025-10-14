@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { useApp } from '../../App';
 import * as api from '../../services/api';
 import OperatingHoursForm from '../../components/OperatingHoursForm';
-import { OperatingHours } from '../../types';
+import HolidayExceptionForm from '../../components/HolidayExceptionForm';
+import { OperatingHours, HolidayException } from '../../types';
 
 const ImageUploadCard: React.FC<{
   title: string;
@@ -111,6 +112,16 @@ export default function AdminSettingsPage() {
     return newUrl;
   };
   
+  const handleSaveHolidayExceptions = async (exceptions: HolidayException[]) => {
+    const updatedSettings = await api.updateClinicHolidayExceptions(exceptions);
+    if (updatedSettings) {
+        // Não precisamos atualizar o estado clinicSettings aqui, pois o App.tsx já faz isso
+        alert("Exceções de feriados atualizadas com sucesso!");
+    } else {
+        alert("Erro ao atualizar exceções de feriados.");
+    }
+  };
+
   const defaultOperatingHours: OperatingHours = {
     0: { open: false }, 
     1: { open: true, start: '08:00', end: '20:00' }, 
@@ -127,10 +138,18 @@ export default function AdminSettingsPage() {
       <div className="space-y-8">
         
         <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-            <h3 className="text-xl font-semibold text-gray-800 mb-4">Horários de Funcionamento</h3>
+            <h3 className="text-xl font-semibold text-gray-800 mb-4">Horários de Funcionamento Padrão</h3>
             <OperatingHoursForm 
                 initialHours={clinicSettings?.operatingHours || defaultOperatingHours}
                 onSave={updateClinicSettings}
+            />
+        </div>
+        
+        <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+            <h3 className="text-xl font-semibold text-gray-800 mb-4">Exceções de Feriados e Datas Especiais</h3>
+            <HolidayExceptionForm
+                initialExceptions={clinicSettings?.holidayExceptions || []}
+                onSave={handleSaveHolidayExceptions}
             />
         </div>
         

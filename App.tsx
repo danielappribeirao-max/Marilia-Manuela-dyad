@@ -288,7 +288,16 @@ export default function App() {
         <Header />
         <main className="flex-grow">{renderPage()}</main>
         <Footer />
-        {serviceForBookingModal && <BookingModal service={serviceForBookingModal} booking={reschedulingBooking} onClose={handleCloseModals} isCreditBooking={!!creditBookingService} onConfirmBooking={handleConfirmFinalBooking} professionals={professionals} clinicOperatingHours={clinicSettings?.operatingHours} />}
+        {serviceForBookingModal && <BookingModal 
+            service={serviceForBookingModal} 
+            booking={reschedulingBooking} 
+            onClose={handleCloseModals} 
+            isCreditBooking={!!creditBookingService} 
+            onConfirmBooking={handleConfirmFinalBooking} 
+            professionals={professionals} 
+            clinicOperatingHours={clinicSettings?.operatingHours} 
+            clinicHolidayExceptions={clinicSettings?.holidayExceptions}
+        />}
         {purchaseConfirmation && <PurchaseConfirmationModal service={purchaseConfirmation.service} quantity={purchaseConfirmation.quantity} onConfirm={handleConfirmPurchase} onClose={handleCloseModals} />}
         {purchasePackageConfirmation && <PackagePurchaseConfirmationModal servicePackage={purchasePackageConfirmation} services={services} onConfirm={handleConfirmPackagePurchase} onClose={handleCloseModals} />}
         <a href="https://wa.me/5511999999999" target="_blank" rel="noopener noreferrer" className={`fixed bottom-6 right-6 bg-green-500 rounded-full p-3 shadow-lg hover:bg-green-600 transition-transform duration-300 transform ${showWhatsApp ? 'scale-100' : 'scale-0'}`} aria-label="Contact us on WhatsApp"><WhatsAppIcon /></a>

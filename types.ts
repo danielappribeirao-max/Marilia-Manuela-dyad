@@ -89,7 +89,13 @@ export interface OperatingHours {
   [dayOfWeek: number]: DayOperatingHours; // 0 = Sunday, 6 = Saturday
 }
 
+export interface HolidayException extends DayOperatingHours {
+  date: string; // YYYY-MM-DD
+  name: string;
+}
+
 export interface ClinicSettings {
   id: string;
   operatingHours: OperatingHours;
+  holidayExceptions?: HolidayException[];
 }
