@@ -39,6 +39,7 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
       status: booking?.status || 'confirmed',
       duration: booking?.duration || service?.duration || 30,
       quantity: 1,
+      notes: booking?.comment || '', // Adicionando notas/comentários
     };
   };
   
@@ -93,7 +94,7 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     setFormData(prev => {
       const newFormData = { ...prev, [name]: value };
@@ -141,6 +142,7 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
       date: bookingDate,
       status: formData.status as Booking['status'],
       duration: Number(formData.duration),
+      comment: formData.notes, // Salvando as notas
     };
     await onSave(newBooking);
   };
@@ -230,6 +232,10 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
                     </select>
                     {errors.time && <p className="text-red-500 text-xs mt-1">{errors.time}</p>}
                   </div>
+                </div>
+                <div>
+                    <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">Notas/Comentários</label>
+                    <textarea id="notes" name="notes" value={formData.notes} onChange={handleChange} rows={2} className="w-full p-2 border bg-white text-gray-900 border-gray-300 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500" />
                 </div>
                 <div>
                   <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">Status</label>

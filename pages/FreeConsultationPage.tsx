@@ -1,36 +1,82 @@
 import React, { useState, useCallback } from 'react';
 import { useApp } from '../App';
 import { Page, User } from '../types';
-import LoginPage from './LoginPage';
 import FreeConsultationBookingModal from '../components/FreeConsultationBookingModal';
+import QuickRegistrationForm from '../components/QuickRegistrationForm';
 import { FREE_CONSULTATION_SERVICE } from '../constants';
 import * as api from '../services/api';
 
+// Tipos para o estado do usuário pré-agendamento
+interface TempUser extends Partial<User> {
+    description: string;
+    tempId?: string; // ID temporário para o agendamento
+}
+
 export default function FreeConsultationPage() {
-    const { currentUser, setCurrentPage, professionals, clinicSettings } = useApp();
+    const { currentUser, setCurrentPage, professionals, clinicSettings, setCurrentUser } = useApp();
+    
+    // Estado para gerenciar o fluxo de 2 etapas
+    const [step, setStep] = useState(currentUser ? 2 : 1); // 1: Cadastro Rápido, 2: Agendamento
+    const [tempUserData, setTempUserData] = useState<TempUser | null>(currentUser ? { ...currentUser, description: '' } : null);
+    
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isBookingConfirmed, setIsBookingConfirmed] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // Abre o modal de agendamento assim que o usuário estiver logado/cadastrado
+    // Abre o modal de agendamento se estiver no passo 2
     React.useEffect(() => {
-        if (currentUser && !isBookingConfirmed) {
+        if (step === 2 && (currentUser || tempUserData) && !isBookingConfirmed) {
             setIsModalOpen(true);
         }
-    }, [currentUser, isBookingConfirmed]);
+    }, [step, currentUser, tempUserData, isBookingConfirmed]);
+
+    const handleQuickRegistrationSuccess = async (data: Partial<User> & { description: string }) => {
+        setIsSubmitting(true);
+        
+        // Gerar um e-mail temporário para o Supabase, usando o telefone como identificador único
+        const phoneDigits = data.phone?.replace(/\D/g, '') || Date.now().toString();
+        const tempEmail = `temp_${phoneDigits}@mariliamanuela.com`;
+        
+        // 1. Criar o usuário no Supabase usando a função Admin (sem necessidade de senha real)
+        const newUser = await api.adminCreateUser({
+            email: tempEmail,
+            password: `temp${phoneDigits}`, // Senha temporária
+            name: data.name,
+            phone: data.phone,
+            role: 'CLIENT',
+            // CPF não é obrigatório neste fluxo rápido
+        });
+
+        setIsSubmitting(false);
+
+        if (newUser) {
+            // 2. Se a criação for bem-sucedida, atualiza o estado global e local
+            setCurrentUser(newUser);
+            setTempUserData({ ...newUser, description: data.description });
+            setStep(2); // Avança para o agendamento
+        } else {
+            alert("Não foi possível criar o registro. Verifique se o telefone já está em uso.");
+        }
+    };
 
     const handleConfirmBooking = useCallback(async (details: { date: Date, professionalId: string }) => {
-        if (!currentUser) return false;
+        const userToBook = currentUser || tempUserData;
+        if (!userToBook || !userToBook.id) return false;
 
         const service = FREE_CONSULTATION_SERVICE;
         
-        const newBooking: Omit<api.Booking, 'id'> = { 
-            userId: currentUser.id, 
+        // A descrição dos serviços pretendidos será salva nas notas do agendamento
+        const notes = `Serviços de Interesse: ${tempUserData?.description || 'Não informado'}`;
+        
+        const newBooking: Omit<api.Booking, 'id'> & { serviceName: string, notes: string } = { 
+            userId: userToBook.id, 
             serviceId: service.id, 
             professionalId: details.professionalId, 
             date: details.date, 
             status: 'confirmed', 
             duration: service.duration,
-            serviceName: service.name, // Adiciona o nome do serviço para o DB
+            serviceName: service.name,
+            notes: notes,
         };
         
         const result = await api.addOrUpdateBooking(newBooking);
@@ -40,7 +86,7 @@ export default function FreeConsultationPage() {
             return true;
         }
         return false;
-    }, [currentUser]);
+    }, [currentUser, tempUserData]);
 
     const handleModalClose = () => {
         setIsModalOpen(false);
@@ -48,24 +94,44 @@ export default function FreeConsultationPage() {
         setCurrentPage(isBookingConfirmed ? Page.USER_DASHBOARD : Page.HOME);
     };
 
-    if (!currentUser) {
-        return (
-            <div className="py-12 px-4 sm:px-6 lg:px-8">
-                <div className="max-w-xl mx-auto text-center mb-8">
-                    <h1 className="text-3xl font-bold text-gray-800">Agende sua Consulta Gratuita</h1>
-                    <p className="text-gray-600 mt-2">Faça login ou cadastre-se rapidamente para reservar sua avaliação inicial sem custo.</p>
+    const renderContent = () => {
+        if (isBookingConfirmed) {
+            return (
+                <div className="mt-8 p-6 bg-green-50 border border-green-200 rounded-lg max-w-md mx-auto">
+                    <p className="text-lg font-semibold text-green-700">Sua consulta foi agendada com sucesso!</p>
+                    <p className="text-sm text-gray-600 mt-2">Você receberá os detalhes por e-mail e WhatsApp.</p>
+                    <button onClick={() => setCurrentPage(Page.USER_DASHBOARD)} className="mt-4 px-4 py-2 bg-green-500 text-white rounded-full hover:bg-green-600">Ver Meus Agendamentos</button>
                 </div>
-                <LoginPage />
-            </div>
-        );
-    }
+            );
+        }
+        
+        if (step === 1) {
+            return (
+                <div className="py-12 px-4 sm:px-6 lg:px-8">
+                    <QuickRegistrationForm 
+                        onSuccess={handleQuickRegistrationSuccess} 
+                        isSubmitting={isSubmitting}
+                    />
+                </div>
+            );
+        }
+        
+        if (step === 2) {
+            return (
+                <div className="py-12 px-6 text-center">
+                    <h1 className="text-3xl font-bold text-gray-800">Quase lá, {currentUser?.name.split(' ')[0] || tempUserData?.name?.split(' ')[0]}!</h1>
+                    <p className="text-gray-600 mt-2">Agora, selecione o melhor horário para sua consulta gratuita.</p>
+                </div>
+            );
+        }
+        
+        return null;
+    };
 
     return (
-        <div className="py-12 px-6 text-center">
-            <h1 className="text-3xl font-bold text-gray-800">Bem-vindo(a), {currentUser.name.split(' ')[0]}!</h1>
-            <p className="text-gray-600 mt-2">Estamos preparando sua agenda. Por favor, selecione o horário abaixo.</p>
+        <div className="min-h-[70vh]">
+            {renderContent()}
             
-            {/* O modal abre automaticamente via useEffect */}
             {isModalOpen && (
                 <FreeConsultationBookingModal
                     onClose={handleModalClose}
@@ -74,13 +140,6 @@ export default function FreeConsultationPage() {
                     clinicOperatingHours={clinicSettings?.operatingHours}
                     clinicHolidayExceptions={clinicSettings?.holidayExceptions}
                 />
-            )}
-            
-            {isBookingConfirmed && (
-                <div className="mt-8 p-6 bg-green-50 border border-green-200 rounded-lg max-w-md mx-auto">
-                    <p className="text-lg font-semibold text-green-700">Sua consulta foi agendada com sucesso!</p>
-                    <button onClick={() => setCurrentPage(Page.USER_DASHBOARD)} className="mt-4 px-4 py-2 bg-green-500 text-white rounded-full hover:bg-green-600">Ver Meus Agendamentos</button>
-                </div>
             )}
         </div>
     );

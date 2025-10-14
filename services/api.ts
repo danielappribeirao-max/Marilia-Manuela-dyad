@@ -565,7 +565,7 @@ export const getOccupiedSlots = async (dateString: string): Promise<{ profession
     }));
 };
 
-export const addOrUpdateBooking = async (booking: Partial<Booking> & { serviceName?: string }): Promise<Booking | null> => {
+export const addOrUpdateBooking = async (booking: Partial<Booking> & { serviceName?: string, notes?: string }): Promise<Booking | null> => {
     let serviceName = booking.serviceName;
     if (!serviceName && booking.serviceId) {
         const { data: serviceData, error: serviceError } = await supabase
@@ -596,7 +596,7 @@ export const addOrUpdateBooking = async (booking: Partial<Booking> & { serviceNa
         booking_date: bookingDateStr,
         booking_time: bookingTimeStr,
         status: dbStatus,
-        notes: booking.comment,
+        notes: booking.notes || booking.comment, // Usar notes ou comment
         rating: booking.rating,
         duration: booking.duration,
         service_name: serviceName,
