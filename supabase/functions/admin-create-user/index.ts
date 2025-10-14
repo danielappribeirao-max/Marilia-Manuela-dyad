@@ -6,6 +6,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// Função auxiliar para esperar um pouco
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
@@ -23,10 +26,11 @@ serve(async (req) => {
         throw new Error("Email, nome e função são obrigatórios.");
     }
 
+    // 1. Criar usuário Auth
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email: email,
-      password: password || 'senhaPadrao123', // Senha padrão se nenhuma for fornecida
-      email_confirm: true, // Confirma o e-mail automaticamente
+      password: password || 'senhaPadrao123',
+      email_confirm: true,
       user_metadata: {
         full_name: name,
         phone: phone,
@@ -39,16 +43,19 @@ serve(async (req) => {
 
     const userId = authData.user.id
 
-    // O gatilho handle_new_user cria um perfil básico. Nós o atualizamos com a função e o CPF corretos.
+    // 2. Esperar um breve momento para o gatilho handle_new_user criar o perfil
+    await delay(500); 
+
+    // 3. Atualizar/Upsert o perfil com os dados completos (incluindo CPF e Role)
     const { data: profileData, error: profileError } = await supabaseAdmin
       .from('profiles')
-      .update({
+      .upsert({
+        id: userId,
         full_name: name,
         phone: phone,
         cpf: cpf,
-        role: role,
-      })
-      .eq('id', userId)
+        role: role === 'admin' ? 'admin' : role === 'staff' ? 'staff' : 'user',
+      }, { onConflict: 'id' }) // Usa upsert para garantir que o perfil exista
       .select('*, procedure_credits')
       .single()
 

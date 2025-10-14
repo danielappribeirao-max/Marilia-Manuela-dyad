@@ -53,9 +53,8 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
   const selectedDate = useMemo(() => {
       if (!formData.date) return null;
       const d = new Date(formData.date);
-      // Ajuste de fuso horário para garantir que a data seja correta
-      const userTimezoneOffset = d.getTimezoneOffset() * 60000;
-      return new Date(d.getTime() + userTimezoneOffset);
+      // Cria a data base no fuso horário local (meia-noite do dia selecionado)
+      return new Date(d.getFullYear(), d.getMonth(), d.getDate());
   }, [formData.date]);
 
   const { availableTimes, isClinicOpen, currentDaySettings, loadingAvailability } = useAvailability({
@@ -129,10 +128,9 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
     } 
     
     const [hours, minutes] = formData.time.split(':').map(Number);
-    const bookingDate = new Date(formData.date);
-    // Ajuste de fuso horário para garantir que a hora seja a selecionada
-    bookingDate.setMinutes(bookingDate.getMinutes() + bookingDate.getTimezoneOffset());
-    bookingDate.setHours(hours, minutes, 0, 0);
+    
+    // Cria a data final no fuso horário local
+    const bookingDate = new Date(selectedDate!.getFullYear(), selectedDate!.getMonth(), selectedDate!.getDate(), hours, minutes, 0, 0);
 
     const newBooking: Partial<Booking> = {
       id: booking?.id,
