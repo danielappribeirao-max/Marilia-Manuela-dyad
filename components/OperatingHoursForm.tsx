@@ -9,33 +9,62 @@ interface OperatingHoursFormProps {
 const dayNames = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
 
 const OperatingHoursForm: React.FC<OperatingHoursFormProps> = ({ initialHours, onSave }) => {
-  const initialHoursStringKeys: OperatingHours = Object.fromEntries(
-    Object.entries(initialHours).map(([key, value]) => [String(key), value])
-  );
+  // Função para garantir que todos os dias tenham a estrutura completa, incluindo almoço
+  const normalizeHours = (hours: OperatingHours): OperatingHours => {
+    const normalized: OperatingHours = {};
+    for (let i = 0; i < 7; i++) {
+        const key = String(i);
+        const existing = hours[key] || { open: false };
+        
+        normalized[key] = {
+            open: existing.open,
+            start: existing.start || '08:00',
+            end: existing.end || '20:00',
+            lunchStart: existing.lunchStart || '12:00',
+            lunchEnd: existing.lunchEnd || '13:00',
+        };
+        // Se estiver fechado, remove os horários para evitar salvar dados desnecessários
+        if (!existing.open) {
+            delete normalized[key].start;
+            delete normalized[key].end;
+            delete normalized[key].lunchStart;
+            delete normalized[key].lunchEnd;
+        }
+    }
+    return normalized;
+  };
   
-  const [hours, setHours] = useState<OperatingHours>(initialHoursStringKeys);
+  const [hours, setHours] = useState<OperatingHours>(normalizeHours(initialHours));
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
   useEffect(() => {
-    const newHours: OperatingHours = Object.fromEntries(
-        Object.entries(initialHours).map(([key, value]) => [String(key), value])
-    );
-    setHours(newHours);
+    setHours(normalizeHours(initialHours));
   }, [initialHours]);
 
   const handleToggleOpen = (dayIndex: number, open: boolean) => {
     const key = String(dayIndex);
-    setHours(prev => ({
-      ...prev,
-      [key]: {
+    setHours(prev => {
+      const newDayHours = {
         ...prev[key],
         open: open,
-        start: open && !prev[key]?.start ? '08:00' : prev[key]?.start,
-        end: open && !prev[key]?.end ? '20:00' : prev[key]?.end,
-        lunchStart: open && !prev[key]?.lunchStart ? '12:00' : prev[key]?.lunchStart,
-        lunchEnd: open && !prev[key]?.lunchEnd ? '13:00' : prev[key]?.lunchEnd,
-      },
-    }));
+      };
+      
+      if (open) {
+        // Define valores padrão se estiver abrindo
+        newDayHours.start = newDayHours.start || '08:00';
+        newDayHours.end = newDayHours.end || '20:00';
+        newDayHours.lunchStart = newDayHours.lunchStart || '12:00';
+        newDayHours.lunchEnd = newDayHours.lunchEnd || '13:00';
+      } else {
+        // Remove horários se estiver fechando
+        delete newDayHours.start;
+        delete newDayHours.end;
+        delete newDayHours.lunchStart;
+        delete newDayHours.lunchEnd;
+      }
+      
+      return { ...prev, [key]: newDayHours };
+    });
     if (errors[key]) setErrors(prev => ({ ...prev, [key]: '' }));
   };
 
@@ -99,8 +128,15 @@ const OperatingHoursForm: React.FC<OperatingHoursFormProps> = ({ initialHours, o
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (validate()) {
+      // Remove as chaves de horário se o dia estiver fechado antes de salvar
       const finalHours: OperatingHours = Object.fromEntries(
-          Object.entries(hours).map(([key, value]) => [String(key), value])
+          Object.entries(hours).map(([key, value]) => {
+              if (!value.open) {
+                  const { start, end, lunchStart, lunchEnd, ...rest } = value;
+                  return [key, rest];
+              }
+              return [key, value];
+          })
       );
       onSave(finalHours);
     }

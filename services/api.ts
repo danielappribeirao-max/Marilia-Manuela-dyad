@@ -398,11 +398,11 @@ const mapDbToClinicSettings = (dbSettings: any): ClinicSettings => ({
 
 const DEFAULT_OPERATING_HOURS: OperatingHours = {
     0: { open: false }, 
-    1: { open: true, start: '08:00', end: '20:00' }, 
-    2: { open: true, start: '08:00', end: '20:00' }, 
-    3: { open: true, start: '08:00', end: '20:00' }, 
-    4: { open: true, start: '08:00', end: '20:00' }, 
-    5: { open: true, start: '08:00', end: '20:00' }, 
+    1: { open: true, start: '08:00', end: '20:00', lunchStart: '12:00', lunchEnd: '13:00' }, 
+    2: { open: true, start: '08:00', end: '20:00', lunchStart: '12:00', lunchEnd: '13:00' }, 
+    3: { open: true, start: '08:00', end: '20:00', lunchStart: '12:00', lunchEnd: '13:00' }, 
+    4: { open: true, start: '08:00', end: '20:00', lunchStart: '12:00', lunchEnd: '13:00' }, 
+    5: { open: true, start: '08:00', end: '20:00', lunchStart: '12:00', lunchEnd: '13:00' }, 
     6: { open: false }
 };
 
