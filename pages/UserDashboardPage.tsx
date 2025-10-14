@@ -56,9 +56,7 @@ export default function UserDashboardPage({ onBookWithCredit, onReschedule }: Us
             if (updatedBooking) {
                 const service = services.find(s => s.id === booking.serviceId);
                 
-                // 2. Verifica se o serviço tem mais de 1 sessão (indicando que é um pacote/crédito)
-                // Se o agendamento foi feito usando crédito, o crédito deve ser devolvido.
-                // Nota: Assumimos que se o serviço tem sessions > 1, ele é vendido como pacote/crédito.
+                // 2. Verifica se é um serviço de pacote (sessions > 1) para devolver o crédito
                 if (service && service.sessions && service.sessions > 1) {
                     const updatedUser = await api.returnCreditToUser(currentUser.id, service.id);
                     if (updatedUser) {
