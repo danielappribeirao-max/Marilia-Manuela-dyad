@@ -134,12 +134,31 @@ export default function UserDashboardPage({ onBookWithCredit, onReschedule }: Us
     }, [currentUser]);
 
     const handleConfirmCancel = async () => {
-        if (!bookingToCancel) return;
+        if (!bookingToCancel || !currentUser) return;
         
         const booking = bookings.find(b => b.id === bookingToCancel);
         if (booking) {
+            // 1. Atualizar status do agendamento para 'canceled'
             const updatedBooking = await api.addOrUpdateBooking({ ...booking, status: 'canceled' });
+            
             if (updatedBooking) {
+                // 2. Verificar se o serviço é um serviço de pacote/crédito (sessions > 1)
+                const service = services.find(s => s.id === booking.serviceId);
+                
+                if (service && service.sessions && service.sessions > 1) {
+                    // 3. Devolver o crédito ao usuário
+                    const updatedUser = await api.returnCreditToUser(currentUser.id, service.id);
+                    if (updatedUser) {
+                        setCurrentUser(updatedUser);
+                        alert(`Agendamento cancelado e 1 crédito de "${service.name}" devolvido à sua conta.`);
+                    } else {
+                        alert(`Agendamento cancelado, mas houve um erro ao devolver o crédito. Por favor, entre em contato.`);
+                    }
+                } else {
+                    alert(`Agendamento cancelado com sucesso.`);
+                }
+
+                // 4. Atualizar a lista de agendamentos
                 setBookings(prev => prev.map(b => b.id === bookingToCancel ? updatedBooking : b));
             }
         }

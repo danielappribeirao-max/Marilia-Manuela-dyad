@@ -388,6 +388,17 @@ export const updateUserProfile = async (userId: string, updates: Partial<User>):
 // CREDITS & BOOKINGS & REPORTS
 // ==================
 export const addCreditsToUser = async (userId: string, serviceId: string, quantity: number, sessionsPerPackage: number = 1): Promise<User | null> => { const userProfile = await getUserProfile(userId); if (!userProfile) return null; const totalCreditsToAdd = (sessionsPerPackage || 1) * quantity; const existingCredits = userProfile.credits?.[serviceId] || 0; const newCredits = { ...userProfile.credits, [serviceId]: existingCredits + totalCreditsToAdd, }; return await updateUserProfile(userId, { credits: newCredits }); };
+export const returnCreditToUser = async (userId: string, serviceId: string): Promise<User | null> => { 
+    const userProfile = await getUserProfile(userId); 
+    if (!userProfile) return null; 
+    
+    const existingCredits = userProfile.credits?.[serviceId] || 0; 
+    const newCredits = { 
+        ...userProfile.credits, 
+        [serviceId]: existingCredits + 1, // Devolve 1 crédito
+    }; 
+    return await updateUserProfile(userId, { credits: newCredits }); 
+};
 export const addPackageCreditsToUser = async (userId: string, pkg: ServicePackage): Promise<User | null> => { const userProfile = await getUserProfile(userId); if (!userProfile) return null; const newCredits = { ...(userProfile.credits || {}) }; pkg.services.forEach(item => { const existingCredits = newCredits[item.serviceId] || 0; newCredits[item.serviceId] = existingCredits + item.quantity; }); return await updateUserProfile(userId, { credits: newCredits }); };
 export const deductCreditFromUser = async (userId: string, serviceId: string): Promise<User | null> => { const userProfile = await getUserProfile(userId); if (!userProfile) return null; const existingCredits = userProfile.credits?.[serviceId] || 0; if (existingCredits <= 0) return userProfile; const newCredits = { ...userProfile.credits, [serviceId]: existingCredits - 1, }; return await updateUserProfile(userId, { credits: newCredits }); };
 
