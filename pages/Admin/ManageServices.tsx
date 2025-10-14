@@ -3,8 +3,6 @@ import { Service } from '../../types';
 import ServiceModal from '../../components/ServiceModal';
 import ConfirmationModal from '../../components/ConfirmationModal';
 import { useApp } from '../../App';
-import IndividualServiceTemplateCard from '../../components/IndividualServiceTemplateCard';
-import { individualServiceTemplates, ServiceTemplate } from '../../services/templates';
 
 export default function AdminManageServices() {
     const { services, addOrUpdateService, deleteService } = useApp();
@@ -39,41 +37,16 @@ export default function AdminManageServices() {
         setSelectedService(null);
     };
     
-    const handleUseTemplate = (template: ServiceTemplate) => {
-        // Ao usar um modelo, criamos um novo objeto Service com um ID temporário
-        // para que o ServiceModal o trate como um novo serviço a ser criado.
-        const newServiceFromTemplate: Partial<Service> = {
-            ...template,
-            id: `temp-service-${Date.now()}`, // Garante que o modal não pense que é uma edição
-        };
-        setSelectedService(newServiceFromTemplate);
-        setIsServiceModalOpen(true);
-    };
-
     return (
         <div>
             <div className="flex justify-between items-center mb-8">
                 <h2 className="text-3xl font-bold">Gerenciar Serviços</h2>
                 <button 
                     onClick={handleAddNew}
-                    className="px-4 py-2 bg-white border border-pink-500 text-pink-500 rounded-full hover:bg-pink-50 hover:shadow-md transition-all font-semibold"
+                    className="px-4 py-2 bg-pink-500 text-white rounded-full hover:bg-pink-600 transition-colors font-semibold shadow-md"
                 >
-                    + Criar Serviço em Branco
+                    + Adicionar Novo Serviço
                 </button>
-            </div>
-
-            <div className="mb-12 bg-pink-50/50 p-6 rounded-xl border border-pink-100">
-                <h3 className="text-xl font-semibold text-gray-800 mb-4">Comece com um Modelo</h3>
-                <p className="text-gray-600 mb-6 text-sm max-w-2xl">Acelere o cadastro de novos procedimentos utilizando nossos modelos prontos. Clique em "Usar este Modelo" para abrir o formulário com as informações já preenchidas.</p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                    {individualServiceTemplates.map((template, index) => (
-                        <IndividualServiceTemplateCard 
-                            key={index} 
-                            template={template}
-                            onUseTemplate={handleUseTemplate} 
-                        />
-                    ))}
-                </div>
             </div>
             
             <h3 className="text-2xl font-bold mb-4">Serviços Atuais</h3>
