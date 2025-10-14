@@ -583,7 +583,11 @@ export const addOrUpdateBooking = async (booking: Partial<Booking> & { serviceNa
     }
 
     const bookingDateStr = booking.date?.toISOString().split('T')[0];
-    const bookingTimeStr = booking.date?.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    
+    // Garantir que a hora seja formatada como HH:MM, independentemente do fuso horário local
+    const bookingTimeStr = booking.date ? 
+        `${String(booking.date.getHours()).padStart(2, '0')}:${String(booking.date.getMinutes()).padStart(2, '0')}` : 
+        undefined;
 
     let dbStatus = 'Agendado';
     if (booking.status === 'completed') dbStatus = 'Concluído';

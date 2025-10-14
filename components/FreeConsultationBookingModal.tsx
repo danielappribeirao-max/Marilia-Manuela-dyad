@@ -43,9 +43,9 @@ const FreeConsultationBookingModal: React.FC<FreeConsultationBookingModalProps> 
 
   const handleDateChange = (dateString: string) => {
     if (!dateString) return;
-    const newDate = new Date(dateString);
-    const userTimezoneOffset = newDate.getTimezoneOffset() * 60000;
-    setSelectedDate(new Date(newDate.getTime() + userTimezoneOffset));
+    // Cria a data base no fuso horário local (meia-noite do dia selecionado)
+    const [year, month, day] = dateString.split('-').map(Number);
+    setSelectedDate(new Date(year, month - 1, day));
   };
   
   const handleProfessionalChange = (id: string) => {
@@ -57,8 +57,9 @@ const FreeConsultationBookingModal: React.FC<FreeConsultationBookingModalProps> 
 
     setIsSaving(true);
     const [hours, minutes] = selectedTime.split(':').map(Number);
-    const finalDate = new Date(selectedDate);
-    finalDate.setHours(hours, minutes, 0, 0);
+    
+    // Cria uma nova data baseada na data selecionada (que já está no fuso horário local)
+    const finalDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), hours, minutes, 0, 0);
 
     const success = await onConfirmBooking({
         date: finalDate,
@@ -95,10 +96,13 @@ const FreeConsultationBookingModal: React.FC<FreeConsultationBookingModalProps> 
     
     let clinicHoursMessage = 'Selecione uma data.';
     if (selectedDate) {
-        if (holidayName) {
+        const dateString = selectedDate.toISOString().split('T')[0];
+        const holiday = clinicHolidayExceptions?.find(ex => ex.date === dateString);
+        
+        if (holiday) {
             clinicHoursMessage = isClinicOpen 
-                ? `Exceção: ${holidayName}. Aberto das ${currentDaySettings?.start} às ${currentDaySettings?.end}.`
-                : `Exceção: ${holidayName}. Fechado o dia todo.`;
+                ? `Exceção: ${holiday.name}. Aberto das ${currentDaySettings?.start} às ${currentDaySettings?.end}.`
+                : `Exceção: ${holiday.name}. Fechado o dia todo.`;
         } else {
             clinicHoursMessage = isClinicOpen 
                 ? `Horário de funcionamento: ${currentDaySettings?.start} - ${currentDaySettings?.end}`
