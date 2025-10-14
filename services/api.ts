@@ -396,6 +396,16 @@ const mapDbToClinicSettings = (dbSettings: any): ClinicSettings => ({
     holidayExceptions: dbSettings.holiday_exceptions || [],
 });
 
+const DEFAULT_OPERATING_HOURS: OperatingHours = {
+    0: { open: false }, 
+    1: { open: true, start: '08:00', end: '20:00' }, 
+    2: { open: true, start: '08:00', end: '20:00' }, 
+    3: { open: true, start: '08:00', end: '20:00' }, 
+    4: { open: true, start: '08:00', end: '20:00' }, 
+    5: { open: true, start: '08:00', end: '20:00' }, 
+    6: { open: false }
+};
+
 export const getClinicSettings = async (): Promise<ClinicSettings | null> => {
     const { data, error } = await supabase
         .from('clinic_settings')
@@ -408,7 +418,24 @@ export const getClinicSettings = async (): Promise<ClinicSettings | null> => {
         return null;
     }
     
-    if (!data) return null;
+    if (!data) {
+        // Se não houver dados, insere a linha padrão
+        const { data: insertData, error: insertError } = await supabase
+            .from('clinic_settings')
+            .insert({ 
+                id: SETTINGS_ID, 
+                operating_hours: DEFAULT_OPERATING_HOURS,
+                holiday_exceptions: [],
+            })
+            .select('id, operating_hours, holiday_exceptions')
+            .single();
+            
+        if (insertError) {
+            console.error("Error inserting default clinic settings:", insertError);
+            return null;
+        }
+        return mapDbToClinicSettings(insertData);
+    }
 
     return mapDbToClinicSettings(data);
 };
@@ -416,7 +443,10 @@ export const getClinicSettings = async (): Promise<ClinicSettings | null> => {
 export const updateClinicOperatingHours = async (operatingHours: OperatingHours): Promise<ClinicSettings | null> => {
     const { data, error } = await supabase
         .from('clinic_settings')
-        .update({ operating_hours: operatingHours, updated_at: new Date().toISOString() })
+        .update({ 
+            operating_hours: operatingHours, 
+            updated_at: new Date().toISOString() 
+        })
         .eq('id', SETTINGS_ID)
         .select('id, operating_hours, holiday_exceptions')
         .single();
@@ -431,7 +461,10 @@ export const updateClinicOperatingHours = async (operatingHours: OperatingHours)
 export const updateClinicHolidayExceptions = async (holidayExceptions: HolidayException[]): Promise<ClinicSettings | null> => {
     const { data, error } = await supabase
         .from('clinic_settings')
-        .update({ holiday_exceptions: holidayExceptions, updated_at: new Date().toISOString() })
+        .update({ 
+            holiday_exceptions: holidayExceptions, 
+            updated_at: new Date().toISOString() 
+        })
         .eq('id', SETTINGS_ID)
         .select('id, operating_hours, holiday_exceptions')
         .single();
