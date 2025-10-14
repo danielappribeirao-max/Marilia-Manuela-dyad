@@ -51,7 +51,8 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, isCreditB
 
   const handleDateChange = (dateString: string) => {
     if (!dateString) return;
-    // Cria a data base no fuso horário local (meia-noite do dia selecionado)
+    // CORREÇÃO: Cria a data baseada na string YYYY-MM-DD, mas garante que o objeto Date
+    // represente o início do dia no fuso horário local, evitando que o getDay() retorne o dia anterior.
     const [year, month, day] = dateString.split('-').map(Number);
     setSelectedDate(new Date(year, month - 1, day));
   };
