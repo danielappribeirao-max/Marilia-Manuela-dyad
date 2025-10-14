@@ -14,6 +14,9 @@ import PackagePurchaseConfirmationModal from './components/PackagePurchaseConfir
 import { supabase } from './supabase/client';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 
+// Informa ao TypeScript que esperamos que esta constante global seja definida pelo processo de construção
+declare const __GOOGLE_CLIENT_ID__: string;
+
 interface AppContextType {
   currentUser: User | null;
   setCurrentUser: (user: User | null) => void;
@@ -305,12 +308,10 @@ function AppContent() {
 }
 
 export default function App() {
-  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
+  const googleClientId = __GOOGLE_CLIENT_ID__ || '';
 
   if (!googleClientId) {
     console.warn("VITE_GOOGLE_CLIENT_ID não está definido. A integração com o Google Calendar não funcionará.");
-    // Renderiza o AppContent mesmo sem a chave, para que o resto do app funcione.
-    // O componente de conexão mostrará um erro ou ficará desabilitado.
   }
 
   return (
