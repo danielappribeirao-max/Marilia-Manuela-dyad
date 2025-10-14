@@ -68,14 +68,15 @@ export default function FreeConsultationPage() {
         // A descrição dos serviços pretendidos será salva nas notas do agendamento
         const notes = `Serviços de Interesse: ${tempUserData?.description || 'Não informado'}`;
         
+        // Usamos Partial<Booking> & { serviceName: string, notes: string } para garantir que todos os campos necessários para a API estejam presentes.
         const newBooking: Partial<Booking> & { serviceName: string, notes: string } = { 
             userId: userToBook.id, 
             serviceId: service.id, 
             professionalId: details.professionalId, 
             date: details.date, 
             status: 'confirmed', 
-            duration: service.duration,
-            serviceName: service.name,
+            duration: service.duration, // ESSENCIAL: Adicionar duration
+            serviceName: service.name, // ESSENCIAL: Adicionar serviceName
             notes: notes,
         };
         
