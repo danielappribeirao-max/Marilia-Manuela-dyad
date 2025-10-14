@@ -499,13 +499,21 @@ const mapDbToBooking = (dbBooking: any): Booking => {
     const timePart = dbBooking.booking_time || '00:00:00';
     const bookingDate = new Date(`${dbBooking.booking_date}T${timePart}`);
     
-    let status: 'confirmed' | 'completed' | 'canceled' = 'confirmed';
+    let status: 'confirmed' | 'completed' | 'canceled';
+
     if (dbBooking.status === 'Concluído' || dbBooking.status === 'completed') {
         status = 'completed';
     } else if (dbBooking.status === 'Cancelado' || dbBooking.status === 'canceled') {
         status = 'canceled';
-    } else if (dbBooking.status === 'Agendado' || dbBooking.status === 'confirmed') {
-        status = 'confirmed';
+    } else { // Status é 'Agendado' ou 'confirmed'
+        const now = new Date();
+        // Se a data do agendamento já passou, ele é considerado 'completed'
+        if (bookingDate < now) {
+            status = 'completed';
+        } else {
+            // Se ainda não passou, continua 'confirmed'
+            status = 'confirmed';
+        }
     }
 
     return {
