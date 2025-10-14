@@ -128,12 +128,16 @@ export default function AdminAgenda() {
         return currentDate.toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
     }, [currentDate, view]);
 
+    const visibleBookings = useMemo(() => {
+        return bookings.filter(b => b.status !== 'canceled');
+    }, [bookings]);
+
     const renderView = () => {
         if (loading) return <div className="flex justify-center items-center h-96">Carregando agenda...</div>;
         switch (view) {
-            case 'day': return <AgendaDayView currentDate={currentDate} bookings={bookings} onBookingClick={openEditModal} onNewBooking={openCreateModal} services={services} users={users}/>;
-            case 'week': return <AgendaWeekView currentDate={currentDate} bookings={bookings} onBookingClick={openEditModal} onNewBooking={openCreateModal} services={services} users={users}/>;
-            case 'month': return <AgendaMonthView currentDate={currentDate} bookings={bookings} onBookingClick={openEditModal} onNewBooking={openCreateModal} services={services} users={users}/>;
+            case 'day': return <AgendaDayView currentDate={currentDate} bookings={visibleBookings} onBookingClick={openEditModal} onNewBooking={openCreateModal} services={services} users={users}/>;
+            case 'week': return <AgendaWeekView currentDate={currentDate} bookings={visibleBookings} onBookingClick={openEditModal} onNewBooking={openCreateModal} services={services} users={users}/>;
+            case 'month': return <AgendaMonthView currentDate={currentDate} bookings={visibleBookings} onBookingClick={openEditModal} onNewBooking={openCreateModal} services={services} users={users}/>;
             default: return null;
         }
     };
