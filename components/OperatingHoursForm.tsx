@@ -9,7 +9,6 @@ interface OperatingHoursFormProps {
 const dayNames = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
 
 const OperatingHoursForm: React.FC<OperatingHoursFormProps> = ({ initialHours, onSave }) => {
-  // Convertendo chaves numéricas para strings para consistência com JSON/estado
   const initialHoursStringKeys: OperatingHours = Object.fromEntries(
     Object.entries(initialHours).map(([key, value]) => [String(key), value])
   );
@@ -31,15 +30,16 @@ const OperatingHoursForm: React.FC<OperatingHoursFormProps> = ({ initialHours, o
       [key]: {
         ...prev[key],
         open: open,
-        // Define horários padrão se abrir
         start: open && !prev[key]?.start ? '08:00' : prev[key]?.start,
         end: open && !prev[key]?.end ? '20:00' : prev[key]?.end,
+        lunchStart: open && !prev[key]?.lunchStart ? '12:00' : prev[key]?.lunchStart,
+        lunchEnd: open && !prev[key]?.lunchEnd ? '13:00' : prev[key]?.lunchEnd,
       },
     }));
     if (errors[key]) setErrors(prev => ({ ...prev, [key]: '' }));
   };
 
-  const handleTimeChange = (dayIndex: number, field: 'start' | 'end', value: string) => {
+  const handleTimeChange = (dayIndex: number, field: 'start' | 'end' | 'lunchStart' | 'lunchEnd', value: string) => {
     const key = String(dayIndex);
     setHours(prev => ({
       ...prev,
@@ -49,6 +49,12 @@ const OperatingHoursForm: React.FC<OperatingHoursFormProps> = ({ initialHours, o
       },
     }));
     if (errors[key]) setErrors(prev => ({ ...prev, [key]: '' }));
+  };
+
+  const timeToMinutes = (time: string) => {
+    if (!time) return 0;
+    const [h, m] = time.split(':').map(Number);
+    return h * 60 + m;
   };
 
   const validate = (): boolean => {
@@ -66,21 +72,33 @@ const OperatingHoursForm: React.FC<OperatingHoursFormProps> = ({ initialHours, o
           newErrors[key] = 'O horário de início deve ser anterior ao horário de fim.';
           isValid = false;
         }
+        
+        if (day.lunchStart && day.lunchEnd) {
+            const startMinutes = timeToMinutes(day.start);
+            const endMinutes = timeToMinutes(day.end);
+            const lunchStartMinutes = timeToMinutes(day.lunchStart);
+            const lunchEndMinutes = timeToMinutes(day.lunchEnd);
+
+            if (lunchStartMinutes >= lunchEndMinutes) {
+                newErrors[key] = 'O início do almoço deve ser antes do fim do almoço.';
+                isValid = false;
+            } else if (lunchStartMinutes < startMinutes || lunchEndMinutes > endMinutes) {
+                newErrors[key] = 'O horário de almoço deve estar dentro do horário de funcionamento.';
+                isValid = false;
+            }
+        } else if (day.lunchStart || day.lunchEnd) {
+            newErrors[key] = 'Ambos os horários de início e fim do almoço devem ser preenchidos.';
+            isValid = false;
+        }
       }
     }
     setErrors(newErrors);
     return isValid;
   };
-  
-  const timeToMinutes = (time: string) => {
-    const [h, m] = time.split(':').map(Number);
-    return h * 60 + m;
-  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (validate()) {
-      // Garantir que o objeto final tenha as chaves corretas (strings)
       const finalHours: OperatingHours = Object.fromEntries(
           Object.entries(hours).map(([key, value]) => [String(key), value])
       );
@@ -91,7 +109,7 @@ const OperatingHoursForm: React.FC<OperatingHoursFormProps> = ({ initialHours, o
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-        <p className="text-sm text-gray-600">Defina os horários em que a clínica está aberta para agendamentos. Os horários devem ser em formato 24h (HH:MM).</p>
+        <p className="text-sm text-gray-600">Defina os horários em que a clínica está aberta para agendamentos, incluindo o intervalo de almoço.</p>
       </div>
       
       <div className="space-y-4">
@@ -105,40 +123,35 @@ const OperatingHoursForm: React.FC<OperatingHoursFormProps> = ({ initialHours, o
               <div className="flex justify-between items-center">
                 <span className="font-semibold text-gray-800">{dayName}</span>
                 <label className="relative inline-flex items-center cursor-pointer">
-                    <input 
-                        type="checkbox" 
-                        checked={dayHours.open} 
-                        onChange={(e) => handleToggleOpen(index, e.target.checked)} 
-                        className="sr-only peer" 
-                    />
+                    <input type="checkbox" checked={dayHours.open} onChange={(e) => handleToggleOpen(index, e.target.checked)} className="sr-only peer" />
                     <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-focus:ring-4 peer-focus:ring-pink-300 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-pink-500"></div>
                     <span className="ml-3 text-sm font-medium text-gray-700">{dayHours.open ? 'Aberto' : 'Fechado'}</span>
                 </label>
               </div>
               
               {dayHours.open && (
-                <div className="mt-3 grid grid-cols-2 gap-4">
-                  <div>
-                    <label htmlFor={`start-${key}`} className="block text-xs font-medium text-gray-500 mb-1">Início</label>
-                    <input 
-                      type="time" 
-                      id={`start-${key}`} 
-                      value={dayHours.start || ''} 
-                      onChange={(e) => handleTimeChange(index, 'start', e.target.value)} 
-                      className={`w-full p-2 border rounded-md shadow-sm text-gray-900 ${isError ? 'border-red-500' : 'border-gray-300'}`}
-                    />
+                <>
+                  <div className="mt-3 grid grid-cols-2 gap-4">
+                    <div>
+                      <label htmlFor={`start-${key}`} className="block text-xs font-medium text-gray-500 mb-1">Início</label>
+                      <input type="time" id={`start-${key}`} value={dayHours.start || ''} onChange={(e) => handleTimeChange(index, 'start', e.target.value)} className={`w-full p-2 border rounded-md shadow-sm text-gray-900 ${isError ? 'border-red-500' : 'border-gray-300'}`} />
+                    </div>
+                    <div>
+                      <label htmlFor={`end-${key}`} className="block text-xs font-medium text-gray-500 mb-1">Fim</label>
+                      <input type="time" id={`end-${key}`} value={dayHours.end || ''} onChange={(e) => handleTimeChange(index, 'end', e.target.value)} className={`w-full p-2 border rounded-md shadow-sm text-gray-900 ${isError ? 'border-red-500' : 'border-gray-300'}`} />
+                    </div>
                   </div>
-                  <div>
-                    <label htmlFor={`end-${key}`} className="block text-xs font-medium text-gray-500 mb-1">Fim</label>
-                    <input 
-                      type="time" 
-                      id={`end-${key}`} 
-                      value={dayHours.end || ''} 
-                      onChange={(e) => handleTimeChange(index, 'end', e.target.value)} 
-                      className={`w-full p-2 border rounded-md shadow-sm text-gray-900 ${isError ? 'border-red-500' : 'border-gray-300'}`}
-                    />
+                  <div className="mt-3 grid grid-cols-2 gap-4 pt-3 border-t border-gray-200">
+                    <div>
+                      <label htmlFor={`lunchStart-${key}`} className="block text-xs font-medium text-gray-500 mb-1">Início Almoço</label>
+                      <input type="time" id={`lunchStart-${key}`} value={dayHours.lunchStart || ''} onChange={(e) => handleTimeChange(index, 'lunchStart', e.target.value)} className={`w-full p-2 border rounded-md shadow-sm text-gray-900 ${isError ? 'border-red-500' : 'border-gray-300'}`} />
+                    </div>
+                    <div>
+                      <label htmlFor={`lunchEnd-${key}`} className="block text-xs font-medium text-gray-500 mb-1">Fim Almoço</label>
+                      <input type="time" id={`lunchEnd-${key}`} value={dayHours.lunchEnd || ''} onChange={(e) => handleTimeChange(index, 'lunchEnd', e.target.value)} className={`w-full p-2 border rounded-md shadow-sm text-gray-900 ${isError ? 'border-red-500' : 'border-gray-300'}`} />
+                    </div>
                   </div>
-                </div>
+                </>
               )}
               {isError && <p className="text-red-500 text-xs mt-2">{isError}</p>}
             </div>

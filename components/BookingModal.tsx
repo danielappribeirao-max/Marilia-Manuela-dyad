@@ -13,13 +13,12 @@ interface BookingModalProps {
   clinicHolidayExceptions: HolidayException[] | undefined;
 }
 
-// Função utilitária para converter HH:MM para minutos desde a meia-noite
 const timeToMinutes = (time: string) => {
+    if (!time) return 0;
     const [h, m] = time.split(':').map(Number);
     return h * 60 + m;
 };
 
-// Função utilitária para converter minutos para HH:MM
 const minutesToTime = (minutes: number) => {
     const h = Math.floor(minutes / 60);
     const m = minutes % 60;
@@ -84,6 +83,10 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, isCreditB
     const endDayMinutes = timeToMinutes(daySettings.end);
     const interval = 30;
     
+    const lunchStartMinutes = daySettings.lunchStart ? timeToMinutes(daySettings.lunchStart) : -1;
+    const lunchEndMinutes = daySettings.lunchEnd ? timeToMinutes(daySettings.lunchEnd) : -1;
+    const hasLunchBreak = lunchStartMinutes !== -1 && lunchEndMinutes !== -1;
+
     const times: string[] = [];
     
     const professionalOccupiedSlots = occupiedSlots.filter(slot => slot.professional_id === selectedProfessionalId);
@@ -95,6 +98,15 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, isCreditB
         if (slotEndTime > endDayMinutes) continue;
 
         let isAvailable = true;
+
+        if (hasLunchBreak) {
+            const overlapsWithLunch = (slotStartTime < lunchEndMinutes && lunchStartMinutes < slotEndTime);
+            if (overlapsWithLunch) {
+                isAvailable = false;
+            }
+        }
+
+        if (!isAvailable) continue;
 
         for (const occupied of professionalOccupiedSlots) {
             const occupiedStart = timeToMinutes(occupied.booking_time);
@@ -121,7 +133,6 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, isCreditB
   const handleDateChange = (dateString: string) => {
     if (!dateString) return;
     const newDate = new Date(dateString);
-    // Ajuste para o fuso horário local para evitar problemas de "um dia antes"
     const userTimezoneOffset = newDate.getTimezoneOffset() * 60000;
     setSelectedDate(new Date(newDate.getTime() + userTimezoneOffset));
     setSelectedTime(null);
