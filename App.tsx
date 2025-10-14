@@ -11,6 +11,7 @@ import AdminDashboardPage from './pages/AdminDashboardPage';
 import BookingModal from './components/BookingModal';
 import PurchaseConfirmationModal from './components/PurchaseConfirmationModal';
 import PackagePurchaseConfirmationModal from './components/PackagePurchaseConfirmationModal';
+import PostPurchaseModal from './components/PostPurchaseModal'; // Importando o novo modal
 import { supabase } from './supabase/client';
 
 interface AppContextType {
@@ -65,6 +66,7 @@ function AppContent() {
   const [purchasePackageConfirmation, setPurchasePackageConfirmation] = useState<ServicePackage | null>(null);
   const [creditBookingService, setCreditBookingService] = useState<Service | null>(null);
   const [reschedulingBooking, setReschedulingBooking] = useState<Booking | null>(null);
+  const [postPurchaseService, setPostPurchaseService] = useState<Service | null>(null); // Novo estado para o modal pós-compra
 
   const [showWhatsApp, setShowWhatsApp] = useState(false);
   
@@ -152,11 +154,8 @@ function AppContent() {
         setCurrentPage(Page.LOGIN);
         return;
     }
-    if ((service.sessions && service.sessions > 1) || quantity > 1) {
-      setPurchaseConfirmation({ service, quantity });
-    } else {
-      setBookingService(service);
-    }
+    // Sempre abre a confirmação de compra, pois agora tudo é compra de crédito
+    setPurchaseConfirmation({ service, quantity });
   }, [currentUser]);
   
   const handlePurchasePackage = useCallback((pkg: ServicePackage) => {
@@ -170,16 +169,23 @@ function AppContent() {
   const handleConfirmPurchase = useCallback(async () => {
     if (!purchaseConfirmation || !currentUser) return;
     const { service, quantity } = purchaseConfirmation;
+    
+    // 1. Adiciona os créditos
     const updatedUser = await api.addCreditsToUser(currentUser.id, service.id, quantity, service.sessions);
+    
     if (updatedUser) {
       setCurrentUser(updatedUser);
-       const sessionsPerPackage = service.sessions || 1;
-       const totalCreditsAdded = sessionsPerPackage * quantity;
-      alert(`Compra de ${quantity} pacote(s) de ${service.name} confirmada! ${totalCreditsAdded} créditos foram adicionados à sua conta.`);
+      
+      // 2. Fecha o modal de confirmação de compra
+      setPurchaseConfirmation(null);
+      
+      // 3. Abre o modal pós-compra
+      setPostPurchaseService(service);
+      
     } else {
       alert("Ocorreu um erro ao processar sua compra.");
+      setPurchaseConfirmation(null);
     }
-    setPurchaseConfirmation(null);
   }, [purchaseConfirmation, currentUser]);
 
   const handleConfirmPackagePurchase = useCallback(async () => {
@@ -217,6 +223,7 @@ function AppContent() {
       const result = await api.addOrUpdateBooking(newBooking);
       if(result) success = true;
       if (creditBookingService) {
+        // Dedução de crédito
         const updatedUser = await api.deductCreditFromUser(currentUser.id, creditBookingService.id);
         if (updatedUser) setCurrentUser(updatedUser);
       }
@@ -230,6 +237,21 @@ function AppContent() {
     setPurchasePackageConfirmation(null);
     setCreditBookingService(null);
     setReschedulingBooking(null);
+    setPostPurchaseService(null); // Fechar o modal pós-compra
+  };
+  
+  const handleScheduleNow = () => {
+      if (postPurchaseService) {
+          // Inicia o fluxo de agendamento usando o crédito recém-adquirido
+          setCreditBookingService(postPurchaseService);
+          setPostPurchaseService(null);
+      }
+  };
+  
+  const handleScheduleLater = () => {
+      // Fecha o modal e redireciona para o painel do usuário
+      setPostPurchaseService(null);
+      setCurrentPage(Page.USER_DASHBOARD);
   };
 
   const addOrUpdateService = useCallback(async (service: Service) => {
@@ -308,6 +330,7 @@ function AppContent() {
         />}
         {purchaseConfirmation && <PurchaseConfirmationModal service={purchaseConfirmation.service} quantity={purchaseConfirmation.quantity} onConfirm={handleConfirmPurchase} onClose={handleCloseModals} />}
         {purchasePackageConfirmation && <PackagePurchaseConfirmationModal servicePackage={purchasePackageConfirmation} services={services} onConfirm={handleConfirmPackagePurchase} onClose={handleCloseModals} />}
+        {postPurchaseService && <PostPurchaseModal service={postPurchaseService} onScheduleNow={handleScheduleNow} onScheduleLater={handleScheduleLater} />}
         <a href="https://wa.me/5511999999999" target="_blank" rel="noopener noreferrer" className={`fixed bottom-6 right-6 bg-green-500 rounded-full p-3 shadow-lg hover:bg-green-600 transition-transform duration-300 transform ${showWhatsApp ? 'scale-100' : 'scale-0'}`} aria-label="Contact us on WhatsApp"><WhatsAppIcon /></a>
       </div>
     </AppContext.Provider>
