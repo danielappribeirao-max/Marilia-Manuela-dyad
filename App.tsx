@@ -257,6 +257,7 @@ export default function App() {
   const updateClinicSettings = useCallback(async (operatingHours: OperatingHours) => {
     const updatedSettings = await api.updateClinicOperatingHours(operatingHours);
     if (updatedSettings) {
+        // Atualiza o estado com as novas configurações retornadas pela API
         setClinicSettings(updatedSettings);
         alert("Horários de funcionamento atualizados com sucesso!");
     } else {

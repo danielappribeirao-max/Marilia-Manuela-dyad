@@ -9,50 +9,61 @@ interface OperatingHoursFormProps {
 const dayNames = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
 
 const OperatingHoursForm: React.FC<OperatingHoursFormProps> = ({ initialHours, onSave }) => {
-  const [hours, setHours] = useState<OperatingHours>(initialHours);
-  const [errors, setErrors] = useState<{ [key: number]: string }>({});
+  // Convertendo chaves numéricas para strings para consistência com JSON/estado
+  const initialHoursStringKeys: OperatingHours = Object.fromEntries(
+    Object.entries(initialHours).map(([key, value]) => [String(key), value])
+  );
+  
+  const [hours, setHours] = useState<OperatingHours>(initialHoursStringKeys);
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
   useEffect(() => {
-    setHours(initialHours);
+    const newHours: OperatingHours = Object.fromEntries(
+        Object.entries(initialHours).map(([key, value]) => [String(key), value])
+    );
+    setHours(newHours);
   }, [initialHours]);
 
   const handleToggleOpen = (dayIndex: number, open: boolean) => {
+    const key = String(dayIndex);
     setHours(prev => ({
       ...prev,
-      [dayIndex]: {
-        ...prev[dayIndex],
+      [key]: {
+        ...prev[key],
         open: open,
         // Define horários padrão se abrir
-        start: open && !prev[dayIndex]?.start ? '08:00' : prev[dayIndex]?.start,
-        end: open && !prev[dayIndex]?.end ? '20:00' : prev[dayIndex]?.end,
+        start: open && !prev[key]?.start ? '08:00' : prev[key]?.start,
+        end: open && !prev[key]?.end ? '20:00' : prev[key]?.end,
       },
     }));
-    if (errors[dayIndex]) setErrors(prev => ({ ...prev, [dayIndex]: '' }));
+    if (errors[key]) setErrors(prev => ({ ...prev, [key]: '' }));
   };
 
   const handleTimeChange = (dayIndex: number, field: 'start' | 'end', value: string) => {
+    const key = String(dayIndex);
     setHours(prev => ({
       ...prev,
-      [dayIndex]: {
-        ...prev[dayIndex],
+      [key]: {
+        ...prev[key],
         [field]: value,
       },
     }));
-    if (errors[dayIndex]) setErrors(prev => ({ ...prev, [dayIndex]: '' }));
+    if (errors[key]) setErrors(prev => ({ ...prev, [key]: '' }));
   };
 
   const validate = (): boolean => {
-    const newErrors: { [key: number]: string } = {};
+    const newErrors: { [key: string]: string } = {};
     let isValid = true;
 
     for (let i = 0; i < 7; i++) {
-      const day = hours[i];
-      if (day.open) {
+      const key = String(i);
+      const day = hours[key];
+      if (day?.open) {
         if (!day.start || !day.end) {
-          newErrors[i] = 'Horário de início e fim são obrigatórios.';
+          newErrors[key] = 'Horário de início e fim são obrigatórios.';
           isValid = false;
         } else if (timeToMinutes(day.start) >= timeToMinutes(day.end)) {
-          newErrors[i] = 'O horário de início deve ser anterior ao horário de fim.';
+          newErrors[key] = 'O horário de início deve ser anterior ao horário de fim.';
           isValid = false;
         }
       }
@@ -69,7 +80,11 @@ const OperatingHoursForm: React.FC<OperatingHoursFormProps> = ({ initialHours, o
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (validate()) {
-      onSave(hours);
+      // Garantir que o objeto final tenha as chaves corretas (strings)
+      const finalHours: OperatingHours = Object.fromEntries(
+          Object.entries(hours).map(([key, value]) => [String(key), value])
+      );
+      onSave(finalHours);
     }
   };
 
@@ -81,11 +96,12 @@ const OperatingHoursForm: React.FC<OperatingHoursFormProps> = ({ initialHours, o
       
       <div className="space-y-4">
         {dayNames.map((dayName, index) => {
-          const dayHours = hours[index] || { open: false };
-          const isError = errors[index];
+          const key = String(index);
+          const dayHours = hours[key] || { open: false };
+          const isError = errors[key];
           
           return (
-            <div key={index} className={`p-4 rounded-lg border transition-colors ${isError ? 'border-red-400 bg-red-50' : 'border-gray-200 bg-white'}`}>
+            <div key={key} className={`p-4 rounded-lg border transition-colors ${isError ? 'border-red-400 bg-red-50' : 'border-gray-200 bg-white'}`}>
               <div className="flex justify-between items-center">
                 <span className="font-semibold text-gray-800">{dayName}</span>
                 <label className="relative inline-flex items-center cursor-pointer">
@@ -103,20 +119,20 @@ const OperatingHoursForm: React.FC<OperatingHoursFormProps> = ({ initialHours, o
               {dayHours.open && (
                 <div className="mt-3 grid grid-cols-2 gap-4">
                   <div>
-                    <label htmlFor={`start-${index}`} className="block text-xs font-medium text-gray-500 mb-1">Início</label>
+                    <label htmlFor={`start-${key}`} className="block text-xs font-medium text-gray-500 mb-1">Início</label>
                     <input 
                       type="time" 
-                      id={`start-${index}`} 
+                      id={`start-${key}`} 
                       value={dayHours.start || ''} 
                       onChange={(e) => handleTimeChange(index, 'start', e.target.value)} 
                       className={`w-full p-2 border rounded-md shadow-sm text-gray-900 ${isError ? 'border-red-500' : 'border-gray-300'}`}
                     />
                   </div>
                   <div>
-                    <label htmlFor={`end-${index}`} className="block text-xs font-medium text-gray-500 mb-1">Fim</label>
+                    <label htmlFor={`end-${key}`} className="block text-xs font-medium text-gray-500 mb-1">Fim</label>
                     <input 
                       type="time" 
-                      id={`end-${index}`} 
+                      id={`end-${key}`} 
                       value={dayHours.end || ''} 
                       onChange={(e) => handleTimeChange(index, 'end', e.target.value)} 
                       className={`w-full p-2 border rounded-md shadow-sm text-gray-900 ${isError ? 'border-red-500' : 'border-gray-300'}`}
