@@ -80,11 +80,18 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
         if (!formData.duration || formData.duration <= 0) newErrors.duration = 'A duração deve ser maior que zero.';
         
         // Validação de disponibilidade (apenas para agendamentos)
-        if (formData.date && formData.time && formData.professionalId && !isEditing) {
+        if (formData.date && formData.time && formData.professionalId) {
             if (!isClinicOpen) {
                 newErrors.date = 'A clínica está fechada neste dia.';
-            } else if (!availableTimes.includes(formData.time)) {
-                newErrors.time = 'Horário indisponível. O profissional está ocupado ou o horário está fora do expediente/almoço.';
+            } else if (!availableTimes.includes(formData.time) && !isEditing) {
+                // Se estiver editando, o horário pode ser o original, que não está na lista de disponíveis
+                // porque o slot original foi ignorado no useAvailability.
+                // Se o horário selecionado não for o horário original E não estiver na lista de disponíveis, é um erro.
+                const originalTime = booking ? new Date(booking.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }).slice(0, 5) : null;
+                
+                if (formData.time !== originalTime && !availableTimes.includes(formData.time)) {
+                    newErrors.time = 'Horário indisponível. O profissional está ocupado ou o horário está fora do expediente/almoço.';
+                }
             }
         }
     }
@@ -141,6 +148,7 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
       status: formData.status as Booking['status'],
       duration: Number(formData.duration),
       comment: formData.notes, // Salvando as notas
+      serviceName: selectedService?.name, // Adicionando serviceName para a API
     };
     await onSave(newBooking);
   };
@@ -223,7 +231,8 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
                         {loadingAvailability ? (
                             <option disabled>Carregando...</option>
                         ) : availableTimes.length > 0 ? (
-                            availableTimes.map(time => <option key={time} value={time}>{time}</option>)
+                            // Se estiver editando, adiciona o horário original se ele não estiver na lista (para permitir salvar sem mudar o horário)
+                            [...new Set([...availableTimes, (isEditing ? formData.time : '')])].filter(t => t).sort().map(time => <option key={time} value={time}>{time}</option>)
                         ) : (
                             <option disabled>Indisponível</option>
                         )}

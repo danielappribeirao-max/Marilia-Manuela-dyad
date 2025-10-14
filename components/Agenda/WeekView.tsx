@@ -1,4 +1,3 @@
-
 import React, { useMemo } from 'react';
 import { Booking, Service, User } from '../../types';
 
@@ -88,13 +87,19 @@ const AgendaWeekView: React.FC<AgendaWeekViewProps> = ({ currentDate, bookings, 
                                     const user = users.find(u => u.id === booking.userId);
                                     if (!service) return null;
 
+                                    // Usar a duração do agendamento se existir, senão a do serviço
                                     const bookingDuration = booking.duration || service.duration;
                                     const bookingDate = new Date(booking.date);
                                     const startHour = bookingDate.getHours();
                                     const startMinute = bookingDate.getMinutes();
 
-                                    const top = ((startHour - 8) * 60 + startMinute) / 30 * 3; // 3rem (h-12) per 30 mins
-                                    const height = bookingDuration / 30 * 3; // 3rem per 30 mins
+                                    // 8:00 AM é o início da agenda (0 minutos)
+                                    const startMinutesFrom8AM = (startHour - 8) * 60 + startMinute;
+
+                                    // 1 rem = 4px. h-12 = 3rem. 3rem representa 30 minutos.
+                                    // 1 minuto = 3rem / 30 minutos = 0.1 rem
+                                    const top = startMinutesFrom8AM / 30 * 3;
+                                    const height = bookingDuration / 30 * 3;
                                     
                                     const colorClass = professionalColors[booking.professionalId] || 'bg-gray-200 border-gray-500';
 
