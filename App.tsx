@@ -12,6 +12,7 @@ import BookingModal from './components/BookingModal';
 import PurchaseConfirmationModal from './components/PurchaseConfirmationModal';
 import PackagePurchaseConfirmationModal from './components/PackagePurchaseConfirmationModal';
 import { supabase } from './supabase/client';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 
 interface AppContextType {
   currentUser: User | null;
@@ -49,7 +50,7 @@ const WhatsAppIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-10 w-10 text-white"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
 );
 
-export default function App() {
+function AppContent() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [currentPage, setCurrentPage] = useState<Page>(Page.HOME);
   const [loading, setLoading] = useState(true);
@@ -92,7 +93,6 @@ export default function App() {
           const userProfile = await api.getUserProfile(session.user.id);
           if (userProfile) {
             setCurrentUser(userProfile);
-            // Don't auto-navigate on initial load, let user stay on the page they loaded
           }
         }
       } catch (error) {
@@ -108,13 +108,11 @@ export default function App() {
         const userProfile = await api.getUserProfile(session.user.id);
         if (userProfile) {
           setCurrentUser(userProfile);
-          // Only redirect to dashboard on initial sign-in
           if (event === 'SIGNED_IN') {
             setCurrentPage(userProfile.role === Role.ADMIN ? Page.ADMIN_DASHBOARD : Page.USER_DASHBOARD);
           }
         }
       } else {
-        // This handles SIGNED_OUT
         setCurrentUser(null);
         setCurrentPage(Page.HOME);
       }
@@ -144,11 +142,10 @@ export default function App() {
       alert(`Ocorreu um erro ao sair: ${error.message}`);
       console.error("Logout error:", error);
     } else {
-      // Manually update state for immediate UI feedback
       setCurrentUser(null);
       setCurrentPage(Page.HOME);
     }
-  }, [setCurrentUser, setCurrentPage]);
+  }, []);
 
   const handlePurchaseOrBook = useCallback((service: Service, quantity: number) => {
     if (!currentUser) {
@@ -257,11 +254,9 @@ export default function App() {
   const updateClinicSettings = useCallback(async (operatingHours: OperatingHours) => {
     const updatedSettings = await api.updateClinicOperatingHours(operatingHours);
     if (updatedSettings) {
-        // Atualiza o estado com as novas configurações retornadas pela API
         setClinicSettings(updatedSettings);
         alert("Horários de funcionamento atualizados com sucesso!");
     } else {
-        // Logando o erro para diagnóstico
         console.error("Falha ao atualizar configurações da clínica. Verifique os logs da API para detalhes.");
         alert("Erro ao atualizar horários de funcionamento.");
     }
@@ -306,5 +301,21 @@ export default function App() {
         <a href="https://wa.me/5511999999999" target="_blank" rel="noopener noreferrer" className={`fixed bottom-6 right-6 bg-green-500 rounded-full p-3 shadow-lg hover:bg-green-600 transition-transform duration-300 transform ${showWhatsApp ? 'scale-100' : 'scale-0'}`} aria-label="Contact us on WhatsApp"><WhatsAppIcon /></a>
       </div>
     </AppContext.Provider>
+  );
+}
+
+export default function App() {
+  const googleClientId = process.env.VITE_GOOGLE_CLIENT_ID || '';
+
+  if (!googleClientId) {
+    console.warn("VITE_GOOGLE_CLIENT_ID não está definido. A integração com o Google Calendar não funcionará.");
+    // Renderiza o AppContent mesmo sem a chave, para que o resto do app funcione.
+    // O componente de conexão mostrará um erro ou ficará desabilitado.
+  }
+
+  return (
+    <GoogleOAuthProvider clientId={googleClientId}>
+      <AppContent />
+    </GoogleOAuthProvider>
   );
 }

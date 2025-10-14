@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useApp } from '../../App';
 import * as api from '../../services/api';
 import OperatingHoursForm from '../../components/OperatingHoursForm';
 import HolidayExceptionForm from '../../components/HolidayExceptionForm';
 import { OperatingHours, HolidayException } from '../../types';
+import GoogleCalendarConnect from '../../components/GoogleCalendarConnect';
 
 const ImageUploadCard: React.FC<{
   title: string;
@@ -11,10 +12,10 @@ const ImageUploadCard: React.FC<{
   currentImageUrl: string;
   onSave: (file: File) => Promise<string | null>;
 }> = ({ title, description, currentImageUrl, onSave }) => {
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [selectedFile, setSelectedFile] = React.useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = React.useState<string | null>(null);
+  const [isUploading, setIsUploading] = React.useState(false);
+  const [feedback, setFeedback] = React.useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -115,7 +116,6 @@ export default function AdminSettingsPage() {
   const handleSaveHolidayExceptions = async (exceptions: HolidayException[]) => {
     const updatedSettings = await api.updateClinicHolidayExceptions(exceptions);
     if (updatedSettings) {
-        // Não precisamos atualizar o estado clinicSettings aqui, pois o App.tsx já faz isso
         alert("Exceções de feriados atualizadas com sucesso!");
     } else {
         alert("Erro ao atualizar exceções de feriados.");
@@ -137,6 +137,11 @@ export default function AdminSettingsPage() {
       <h2 className="text-3xl font-bold mb-6">Configurações do Site</h2>
       <div className="space-y-8">
         
+        <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+            <h3 className="text-xl font-semibold text-gray-800 mb-4">Integrações</h3>
+            <GoogleCalendarConnect />
+        </div>
+
         <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
             <h3 className="text-xl font-semibold text-gray-800 mb-4">Horários de Funcionamento Padrão</h3>
             <OperatingHoursForm 
