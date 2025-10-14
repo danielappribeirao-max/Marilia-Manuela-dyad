@@ -8,7 +8,6 @@ import ServicesPage from './pages/ServicesPage';
 import LoginPage from './pages/LoginPage';
 import UserDashboardPage from './pages/UserDashboardPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
-import FreeConsultationPage from './pages/FreeConsultationPage'; // Importando a nova página
 import BookingModal from './components/BookingModal';
 import PurchaseConfirmationModal from './components/PurchaseConfirmationModal';
 import PackagePurchaseConfirmationModal from './components/PackagePurchaseConfirmationModal';
@@ -88,13 +87,8 @@ function AppContent() {
           api.getClinicSettings(),
         ]);
         
-        // Adiciona o serviço de consulta gratuita à lista de serviços se ainda não estiver lá
-        const finalServices = servicesData || [];
-        if (!finalServices.some(s => s.id === FREE_CONSULTATION_SERVICE_ID)) {
-            finalServices.push(FREE_CONSULTATION_SERVICE);
-        }
-        
-        setServices(finalServices);
+        // Remove a lógica de adicionar o serviço de consulta gratuita
+        setServices(servicesData || []);
         setProfessionals(professionalsData || []);
         setPackages(packagesData || []);
         setClinicSettings(settingsData);
@@ -120,9 +114,6 @@ function AppContent() {
         if (userProfile) {
           setCurrentUser(userProfile);
           if (event === 'SIGNED_IN') {
-            // Se o usuário acabou de logar e estava no fluxo de consulta gratuita, redireciona para lá
-            if (currentPage === Page.FREE_CONSULTATION) return; 
-            
             setCurrentPage(userProfile.role === Role.ADMIN ? Page.ADMIN_DASHBOARD : Page.USER_DASHBOARD);
           }
         }
@@ -244,8 +235,8 @@ function AppContent() {
       const result = await api.addOrUpdateBooking(newBooking);
       if(result) success = true;
       
-      // Dedução de crédito APENAS se não for a consulta gratuita (preço 0)
-      if (creditBookingService && serviceToBook.id !== FREE_CONSULTATION_SERVICE_ID) {
+      // Dedução de crédito
+      if (creditBookingService) {
         const updatedUser = await api.deductCreditFromUser(currentUser.id, creditBookingService.id);
         if (updatedUser) setCurrentUser(updatedUser);
       }
@@ -326,7 +317,6 @@ function AppContent() {
       case Page.LOGIN: return <LoginPage />;
       case Page.USER_DASHBOARD: return <UserDashboardPage onBookWithCredit={handleStartCreditBooking} onReschedule={handleStartReschedule} />;
       case Page.ADMIN_DASHBOARD: return <AdminDashboardPage />;
-      case Page.FREE_CONSULTATION: return <FreeConsultationPage />;
       default: return <HomePage onPurchaseOrBook={handlePurchaseOrBook} onPurchasePackage={handlePurchasePackage} />;
     }
   };

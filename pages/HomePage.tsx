@@ -29,11 +29,6 @@ export default function HomePage({ onPurchaseOrBook, onPurchasePackage }: HomePa
               className="px-8 py-3 bg-pink-500 text-white rounded-full font-semibold text-lg hover:bg-pink-600 transition-transform hover:scale-105 duration-300 shadow-lg">
               Ver Procedimentos
             </button>
-            <button 
-              onClick={() => setCurrentPage(Page.FREE_CONSULTATION)}
-              className="px-8 py-3 bg-white text-pink-500 rounded-full font-semibold text-lg hover:bg-gray-100 transition-transform hover:scale-105 duration-300 shadow-lg border border-pink-500">
-              Agende sua Consulta Gratuita
-            </button>
           </div>
         </div>
       </section>
