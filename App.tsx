@@ -12,7 +12,6 @@ import BookingModal from './components/BookingModal';
 import PurchaseConfirmationModal from './components/PurchaseConfirmationModal';
 import PackagePurchaseConfirmationModal from './components/PackagePurchaseConfirmationModal';
 import { supabase } from './supabase/client';
-import { GoogleOAuthProvider } from '@react-oauth/google';
 
 interface AppContextType {
   currentUser: User | null;
@@ -305,15 +304,7 @@ function AppContent() {
 }
 
 export default function App() {
-  const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
-
-  if (!googleClientId) {
-    console.warn("VITE_GOOGLE_CLIENT_ID não está definido. A integração com o Google Calendar não funcionará.");
-  }
-
   return (
-    <GoogleOAuthProvider clientId={googleClientId}>
       <AppContent />
-    </GoogleOAuthProvider>
   );
 }
