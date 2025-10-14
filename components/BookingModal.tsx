@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { Service, Booking, User } from '../types';
+import { Service, Booking, User, OperatingHours } from '../types';
 import * as api from '../services/api';
 
 interface BookingModalProps {
@@ -9,6 +9,7 @@ interface BookingModalProps {
   booking?: Booking | null;
   onConfirmBooking: (details: { date: Date, professionalId: string }) => Promise<boolean>;
   professionals: User[];
+  clinicOperatingHours: OperatingHours | undefined;
 }
 
 // Função utilitária para converter HH:MM para minutos desde a meia-noite
@@ -24,7 +25,7 @@ const minutesToTime = (minutes: number) => {
     return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
 };
 
-const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, isCreditBooking = false, booking = null, onConfirmBooking, professionals }) => {
+const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, isCreditBooking = false, booking = null, onConfirmBooking, professionals, clinicOperatingHours }) => {
   const isRescheduling = !!booking;
 
   const [step, setStep] = useState(1);
@@ -53,10 +54,17 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, isCreditB
   }, [selectedDate, fetchAvailability]);
 
   const availableTimes = useMemo(() => {
-    if (!selectedDate || !selectedProfessionalId) return [];
+    if (!selectedDate || !selectedProfessionalId || !clinicOperatingHours) return [];
 
-    const startDayMinutes = timeToMinutes("08:00"); // 8:00 AM
-    const endDayMinutes = timeToMinutes("20:00");   // 8:00 PM
+    const dayOfWeek = selectedDate.getDay(); // 0 = Sunday, 6 = Saturday
+    const daySettings = clinicOperatingHours[dayOfWeek];
+
+    if (!daySettings || !daySettings.open || !daySettings.start || !daySettings.end) {
+        return []; // Clínica fechada neste dia
+    }
+
+    const startDayMinutes = timeToMinutes(daySettings.start);
+    const endDayMinutes = timeToMinutes(daySettings.end);
     const interval = 30; // Slots de 30 minutos
     
     const times: string[] = [];
@@ -99,7 +107,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, isCreditB
     }
 
     return times;
-  }, [selectedDate, selectedProfessionalId, occupiedSlots, serviceDuration, isRescheduling, booking?.id]);
+  }, [selectedDate, selectedProfessionalId, occupiedSlots, serviceDuration, isRescheduling, booking?.id, clinicOperatingHours]);
 
   const handleDateChange = (dateString: string) => {
     if (!dateString) return;
@@ -156,6 +164,13 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, isCreditB
         );
     }
 
+    const dayOfWeek = selectedDate?.getDay();
+    const daySettings = clinicOperatingHours?.[dayOfWeek as number];
+    const isClinicOpen = daySettings?.open;
+    const clinicHoursMessage = isClinicOpen 
+        ? `Horário de funcionamento: ${daySettings?.start} - ${daySettings?.end}`
+        : 'Clínica fechada neste dia.';
+
     switch (step) {
       case 1: // Date, Time, and Professional
         return (
@@ -171,6 +186,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, isCreditB
                       min={minBookingDate}
                   />
               </div>
+              <p className={`text-center text-sm mt-2 ${isClinicOpen ? 'text-gray-600' : 'text-red-500'}`}>{clinicHoursMessage}</p>
             </div>
             <div>
               <h3 className="text-lg font-semibold mb-2 text-center">2. Escolha o profissional</h3>
@@ -178,6 +194,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, isCreditB
                 value={selectedProfessionalId || ''}
                 onChange={(e) => handleProfessionalChange(e.target.value)}
                 className="w-full p-2 border bg-white text-gray-900 border-gray-300 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500"
+                disabled={!isClinicOpen}
               >
                 <option value="" disabled>Selecione um profissional</option>
                 {professionals.map(prof => (
@@ -189,6 +206,8 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, isCreditB
               <h3 className="text-lg font-semibold mb-2 text-center">3. Escolha o horário ({serviceDuration} min)</h3>
               {loadingAvailability ? (
                   <div className="text-center text-gray-500">Carregando horários...</div>
+              ) : !isClinicOpen ? (
+                  <div className="text-center text-red-500 p-4 bg-red-50 rounded-lg">A clínica está fechada neste dia.</div>
               ) : !selectedProfessionalId ? (
                   <div className="text-center text-gray-500">Selecione um profissional para ver os horários.</div>
               ) : availableTimes.length > 0 ? (
@@ -237,7 +256,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, isCreditB
         {!showConfirmation && <div className="p-6 bg-gray-50 border-t flex justify-between items-center">
           {step > 1 && <button onClick={() => setStep(s => s - 1)} className="px-6 py-2 bg-gray-200 text-gray-800 rounded-full font-semibold hover:bg-gray-300">Voltar</button>}
           {step < 2 ? (
-            <button onClick={() => setStep(s => s + 1)} disabled={!selectedTime || !selectedProfessionalId} className="px-6 py-2 bg-pink-500 text-white rounded-full font-semibold hover:bg-pink-600 disabled:bg-gray-300 ml-auto">Avançar</button>
+            <button onClick={() => setStep(s => s + 1)} disabled={!selectedTime || !selectedProfessionalId || !isClinicOpen} className="px-6 py-2 bg-pink-500 text-white rounded-full font-semibold hover:bg-pink-600 disabled:bg-gray-300 ml-auto">Avançar</button>
           ) : (
             <button onClick={handleBookingConfirm} className="w-full px-6 py-3 bg-green-500 text-white rounded-full font-bold text-lg hover:bg-green-600">{isRescheduling ? 'Confirmar Reagendamento' : (isCreditBooking ? 'Confirmar Agendamento' : 'Confirmar e Pagar')}</button>
           )}

@@ -1,5 +1,5 @@
 import { supabase } from '../supabase/client';
-import { User, Service, Booking, Role, Sale, ServicePackage } from '../types';
+import { User, Service, Booking, Role, Sale, ServicePackage, ClinicSettings, OperatingHours } from '../types';
 import { User as SupabaseAuthUser } from '@supabase/supabase-js'; // Importar o tipo User do Supabase
 
 // Helper to map Supabase user and profile to our app's User type
@@ -383,6 +383,50 @@ export const updateUserProfile = async (userId: string, updates: Partial<User>):
 
     return toAppUser(supabaseUser, data);
 };
+
+// ==================
+// CLINIC SETTINGS
+// ==================
+
+const SETTINGS_ID = '00000000-0000-0000-0000-000000000001';
+
+const mapDbToClinicSettings = (dbSettings: any): ClinicSettings => ({
+    id: dbSettings.id,
+    operatingHours: dbSettings.operating_hours,
+});
+
+export const getClinicSettings = async (): Promise<ClinicSettings | null> => {
+    const { data, error } = await supabase
+        .from('clinic_settings')
+        .select('id, operating_hours')
+        .eq('id', SETTINGS_ID)
+        .single();
+
+    if (error && error.code !== 'PGRST116') { // PGRST116 = No rows found
+        console.error("Error fetching clinic settings:", error);
+        return null;
+    }
+    
+    if (!data) return null;
+
+    return mapDbToClinicSettings(data);
+};
+
+export const updateClinicOperatingHours = async (operatingHours: OperatingHours): Promise<ClinicSettings | null> => {
+    const { data, error } = await supabase
+        .from('clinic_settings')
+        .update({ operating_hours: operatingHours, updated_at: new Date().toISOString() })
+        .eq('id', SETTINGS_ID)
+        .select('id, operating_hours')
+        .single();
+
+    if (error) {
+        console.error("Error updating clinic operating hours:", error);
+        return null;
+    }
+    return mapDbToClinicSettings(data);
+};
+
 
 // ==================
 // CREDITS & BOOKINGS & REPORTS

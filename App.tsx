@@ -1,5 +1,5 @@
 import React, { useState, createContext, useContext, useCallback, useMemo, useEffect } from 'react';
-import { User, Role, Page, Service, Booking, ServicePackage } from './types';
+import { User, Role, Page, Service, Booking, ServicePackage, ClinicSettings, OperatingHours } from './types';
 import * as api from './services/api';
 import Header from './components/Header';
 import Footer from './components/Footer';
@@ -31,6 +31,8 @@ interface AppContextType {
   setHeroImageUrl: (url: string) => void;
   aboutImageUrl: string;
   setAboutImageUrl: (url: string) => void;
+  clinicSettings: ClinicSettings | null;
+  updateClinicSettings: (hours: OperatingHours) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -55,6 +57,7 @@ export default function App() {
   const [services, setServices] = useState<Service[]>([]);
   const [packages, setPackages] = useState<ServicePackage[]>([]);
   const [professionals, setProfessionals] = useState<User[]>([]);
+  const [clinicSettings, setClinicSettings] = useState<ClinicSettings | null>(null);
   
   const [bookingService, setBookingService] = useState<Service | null>(null);
   const [purchaseConfirmation, setPurchaseConfirmation] = useState<{ service: Service, quantity: number } | null>(null);
@@ -73,14 +76,16 @@ export default function App() {
     const initializeApp = async () => {
       setLoading(true);
       try {
-        const [servicesData, professionalsData, packagesData] = await Promise.all([
+        const [servicesData, professionalsData, packagesData, settingsData] = await Promise.all([
           api.getServices(),
           api.getProfessionals(),
           api.getServicePackages(),
+          api.getClinicSettings(),
         ]);
         setServices(servicesData || []);
         setProfessionals(professionalsData || []);
         setPackages(packagesData || []);
+        setClinicSettings(settingsData);
 
         const { session } = await api.getCurrentUserSession();
         if (session?.user) {
@@ -248,8 +253,18 @@ export default function App() {
     await api.deleteService(serviceId);
     setServices(prevServices => prevServices.filter(s => s.id !== serviceId));
   }, []);
+  
+  const updateClinicSettings = useCallback(async (operatingHours: OperatingHours) => {
+    const updatedSettings = await api.updateClinicOperatingHours(operatingHours);
+    if (updatedSettings) {
+        setClinicSettings(updatedSettings);
+        alert("Horários de funcionamento atualizados com sucesso!");
+    } else {
+        alert("Erro ao atualizar horários de funcionamento.");
+    }
+  }, []);
 
-  const appContextValue = useMemo(() => ({ currentUser, setCurrentUser, currentPage, setCurrentPage, logout, services, packages, professionals, addOrUpdateService, deleteService, loading, logoUrl, setLogoUrl, heroImageUrl, setHeroImageUrl, aboutImageUrl, setAboutImageUrl }), [currentUser, currentPage, logout, services, packages, professionals, addOrUpdateService, deleteService, loading, logoUrl, heroImageUrl, aboutImageUrl]);
+  const appContextValue = useMemo(() => ({ currentUser, setCurrentUser, currentPage, setCurrentPage, logout, services, packages, professionals, addOrUpdateService, deleteService, loading, logoUrl, setLogoUrl, heroImageUrl, setHeroImageUrl, aboutImageUrl, setAboutImageUrl, clinicSettings, updateClinicSettings }), [currentUser, currentPage, logout, services, packages, professionals, addOrUpdateService, deleteService, loading, logoUrl, heroImageUrl, aboutImageUrl, clinicSettings, updateClinicSettings]);
 
   const renderPage = () => {
     if(loading) {
@@ -273,7 +288,7 @@ export default function App() {
         <Header />
         <main className="flex-grow">{renderPage()}</main>
         <Footer />
-        {serviceForBookingModal && <BookingModal service={serviceForBookingModal} booking={reschedulingBooking} onClose={handleCloseModals} isCreditBooking={!!creditBookingService} onConfirmBooking={handleConfirmFinalBooking} professionals={professionals} />}
+        {serviceForBookingModal && <BookingModal service={serviceForBookingModal} booking={reschedulingBooking} onClose={handleCloseModals} isCreditBooking={!!creditBookingService} onConfirmBooking={handleConfirmFinalBooking} professionals={professionals} clinicOperatingHours={clinicSettings?.operatingHours} />}
         {purchaseConfirmation && <PurchaseConfirmationModal service={purchaseConfirmation.service} quantity={purchaseConfirmation.quantity} onConfirm={handleConfirmPurchase} onClose={handleCloseModals} />}
         {purchasePackageConfirmation && <PackagePurchaseConfirmationModal servicePackage={purchasePackageConfirmation} services={services} onConfirm={handleConfirmPackagePurchase} onClose={handleCloseModals} />}
         <a href="https://wa.me/5511999999999" target="_blank" rel="noopener noreferrer" className={`fixed bottom-6 right-6 bg-green-500 rounded-full p-3 shadow-lg hover:bg-green-600 transition-transform duration-300 transform ${showWhatsApp ? 'scale-100' : 'scale-0'}`} aria-label="Contact us on WhatsApp"><WhatsAppIcon /></a>

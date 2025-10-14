@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useApp } from '../../App';
 import * as api from '../../services/api';
+import OperatingHoursForm from '../../components/OperatingHoursForm';
+import { OperatingHours } from '../../types';
 
 const ImageUploadCard: React.FC<{
   title: string;
@@ -83,7 +85,7 @@ const ImageUploadCard: React.FC<{
 
 
 export default function AdminSettingsPage() {
-  const { logoUrl, setLogoUrl, heroImageUrl, setHeroImageUrl, aboutImageUrl, setAboutImageUrl } = useApp();
+  const { logoUrl, setLogoUrl, heroImageUrl, setHeroImageUrl, aboutImageUrl, setAboutImageUrl, clinicSettings, updateClinicSettings } = useApp();
 
   const handleSaveLogo = async (file: File) => {
     const newUrl = await api.uploadLogo(file);
@@ -108,11 +110,30 @@ export default function AdminSettingsPage() {
     }
     return newUrl;
   };
+  
+  const defaultOperatingHours: OperatingHours = {
+    0: { open: false }, 
+    1: { open: true, start: '08:00', end: '20:00' }, 
+    2: { open: true, start: '08:00', end: '20:00' }, 
+    3: { open: true, start: '08:00', end: '20:00' }, 
+    4: { open: true, start: '08:00', end: '20:00' }, 
+    5: { open: true, start: '08:00', end: '20:00' }, 
+    6: { open: false }
+  };
 
   return (
     <div>
       <h2 className="text-3xl font-bold mb-6">Configurações do Site</h2>
       <div className="space-y-8">
+        
+        <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+            <h3 className="text-xl font-semibold text-gray-800 mb-4">Horários de Funcionamento</h3>
+            <OperatingHoursForm 
+                initialHours={clinicSettings?.operatingHours || defaultOperatingHours}
+                onSave={updateClinicSettings}
+            />
+        </div>
+        
         <ImageUploadCard
           title="Logotipo Principal"
           description="Este logo aparece no cabeçalho e no rodapé do site. Use um formato PNG com fundo transparente."

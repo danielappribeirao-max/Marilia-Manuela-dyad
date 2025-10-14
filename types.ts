@@ -78,3 +78,18 @@ export interface Sale {
   amount: number;
   date: Date;
 }
+
+export interface DayOperatingHours {
+  open: boolean;
+  start?: string; // HH:MM
+  end?: string; // HH:MM
+}
+
+export interface OperatingHours {
+  [dayOfWeek: number]: DayOperatingHours; // 0 = Sunday, 6 = Saturday
+}
+
+export interface ClinicSettings {
+  id: string;
+  operatingHours: OperatingHours;
+}
