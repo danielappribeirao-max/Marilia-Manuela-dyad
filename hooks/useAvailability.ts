@@ -62,7 +62,8 @@ export const useAvailability = ({
 
         // 2. Usar horário padrão
         const dayOfWeek = selectedDate.getDay();
-        return clinicOperatingHours?.[dayOfWeek];
+        // FIX: Acessa usando a chave string, pois os dados JSONB do Supabase usam chaves string para objetos.
+        return clinicOperatingHours?.[String(dayOfWeek)];
         
     }, [selectedDate, clinicOperatingHours, clinicHolidayExceptions]);
 
