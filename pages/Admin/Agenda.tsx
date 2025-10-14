@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import * as api from '../../services/api';
 import { Booking, Service, User } from '../../types';
@@ -58,13 +57,48 @@ export default function AdminAgenda() {
     }, []);
 
     const handleSaveBooking = async (booking: Partial<Booking>) => {
+        const originalBooking = bookings.find(b => b.id === booking.id);
+        const wasJustCancelled = originalBooking && originalBooking.status !== 'canceled' && booking.status === 'canceled';
+
         const savedBooking = await api.addOrUpdateBooking(booking);
+        
         if (savedBooking) {
-            const existingIndex = bookings.findIndex(b => b.id === savedBooking.id);
-            if (existingIndex > -1) {
-                setBookings(prev => prev.map(b => b.id === savedBooking.id ? savedBooking : b));
-            } else {
-                setBookings(prev => [...prev, savedBooking]);
+            // Atualiza a lista de agendamentos na interface
+            setBookings(prev => prev.map(b => b.id === savedBooking.id ? savedBooking : b));
+
+            // Se o agendamento foi cancelado nesta ação, executa o fluxo de devolução e notificação
+            if (wasJustCancelled) {
+                const service = services.find(s => s.id === savedBooking.serviceId);
+                const user = users.find(u => u.id === savedBooking.userId);
+
+                if (service && user) {
+                    let creditReturned = false;
+                    // 1. Devolve o crédito se for um serviço de pacote
+                    if (service.sessions && service.sessions > 1) {
+                        await api.returnCreditToUser(user.id, service.id);
+                        creditReturned = true;
+                    }
+
+                    // 2. Notifica o cliente
+                    const professional = professionals.find(p => p.id === savedBooking.professionalId);
+                    const message = `Olá ${user.name}, seu agendamento para "${service.name}" com ${professional?.name || 'o profissional'} no dia ${new Date(savedBooking.date).toLocaleDateString('pt-BR')} às ${new Date(savedBooking.date).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})} foi cancelado. Por favor, entre em contato para reagendar.`;
+                    
+                    if (user.phone) {
+                        await api.sendCancellationNotice({ to: user.phone.replace(/\D/g, ''), message });
+                    }
+
+                    // 3. Alerta o admin e atualiza os dados
+                    let alertMessage = `Agendamento de ${user.name} cancelado com sucesso.`;
+                    if (creditReturned) {
+                        alertMessage += ` 1 crédito de "${service.name}" foi devolvido.`;
+                    }
+                    alertMessage += ' O cliente foi notificado.';
+                    alert(alertMessage);
+                    
+                    // Recarrega os usuários para atualizar a contagem de créditos na interface
+                    const allUsers = await api.getUsersWithRoles();
+                    setUsers(allUsers || []);
+                }
             }
         }
         setIsModalOpen(false);

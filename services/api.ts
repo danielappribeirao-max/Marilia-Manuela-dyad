@@ -649,12 +649,12 @@ export const getSalesData = async (): Promise<Sale[]> => {
 // NOTIFICATIONS
 // ==================
 
-interface SendWhatsappReminderProps {
+interface SendNotificationProps {
     to: string; // Número de telefone formatado
     message: string;
 }
 
-export const sendWhatsappReminder = async ({ to, message }: SendWhatsappReminderProps): Promise<{ success: boolean, error: string | null }> => {
+export const sendWhatsappReminder = async ({ to, message }: SendNotificationProps): Promise<{ success: boolean, error: string | null }> => {
     try {
         const { data, error } = await supabase.functions.invoke('send-whatsapp-reminder', {
             body: { to, message },
@@ -674,5 +674,28 @@ export const sendWhatsappReminder = async ({ to, message }: SendWhatsappReminder
     } catch (e) {
         console.error("Unexpected error during whatsapp invocation:", e);
         return { success: false, error: "Erro inesperado ao tentar enviar o lembrete." };
+    }
+};
+
+export const sendCancellationNotice = async ({ to, message }: SendNotificationProps): Promise<{ success: boolean, error: string | null }> => {
+    try {
+        const { data, error } = await supabase.functions.invoke('send-cancellation-notice', {
+            body: { to, message },
+        });
+
+        if (error) {
+            console.error("Error invoking send-cancellation-notice function:", error);
+            return { success: false, error: error.message };
+        }
+        
+        if (data.error) {
+            return { success: false, error: data.error };
+        }
+
+        return { success: true, error: null };
+
+    } catch (e) {
+        console.error("Unexpected error during cancellation invocation:", e);
+        return { success: false, error: "Erro inesperado ao tentar enviar o aviso de cancelamento." };
     }
 };
