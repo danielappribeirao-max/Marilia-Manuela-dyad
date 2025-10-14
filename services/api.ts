@@ -611,32 +611,44 @@ export const addOrUpdateBooking = async (booking: Partial<Booking> & { serviceNa
     }
 };
 
-export const bookFreeConsultationForNewUser = async (details: { name: string; phone: string; description: string; date: Date; professionalId: string; }): Promise<Booking | null> => {
-    const { data, error } = await supabase.functions.invoke('book-free-consultation', {
-        body: {
-            name: details.name,
-            phone: details.phone,
-            description: details.description,
-            bookingDate: details.date.toISOString(),
-            professionalId: details.professionalId,
-        },
-    });
+const supabaseUrl = 'https://mdxqiozhqmcriiqspbqf.supabase.co';
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1keHFpb3pocW1jcmlpcXNwYnFmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjAxMTc4MzUsImV4cCI6MjA3NTY5MzgzNX0.uweUQXy7OjpIAOOVqIh72QLwk_XRhzfnB_Gs4Pe2DpI';
 
-    // Lógica aprimorada para extrair a mensagem de erro real
-    if (error || (data && data.error)) {
-        let errorMessage = "Ocorreu um erro desconhecido.";
-        if (error) {
-            errorMessage = error.message;
+export const bookFreeConsultationForNewUser = async (details: { name: string; phone: string; description: string; date: Date; professionalId: string; }): Promise<Booking | null> => {
+    try {
+        // Usamos fetch para ter controle total sobre a resposta e o tratamento de erros
+        const response = await fetch(
+            `${supabaseUrl}/functions/v1/book-free-consultation`,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'apikey': supabaseAnonKey, // A chave anon é suficiente, pois a função usa a chave de serviço internamente
+                },
+                body: JSON.stringify({
+                    name: details.name,
+                    phone: details.phone,
+                    description: details.description,
+                    bookingDate: details.date.toISOString(),
+                    professionalId: details.professionalId,
+                }),
+            }
+        );
+
+        const responseData = await response.json();
+
+        if (!response.ok) {
+            // Se a resposta não for 2xx, lançamos o erro vindo do corpo da resposta da função
+            throw new Error(responseData.error || `O servidor retornou um erro: ${response.status}`);
         }
-        if (data && data.error) {
-            errorMessage = data.error;
-        }
-        
-        console.error("Error booking free consultation:", errorMessage);
-        alert(`Erro ao agendar consulta: ${errorMessage}`);
+
+        return mapDbToBooking(responseData.booking);
+
+    } catch (e: any) {
+        console.error("Erro ao agendar consulta gratuita:", e.message);
+        alert(`Erro ao agendar consulta: ${e.message}`);
         return null;
     }
-    return mapDbToBooking(data.booking);
 };
 
 export const getSalesData = async (): Promise<Sale[]> => {

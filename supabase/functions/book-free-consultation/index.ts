@@ -7,66 +7,65 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
+  // 1. Handle CORS preflight request
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
 
   try {
+    // 2. Initialize Admin Client
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
+    // 3. Parse request body and validate data
     const { name, phone, description, bookingDate, professionalId } = await req.json()
-
+    
     if (!name || !phone || !bookingDate || !professionalId) {
-      throw new Error("Dados insuficientes: nome, telefone, data e profissional são obrigatórios.")
+      throw new Error("Dados insuficientes. Nome, telefone, data e profissional são obrigatórios.")
     }
 
+    const date = new Date(bookingDate);
+    if (isNaN(date.getTime())) {
+        throw new Error(`Formato de data inválido recebido: ${bookingDate}`);
+    }
+
+    // 4. Find or Create User
     const phoneDigits = phone.replace(/\D/g, '');
     const tempEmail = `temp_${phoneDigits}@mariliamanuela.com`;
     const tempPassword = `temp${phoneDigits}`;
-
-    // Etapa B: Verificar se o usuário já existe (de forma mais segura)
     let userId;
-    const { data: userData, error: userFetchError } = await supabaseAdmin.auth.admin.getUserByEmail(tempEmail);
 
-    // Se houver um erro que não seja "usuário não encontrado", lance-o.
-    if (userFetchError && userFetchError.message !== 'User not found') {
-        throw userFetchError;
-    }
+    const { data: existingUserData, error: getUserError } = await supabaseAdmin.auth.admin.getUserByEmail(tempEmail);
     
-    const existingUser = userData?.user;
+    if (getUserError && getUserError.message !== 'User not found') {
+        throw new Error(`Erro ao verificar usuário: ${getUserError.message}`);
+    }
 
-    if (existingUser) {
-        userId = existingUser.id;
+    if (existingUserData?.user) {
+        userId = existingUserData.user.id;
     } else {
-        // Etapa C: Criar novo usuário se não existir
-        const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
+        const { data: newAuthData, error: createError } = await supabaseAdmin.auth.admin.createUser({
             email: tempEmail,
             password: tempPassword,
             email_confirm: true,
             user_metadata: { full_name: name, phone: phone },
         });
 
-        if (authError) throw new Error(`Erro ao criar usuário: ${authError.message}`);
-        userId = authData.user.id;
-        
-        // O trigger 'handle_new_user' já cria o perfil. Esta linha é uma garantia.
-        await supabaseAdmin.from('profiles').update({ phone: phone }).eq('id', userId);
+        if (createError) throw new Error(`Erro ao criar usuário: ${createError.message}`);
+        userId = newAuthData.user.id;
+        // O trigger 'handle_new_user' cria o perfil.
     }
 
-    // Etapa D: Inserir o agendamento
-    const date = new Date(bookingDate);
+    // 5. Prepare Booking Data
     const bookingDateStr = date.toISOString().split('T')[0];
     const bookingTimeStr = `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
     const notes = `Serviços de Interesse: ${description || 'Não informado'}`;
 
-    const { data: bookingData, error: bookingError } = await supabaseAdmin
-      .from('bookings')
-      .insert({
+    const bookingPayload = {
         user_id: userId,
-        service_id: null,
+        service_id: null, // Consulta gratuita não tem ID de serviço
         service_name: 'Consulta de Avaliação Gratuita',
         professional_id: professionalId,
         booking_date: bookingDateStr,
@@ -74,21 +73,30 @@ serve(async (req) => {
         status: 'Agendado',
         duration: 30,
         notes: notes,
-      })
+    };
+
+    // 6. Insert Booking
+    const { data: bookingData, error: bookingError } = await supabaseAdmin
+      .from('bookings')
+      .insert(bookingPayload)
       .select()
       .single();
     
-    if (bookingError) throw new Error(`Erro ao inserir agendamento: ${bookingError.message}`);
+    if (bookingError) {
+        throw new Error(`Erro no banco de dados ao agendar: ${bookingError.message}`);
+    }
 
+    // 7. Return Success Response
     return new Response(JSON.stringify({ success: true, booking: bookingData }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     })
   } catch (error) {
-    console.error('Erro na função book-free-consultation:', error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    // 8. Return Detailed Error Response
+    console.error('!!! Erro crítico na Edge Function:', error);
+    return new Response(JSON.stringify({ error: error.message || 'Ocorreu um erro inesperado no servidor.' }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 500, // Usar 500 para indicar um erro do servidor
+      status: 500,
     })
   }
 })
