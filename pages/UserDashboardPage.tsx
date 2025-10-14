@@ -56,22 +56,12 @@ export default function UserDashboardPage({ onBookWithCredit, onReschedule }: Us
             if (updatedBooking) {
                 const service = services.find(s => s.id === booking.serviceId);
                 
-                // 2. Verifica se o agendamento consumiu um crédito (assumimos que sim se for um pacote ou se o serviço tiver sessions > 1)
-                // Nota: A lógica de dedução de crédito só ocorre se o agendamento for feito com crédito.
-                // Para simplificar, vamos verificar se o serviço tem sessions > 1, que é o indicador de pacote/crédito.
+                // 2. Lógica de devolução de crédito:
+                // Assumimos que se o serviço tem 'sessions' definido (o que é o caso de todos os serviços compráveis),
+                // o agendamento consumiu 1 crédito, e este deve ser devolvido.
                 
                 let creditReturned = false;
-                if (service && service.sessions && service.sessions > 1) {
-                    // Antes de devolver, precisamos garantir que o crédito foi deduzido.
-                    // No App.tsx, a dedução ocorre apenas se for um 'creditBookingService'.
-                    // Aqui, vamos devolver o crédito se o serviço for de pacote (sessions > 1)
-                    // e se o agendamento não estiver marcado como 'is_package' no DB (o que não temos no front, mas sessions > 1 é o proxy).
-                    
-                    // Para garantir que o crédito só seja devolvido se foi consumido,
-                    // vamos assumir que qualquer agendamento de um serviço com sessions > 1
-                    // feito pelo cliente consome um crédito.
-                    
-                    // Se o agendamento foi feito com crédito, devolvemos 1.
+                if (service && service.sessions !== undefined) {
                     const updatedUser = await api.returnCreditToUser(currentUser.id, service.id);
                     if (updatedUser) {
                         setCurrentUser(updatedUser);
