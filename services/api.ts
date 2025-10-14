@@ -441,10 +441,13 @@ export const getClinicSettings = async (): Promise<ClinicSettings | null> => {
 };
 
 export const updateClinicOperatingHours = async (operatingHours: OperatingHours): Promise<ClinicSettings | null> => {
+    // Garante que o objeto seja serializável e limpo (chaves como strings)
+    const cleanOperatingHours = JSON.parse(JSON.stringify(operatingHours));
+    
     const { data, error } = await supabase
         .from('clinic_settings')
         .update({ 
-            operating_hours: operatingHours, 
+            operating_hours: cleanOperatingHours, 
             updated_at: new Date().toISOString() 
         })
         .eq('id', SETTINGS_ID)
@@ -453,6 +456,7 @@ export const updateClinicOperatingHours = async (operatingHours: OperatingHours)
 
     if (error) {
         console.error("Error updating clinic operating hours:", error);
+        console.error("Supabase Error Details:", error.details, error.hint, error.message);
         return null;
     }
     return mapDbToClinicSettings(data);
