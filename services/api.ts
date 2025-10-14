@@ -448,7 +448,7 @@ export const updateClinicOperatingHours = async (operatingHours: OperatingHours)
         .from('clinic_settings')
         .update({ 
             operating_hours: cleanOperatingHours, 
-            updated_at: new Date().toISOString() 
+            // Removendo updated_at para que o valor padrão do DB seja usado
         })
         .eq('id', SETTINGS_ID)
         .select('id, operating_hours, holiday_exceptions')
@@ -467,7 +467,7 @@ export const updateClinicHolidayExceptions = async (holidayExceptions: HolidayEx
         .from('clinic_settings')
         .update({ 
             holiday_exceptions: holidayExceptions, 
-            updated_at: new Date().toISOString() 
+            // Removendo updated_at para que o valor padrão do DB seja usado
         })
         .eq('id', SETTINGS_ID)
         .select('id, operating_hours, holiday_exceptions')
