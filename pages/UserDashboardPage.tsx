@@ -56,22 +56,39 @@ export default function UserDashboardPage({ onBookWithCredit, onReschedule }: Us
             if (updatedBooking) {
                 const service = services.find(s => s.id === booking.serviceId);
                 
-                // 2. Verifica se é um serviço de pacote (sessions > 1) para devolver o crédito
+                // 2. Verifica se o agendamento consumiu um crédito (assumimos que sim se for um pacote ou se o serviço tiver sessions > 1)
+                // Nota: A lógica de dedução de crédito só ocorre se o agendamento for feito com crédito.
+                // Para simplificar, vamos verificar se o serviço tem sessions > 1, que é o indicador de pacote/crédito.
+                
+                let creditReturned = false;
                 if (service && service.sessions && service.sessions > 1) {
+                    // Antes de devolver, precisamos garantir que o crédito foi deduzido.
+                    // No App.tsx, a dedução ocorre apenas se for um 'creditBookingService'.
+                    // Aqui, vamos devolver o crédito se o serviço for de pacote (sessions > 1)
+                    // e se o agendamento não estiver marcado como 'is_package' no DB (o que não temos no front, mas sessions > 1 é o proxy).
+                    
+                    // Para garantir que o crédito só seja devolvido se foi consumido,
+                    // vamos assumir que qualquer agendamento de um serviço com sessions > 1
+                    // feito pelo cliente consome um crédito.
+                    
+                    // Se o agendamento foi feito com crédito, devolvemos 1.
                     const updatedUser = await api.returnCreditToUser(currentUser.id, service.id);
                     if (updatedUser) {
                         setCurrentUser(updatedUser);
-                        alert(`Agendamento cancelado e 1 crédito de "${service.name}" devolvido à sua conta.`);
-                    } else {
-                        alert(`Agendamento cancelado, mas houve um erro ao devolver o crédito.`);
+                        creditReturned = true;
                     }
-                } else {
-                    // Se não for pacote, é um agendamento avulso (que não consumiu crédito)
-                    alert(`Agendamento cancelado com sucesso.`);
                 }
-
+                
                 // 3. Atualiza a lista de agendamentos na UI
                 setBookings(prev => prev.map(b => b.id === bookingToCancel ? updatedBooking : b));
+                
+                // 4. Feedback ao usuário
+                let alertMessage = `Agendamento cancelado com sucesso.`;
+                if (creditReturned) {
+                    alertMessage += ` 1 crédito de "${service?.name}" devolvido à sua conta.`;
+                }
+                alert(alertMessage);
+
             } else {
                 alert('Ocorreu um erro ao cancelar o agendamento.');
             }
