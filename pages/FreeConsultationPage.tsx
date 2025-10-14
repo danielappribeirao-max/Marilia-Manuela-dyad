@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { useApp } from '../App';
-import { Page, User } from '../types';
+import { Page, User, Booking } from '../types';
 import FreeConsultationBookingModal from '../components/FreeConsultationBookingModal';
 import QuickRegistrationForm from '../components/QuickRegistrationForm';
 import { FREE_CONSULTATION_SERVICE } from '../constants';
@@ -68,7 +68,7 @@ export default function FreeConsultationPage() {
         // A descrição dos serviços pretendidos será salva nas notas do agendamento
         const notes = `Serviços de Interesse: ${tempUserData?.description || 'Não informado'}`;
         
-        const newBooking: Omit<api.Booking, 'id'> & { serviceName: string, notes: string } = { 
+        const newBooking: Partial<Booking> & { serviceName: string, notes: string } = { 
             userId: userToBook.id, 
             serviceId: service.id, 
             professionalId: details.professionalId, 
