@@ -141,6 +141,7 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
       status: formData.status as Booking['status'],
       duration: Number(formData.duration),
       comment: formData.notes, // Salvando as notas
+      serviceName: selectedService?.name, // Adicionando o nome do serviço
     };
     await onSave(newBooking);
   };
