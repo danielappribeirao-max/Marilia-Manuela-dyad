@@ -11,7 +11,7 @@ interface BookingModalProps {
   onConfirmBooking: (details: { date: Date, professionalId: string }) => Promise<boolean>;
   professionals: User[];
   clinicOperatingHours: OperatingHours | undefined;
-  clinicHolidayExceptions: HolidayException[] | undefined;
+  clinicHolidayExceptions: HolidayException[] | undefined; // CORRIGIDO: Deve ser um array
   tempClientData?: { name: string; phone: string; description: string } | null; // Novo: Dados temporários do cliente
 }
 
@@ -70,47 +70,21 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, isCreditB
     // Cria a data final no fuso horário local
     const finalDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), hours, minutes, 0, 0);
 
-    let success = false;
-
-    if (isNewUserFreeBooking && tempClientData) {
-        // Fluxo 1: Agendamento de Consulta Gratuita para Novo Usuário
-        const result = await api.bookFreeConsultationForNewUser({
-            name: tempClientData.name,
-            phone: tempClientData.phone,
-            description: tempClientData.description,
-            date: finalDate,
-            professionalId: selectedProfessionalId,
-            serviceId: service.id,
-            serviceName: service.name,
-            duration: service.duration,
-        });
-        
-        if (result.success) {
-            alert(`Consulta agendada com sucesso! Um usuário temporário foi criado para você. Seu agendamento foi confirmado.`);
-            success = true;
-        } else {
-            alert(`Erro ao agendar consulta: ${result.error}`);
-        }
-
-    } else {
-        // Fluxo 2: Agendamento Normal (Logado, Crédito ou Reagendamento)
-        success = await onConfirmBooking({
-            date: finalDate,
-            professionalId: selectedProfessionalId,
-        });
-    }
+    // Chama a função de confirmação no App.tsx, que lida com todos os fluxos (logado, crédito, reagendamento, consulta gratuita)
+    const success = await onConfirmBooking({
+        date: finalDate,
+        professionalId: selectedProfessionalId,
+    });
     
     setIsProcessing(false);
 
     if (success) {
         setShowConfirmation(true);
-        // Se for um novo usuário, damos mais tempo para ler a mensagem
+        // Fecha o modal após a confirmação e um breve delay
         setTimeout(onClose, isNewUserFreeBooking ? 5000 : 3000); 
     } else {
-        // Se o erro já foi alertado no fluxo 1, não alertamos novamente.
-        if (!isNewUserFreeBooking) {
-            alert("Ocorreu um erro ao confirmar o agendamento. Por favor, verifique se todos os dados estão corretos e tente novamente.");
-        }
+        // O erro já deve ter sido alertado no App.tsx ou na Edge Function
+        alert("Ocorreu um erro ao confirmar o agendamento. Por favor, tente novamente.");
     }
   }
 

@@ -278,7 +278,6 @@ function AppContent() {
           
       } else if (tempClientData && serviceToBook.id === FREE_CONSULTATION_SERVICE_ID) {
           // Fluxo de Consulta Gratuita para Novo Usuário
-          // A Edge Function fará a criação do usuário e do agendamento.
           const result = await api.bookFreeConsultationForNewUser({
               name: tempClientData.name,
               phone: tempClientData.phone,
@@ -295,7 +294,7 @@ function AppContent() {
               refreshAdminData();
               return true;
           } else {
-              alert(`Erro ao agendar consulta: ${result.error}`);
+              // O erro já foi alertado dentro da Edge Function ou na chamada da API
               return false;
           }
       }
