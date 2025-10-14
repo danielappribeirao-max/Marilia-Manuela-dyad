@@ -9,7 +9,7 @@ interface ServiceModalProps {
 
 const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave }) => {
   const [formData, setFormData] = useState<Partial<Service>>({
-    id: service?.id || `service-${Date.now()}`,
+    id: service?.id, // Não gera ID temporário se for novo
     name: service?.name || '',
     description: service?.description || '',
     price: service?.price || 0,
@@ -65,6 +65,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave })
     if (validate()) {
       const finalFormData = { ...formData };
       if (!finalFormData.imageUrl) {
+        // Se não houver imagem, usa um placeholder baseado no nome
         finalFormData.imageUrl = `https://picsum.photos/seed/${finalFormData.name?.replace(/\s/g, '') || 'service'}/400/300`;
       }
       onSave(finalFormData as Service);

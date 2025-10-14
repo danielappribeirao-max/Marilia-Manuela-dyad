@@ -144,7 +144,6 @@ export const getServicePackages = async (): Promise<ServicePackage[]> => Promise
 
 export const addOrUpdateService = async (service: Service): Promise<Service | null> => {
     const serviceData = {
-        id: service.id,
         name: service.name,
         description: service.description,
         price: service.price,
@@ -154,17 +153,29 @@ export const addOrUpdateService = async (service: Service): Promise<Service | nu
         sessions: service.sessions,
     };
 
-    const { data, error } = await supabase
-        .from('services')
-        .upsert(serviceData)
-        .select()
-        .single();
+    let result;
+    if (service.id) {
+        // Atualizar serviço existente
+        result = await supabase
+            .from('services')
+            .update(serviceData)
+            .eq('id', service.id)
+            .select()
+            .single();
+    } else {
+        // Inserir novo serviço (o ID será gerado pelo banco de dados)
+        result = await supabase
+            .from('services')
+            .insert(serviceData)
+            .select()
+            .single();
+    }
 
-    if (error) {
-        console.error("Error adding/updating service:", error);
+    if (result.error) {
+        console.error("Error adding/updating service:", result.error);
         return null;
     }
-    return mapDbToService(data);
+    return mapDbToService(result.data);
 };
 
 export const deleteService = async (serviceId: string) => {
