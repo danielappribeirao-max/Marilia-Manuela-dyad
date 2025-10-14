@@ -1,3 +1,4 @@
+1).">
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../App';
 import * as api from '../services/api';
@@ -50,11 +51,13 @@ export default function UserDashboardPage({ onBookWithCredit, onReschedule }: Us
         
         const booking = bookings.find(b => b.id === bookingToCancel);
         if (booking) {
+            // 1. Atualiza o status do agendamento para 'canceled'
             const updatedBooking = await api.addOrUpdateBooking({ ...booking, status: 'canceled' });
             
             if (updatedBooking) {
                 const service = services.find(s => s.id === booking.serviceId);
                 
+                // 2. Verifica se é um serviço de pacote (sessions > 1) para devolver o crédito
                 if (service && service.sessions && service.sessions > 1) {
                     const updatedUser = await api.returnCreditToUser(currentUser.id, service.id);
                     if (updatedUser) {
@@ -64,10 +67,14 @@ export default function UserDashboardPage({ onBookWithCredit, onReschedule }: Us
                         alert(`Agendamento cancelado, mas houve um erro ao devolver o crédito.`);
                     }
                 } else {
+                    // Se não for pacote, é um agendamento avulso (que não consumiu crédito)
                     alert(`Agendamento cancelado com sucesso.`);
                 }
 
+                // 3. Atualiza a lista de agendamentos na UI
                 setBookings(prev => prev.map(b => b.id === bookingToCancel ? updatedBooking : b));
+            } else {
+                alert('Ocorreu um erro ao cancelar o agendamento.');
             }
         }
         setBookingToCancel(null);
