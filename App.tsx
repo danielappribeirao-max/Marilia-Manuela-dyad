@@ -261,6 +261,8 @@ export default function App() {
         setClinicSettings(updatedSettings);
         alert("Horários de funcionamento atualizados com sucesso!");
     } else {
+        // Logando o erro para diagnóstico
+        console.error("Falha ao atualizar configurações da clínica. Verifique os logs da API para detalhes.");
         alert("Erro ao atualizar horários de funcionamento.");
     }
   }, []);
