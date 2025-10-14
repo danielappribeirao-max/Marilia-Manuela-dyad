@@ -443,33 +443,37 @@ export const getClinicSettings = async (): Promise<ClinicSettings | null> => {
 export const updateClinicOperatingHours = async (operatingHours: OperatingHours): Promise<ClinicSettings | null> => {
     const cleanOperatingHours = JSON.parse(JSON.stringify(operatingHours));
     
-    const { error } = await supabase
+    const { data, error } = await supabase
         .from('clinic_settings')
         .update({ operating_hours: cleanOperatingHours })
-        .eq('id', SETTINGS_ID);
+        .eq('id', SETTINGS_ID)
+        .select()
+        .single();
 
     if (error) {
-        console.error("Error during clinic settings UPDATE:", error);
+        console.error("Error updating clinic operating hours:", error);
         alert(`Erro do Supabase: ${error.message}`);
         return null;
     }
     
-    return getClinicSettings();
+    return mapDbToClinicSettings(data);
 };
 
 export const updateClinicHolidayExceptions = async (holidayExceptions: HolidayException[]): Promise<ClinicSettings | null> => {
-    const { error } = await supabase
+    const { data, error } = await supabase
         .from('clinic_settings')
         .update({ holiday_exceptions: holidayExceptions })
-        .eq('id', SETTINGS_ID);
+        .eq('id', SETTINGS_ID)
+        .select()
+        .single();
 
     if (error) {
-        console.error("Error during holiday exceptions UPDATE:", error);
+        console.error("Error updating holiday exceptions:", error);
         alert(`Erro do Supabase: ${error.message}`);
         return null;
     }
     
-    return getClinicSettings();
+    return mapDbToClinicSettings(data);
 };
 
 
