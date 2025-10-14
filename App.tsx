@@ -206,17 +206,20 @@ function AppContent() {
   const handleConfirmFinalBooking = useCallback(async (details: { date: Date, professionalId: string }) => {
     if (!currentUser) return false;
     let success = false;
+    
+    const serviceToBook = bookingService || creditBookingService;
+    
     if (reschedulingBooking) {
       const updatedBooking = { ...reschedulingBooking, ...details, status: 'confirmed' as const };
       const result = await api.addOrUpdateBooking(updatedBooking);
       if(result) success = true;
-    } else {
-      const serviceToBook = bookingService || creditBookingService;
-      if (!serviceToBook) return false;
+    } else if (serviceToBook) {
       const newBooking: Omit<Booking, 'id'> = { userId: currentUser.id, serviceId: serviceToBook.id, professionalId: details.professionalId, date: details.date, status: 'confirmed', duration: serviceToBook.duration };
       const result = await api.addOrUpdateBooking(newBooking);
       if(result) success = true;
-      if (creditBookingService) {
+      
+      // DEDUÇÃO DE CRÉDITO: Se for um agendamento de crédito e foi bem-sucedido
+      if (success && creditBookingService) {
         const updatedUser = await api.deductCreditFromUser(currentUser.id, creditBookingService.id);
         if (updatedUser) setCurrentUser(updatedUser);
       }
