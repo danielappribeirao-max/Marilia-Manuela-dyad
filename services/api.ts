@@ -407,9 +407,9 @@ const DEFAULT_OPERATING_HOURS: OperatingHours = {
     6: { open: true, start: '07:00', end: '14:00' } // Sábado (sem almoço)
 };
 
-const DEFAULT_CLINIC_SETTINGS: ClinicSettings = {
+export const DEFAULT_CLINIC_SETTINGS: ClinicSettings = {
     id: SETTINGS_ID,
-    operatingHours: DEFAULT_OPERATING_HOURS,
+    operatingHours: DEFAULT_OPERATING_HOary,
     holidayExceptions: [],
 };
 
@@ -589,12 +589,22 @@ export const addOrUpdateBooking = async (booking: Partial<Booking> & { serviceNa
     // O serviceName deve ser fornecido pelo componente de chamada, especialmente para novos agendamentos.
     const serviceName = booking.serviceName;
 
-    const bookingDateStr = booking.date?.toISOString().split('T')[0];
+    if (!booking.date) {
+        console.error("Booking date is missing.");
+        return null;
+    }
     
-    // Garantir que a hora seja formatada como HH:MM
-    const bookingTimeStr = booking.date ? 
-        `${String(booking.date.getHours()).padStart(2, '0')}:${String(booking.date.getMinutes()).padStart(2, '0')}` : 
-        undefined;
+    // --- CORREÇÃO DE FUSO HORÁRIO ---
+    // Usamos métodos locais (getFullYear, getMonth, getDate, getHours, getMinutes)
+    // para garantir que a data e hora salvas sejam exatamente o que o usuário selecionou localmente.
+    const dateObj = booking.date;
+    
+    // Formata a data como YYYY-MM-DD (local)
+    const bookingDateStr = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
+    
+    // Formata a hora como HH:MM (local)
+    const bookingTimeStr = `${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}`;
+    // --------------------------------
 
     let dbStatus = 'Agendado';
     if (booking.status === 'completed') dbStatus = 'Concluído';
@@ -633,12 +643,21 @@ export const addOrUpdateBooking = async (booking: Partial<Booking> & { serviceNa
 
 export const bookFreeConsultationForNewUser = async (details: { name: string; phone: string; description: string; date: Date; professionalId: string; serviceId: string; serviceName: string; duration: number }): Promise<{ success: boolean, error: string | null, newUserId?: string }> => {
     try {
+        // --- CORREÇÃO DE FUSO HORÁRIO ---
+        // Enviamos a data como string ISO, mas a Edge Function precisa saber a hora local.
+        // Vamos enviar a data e hora separadamente para que a Edge Function possa reconstruir a data localmente.
+        const dateObj = details.date;
+        const bookingDate = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
+        const bookingTime = `${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}`;
+        // --------------------------------
+        
         const { data, error } = await supabase.functions.invoke('book-free-consultation', {
             body: {
                 name: details.name,
                 phone: details.phone.replace(/\D/g, ''), // Envia apenas dígitos
                 description: details.description,
-                date: details.date.toISOString(),
+                date: bookingDate, // Enviando data YYYY-MM-DD
+                time: bookingTime, // Enviando hora HH:MM
                 professionalId: details.professionalId,
                 serviceId: details.serviceId,
                 serviceName: details.serviceName,
@@ -675,7 +694,7 @@ export const getSalesData = async (): Promise<Sale[]> => {
         .in('status', ['Concluído', 'completed']);
 
     if (error) {
-        console.error("Error fetching sales data from bookings:", error);
+        console.        console.error("Error fetching sales data from bookings:", error);
         return [];
     }
 

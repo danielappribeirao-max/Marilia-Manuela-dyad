@@ -17,9 +17,10 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    const { name, phone, description, date, professionalId, serviceId, serviceName, duration } = await req.json()
+    // Recebendo data e hora como strings locais
+    const { name, phone, description, date, time, professionalId, serviceId, serviceName, duration } = await req.json()
 
-    if (!name || !phone || !description || !date || !professionalId || !serviceId || !serviceName || !duration) {
+    if (!name || !phone || !description || !date || !time || !professionalId || !serviceId || !serviceName || !duration) {
         throw new Error("Todos os campos de agendamento são obrigatórios.");
     }
     
@@ -50,20 +51,15 @@ serve(async (req) => {
 
     const userId = authData.user.id
     
-    // 2. Formatar data e hora corretamente
-    const bookingDateObj = new Date(date);
-    const bookingDate = bookingDateObj.toISOString().split('T')[0]; // YYYY-MM-DD
-    const bookingTime = `${String(bookingDateObj.getHours()).padStart(2, '0')}:${String(bookingDateObj.getMinutes()).padStart(2, '0')}`; // HH:MM
-
-    // 3. Inserir o agendamento
+    // 2. Inserir o agendamento usando as strings de data e hora locais
     const { data: bookingData, error: bookingError } = await supabaseAdmin
       .from('bookings')
       .insert({
         user_id: userId,
         service_id: serviceId,
         professional_id: professionalId,
-        booking_date: bookingDate,
-        booking_time: bookingTime,
+        booking_date: date, // YYYY-MM-DD local
+        booking_time: time, // HH:MM local
         status: 'Agendado', // Usando o valor padrão do banco
         duration: duration,
         service_name: serviceName,
@@ -76,7 +72,7 @@ serve(async (req) => {
       throw bookingError
     }
     
-    // 4. Retornar sucesso
+    // 3. Retornar sucesso
     return new Response(JSON.stringify({ 
         success: true, 
         booking: bookingData, 
