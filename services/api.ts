@@ -172,7 +172,7 @@ export const addOrUpdateService = async (service: Service): Promise<Service | nu
     }
 
     if (result.error) {
-        console.error("Error adding/updating service:", result.error);
+        console.error("Error adding/updating service:", error);
         return null;
     }
     return mapDbToService(result.data);
@@ -456,11 +456,10 @@ export const getClinicSettings = async (): Promise<ClinicSettings> => {
 };
 
 export const updateClinicOperatingHours = async (operatingHours: OperatingHours): Promise<ClinicSettings | null> => {
-    const cleanOperatingHours = JSON.parse(JSON.stringify(operatingHours));
-    
+    // Usamos o objeto diretamente, pois o Supabase lida bem com JSONB
     const { data, error } = await supabase
         .from('clinic_settings')
-        .update({ operating_hours: cleanOperatingHours })
+        .update({ operating_hours: operatingHours })
         .eq('id', SETTINGS_ID)
         .select()
         .single();
@@ -475,6 +474,7 @@ export const updateClinicOperatingHours = async (operatingHours: OperatingHours)
 };
 
 export const updateClinicHolidayExceptions = async (holidayExceptions: HolidayException[]): Promise<ClinicSettings | null> => {
+    // Usamos o array diretamente, pois o Supabase lida bem com JSONB
     const { data, error } = await supabase
         .from('clinic_settings')
         .update({ holiday_exceptions: holidayExceptions })

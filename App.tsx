@@ -352,21 +352,23 @@ function AppContent() {
     if (updatedSettings) {
         setClinicSettings(updatedSettings);
         alert("Horários de funcionamento atualizados com sucesso!");
+        refreshAdminData(); // Força o recarregamento da agenda
     } else {
         console.error("Falha ao atualizar configurações da clínica. Verifique os logs da API para detalhes.");
         alert("Erro ao atualizar horários de funcionamento.");
     }
-  }, []);
+  }, [refreshAdminData]);
 
   const updateClinicHolidayExceptions = useCallback(async (exceptions: HolidayException[]) => {
     const updatedSettings = await api.updateClinicHolidayExceptions(exceptions);
     if (updatedSettings) {
         setClinicSettings(updatedSettings);
         alert("Exceções de feriados atualizadas com sucesso!");
+        refreshAdminData(); // Força o recarregamento da agenda
     } else {
         alert("Erro ao atualizar exceções de feriados.");
     }
-  }, []);
+  }, [refreshAdminData]);
 
   const appContextValue = useMemo(() => ({ currentUser, setCurrentUser, currentPage, setCurrentPage, logout, services, packages, professionals, addOrUpdateService, deleteService, loading, logoUrl, setLogoUrl, heroImageUrl, setHeroImageUrl, aboutImageUrl, setAboutImageUrl, clinicSettings, updateClinicSettings, updateClinicHolidayExceptions, refreshAdminData }), [currentUser, currentPage, logout, services, packages, professionals, addOrUpdateService, deleteService, loading, logoUrl, heroImageUrl, aboutImageUrl, clinicSettings, updateClinicSettings, updateClinicHolidayExceptions, refreshAdminData]);
 
