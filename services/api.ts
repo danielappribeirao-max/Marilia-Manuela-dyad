@@ -897,7 +897,6 @@ export const getUserBookings = async (userId: string): Promise<Booking[]> => {
 };
 
 export const getOccupiedSlots = async (dateString: string): Promise<{ professional_id: string, booking_time: string, duration: number, id: string }[]> => {
-    // CORREÇÃO: Garantir que estamos buscando a duração, que é crucial para o cálculo de sobreposição no frontend.
     const { data, error } = await supabase
         .from('bookings')
         .select('professional_id, booking_time, duration, id')
