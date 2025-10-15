@@ -172,7 +172,6 @@ export const addOrUpdateService = async (service: Service): Promise<Service | nu
         
         // Garantir que o payload de inserção não contenha 'id'
         const insertPayload = { ...insertData };
-        // Não precisamos verificar insertPayload.id aqui, pois já desestruturamos.
         
         result = await supabase
             .from('services')
@@ -183,10 +182,18 @@ export const addOrUpdateService = async (service: Service): Promise<Service | nu
 
     if (result.error) {
         console.error("Error adding/updating service:", result.error);
-        // Adicionando um alerta mais detalhado para o console
         alert(`Erro ao salvar serviço: ${result.error.message}`);
         return null;
     }
+    
+    // NOVO TRATAMENTO DE ERRO: Se .single() não lançou erro, mas data é nulo,
+    // significa que 0 linhas foram afetadas (provavelmente RLS).
+    if (!result.data) {
+        console.error("Error: Service save operation returned 0 rows. Check RLS policies for 'services' table.");
+        alert("Erro ao salvar serviço: Nenhuma alteração foi feita. Verifique se você tem permissão de administrador.");
+        return null;
+    }
+    
     return mapDbToService(result.data);
 };
 
