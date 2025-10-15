@@ -8,14 +8,15 @@ interface BookingModalProps {
   onClose: () => void;
   isCreditBooking?: boolean;
   booking?: Booking | null;
-  onConfirmBooking: (details: { date: Date, professionalId: string }) => Promise<{ success: boolean, error: string | null }>;
+  onConfirmBooking: (details: { date: Date, professionalId: string }) => Promise<{ success: boolean, error: string | null, tempEmail?: string }>;
   professionals: User[];
   clinicOperatingHours: OperatingHours | undefined;
   clinicHolidayExceptions: HolidayException[] | undefined; // CORRIGIDO: Deve ser um array
   tempClientData?: { name: string; phone: string; description: string } | null; // Novo: Dados temporários do cliente
+  newlyCreatedUserEmail?: string | null; // NOVO: Email do usuário recém-criado
 }
 
-const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, isCreditBooking = false, booking = null, onConfirmBooking, professionals, clinicOperatingHours, clinicHolidayExceptions, tempClientData = null }) => {
+const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, isCreditBooking = false, booking = null, onConfirmBooking, professionals, clinicOperatingHours, clinicHolidayExceptions, tempClientData = null, newlyCreatedUserEmail = null }) => {
   const isRescheduling = !!booking;
   const isFreeConsultation = service.id === '00000000-0000-0000-0000-000000000000'; // Usar o ID da constante
   const isNewUserFreeBooking = isFreeConsultation && !!tempClientData;
@@ -123,9 +124,9 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, isCreditB
                         : "Você receberá um e-mail com os detalhes. Obrigado por escolher a Marília Manuela!"
                     }
                 </p>
-                {isNewUserFreeBooking && (
+                {isNewUserFreeBooking && newlyCreatedUserEmail && (
                     <p className="text-sm text-pink-600 mt-4 font-semibold">
-                        Você pode fazer login usando o e-mail temporário ({tempClientData?.phone}@mariliamanuela.com) e a senha padrão (senhaPadrao123) para gerenciar seu agendamento.
+                        Você pode fazer login usando o e-mail temporário ({newlyCreatedUserEmail}) e a senha padrão (senhaPadrao123) para gerenciar seu agendamento.
                     </p>
                 )}
             </div>

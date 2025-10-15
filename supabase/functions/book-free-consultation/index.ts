@@ -35,7 +35,6 @@ serve(async (req) => {
     }
     
     // --- 1. VERIFICAÇÃO DE DISPONIBILIDADE NO BACKEND ---
-    // Esta verificação é crucial para evitar agendamentos duplicados
     const { data: isAvailable, error: availabilityError } = await supabaseAdmin.rpc('check_full_availability', {
         p_professional_id: professionalId,
         p_booking_date: date,
@@ -59,44 +58,47 @@ serve(async (req) => {
     }
     // ----------------------------------------------------
     
-    // 2. Criar um e-mail temporário e senha padrão para o novo usuário
-    // Usamos o telefone como parte do e-mail para garantir unicidade
+    // 2. Criar ou buscar usuário
     const email = `${phone}@mariliamanuela.com`;
-    const password = Math.random().toString(36).slice(-8); // Senha aleatória
+    let userId: string;
+    let tempPassword = '';
 
+    // Tenta criar o usuário
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email: email,
-      password: password,
+      password: Math.random().toString(36).slice(-8), // Senha aleatória
       email_confirm: false,
       user_metadata: {
         full_name: name,
         phone: phone,
       },
-    })
-
+    });
+    
     if (authError) {
       if (authError.message.includes('User already exists')) {
-          // Se o usuário já existe, tentamos buscar o ID para agendar
+          // Se o usuário já existe, busca o ID existente
           const { data: existingUser, error: fetchError } = await supabaseAdmin.auth.admin.getUserByEmail(email);
           
-          if (fetchError || !existingUser) {
-              return new Response(JSON.stringify({ error: "Já existe um usuário cadastrado com este telefone. Por favor, faça login primeiro." }), {
+          if (fetchError || !existingUser?.user) {
+              console.error("Existing User Fetch Error:", fetchError);
+              return new Response(JSON.stringify({ error: "Já existe um usuário cadastrado com este telefone, mas não foi possível recuperá-lo. Por favor, faça login primeiro." }), {
                   headers: { ...corsHeaders, 'Content-Type': 'application/json' },
                   status: 400,
               });
           }
-          // Se o usuário for encontrado, usamos o ID existente
-          authData.user = existingUser.user;
+          userId = existingUser.user.id;
+          // Não precisamos de senha temporária se o usuário já existia
       } else {
           console.error("Auth Error:", authError);
-          return new Response(JSON.stringify({ error: `Erro de autenticação: ${authError.message}` }), {
+          return new Response(JSON.stringify({ error: `Erro ao criar usuário: ${authError.message}` }), {
               headers: { ...corsHeaders, 'Content-Type': 'application/json' },
               status: 400,
           });
       }
+    } else {
+        userId = authData.user.id;
+        tempPassword = 'senhaPadrao123'; // Usamos uma senha padrão para o frontend informar
     }
-
-    const userId = authData.user.id
     
     // 3. Inserir o agendamento
     const { data: bookingData, error: bookingError } = await supabaseAdmin
@@ -107,17 +109,15 @@ serve(async (req) => {
         professional_id: professionalId,
         booking_date: date, // YYYY-MM-DD
         booking_time: time, // HH:MM
-        status: 'confirmed', // Usando 'confirmed' para consistência com o frontend
+        status: 'confirmed', 
         duration: parsedDuration,
-        service_name: serviceName,
+        service_name: serviceName, // Garantindo que service_name está sendo usado
         notes: `Consulta Gratuita. Interesse: ${description}`,
       })
       .select()
       .single()
 
     if (bookingError) {
-      // Se a inserção falhar, não tentamos excluir o usuário, pois ele pode ter existido antes.
-      // Apenas retornamos o erro.
       console.error("Booking Insert Error:", bookingError);
       return new Response(JSON.stringify({ error: `Erro ao inserir agendamento: ${bookingError.message}.` }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -131,8 +131,7 @@ serve(async (req) => {
         booking: bookingData, 
         newUserId: userId,
         tempEmail: email,
-        // A senha só é relevante se o usuário foi criado agora, mas a retornamos para o frontend
-        tempPassword: password, 
+        tempPassword: tempPassword, 
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,

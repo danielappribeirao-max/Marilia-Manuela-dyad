@@ -81,6 +81,7 @@ function AppContent() {
   // Novo estado para o fluxo de consulta gratuita
   const [isQuickRegisterModalOpen, setIsQuickRegisterModalOpen] = useState(false);
   const [tempClientData, setTempClientData] = useState<{ name: string; phone: string; description: string } | null>(null);
+  const [newlyCreatedUserEmail, setNewlyCreatedUserEmail] = useState<string | null>(null); // NOVO: Email do usuário recém-criado
 
   const [showWhatsApp, setShowWhatsApp] = useState(false);
   
@@ -322,6 +323,10 @@ function AppContent() {
           });
           
           if (result.success) {
+              // Armazena o e-mail do novo usuário para exibir no modal de sucesso
+              if (result.tempEmail) {
+                  setNewlyCreatedUserEmail(result.tempEmail);
+              }
               // Força o recarregamento dos dados administrativos para que o AdminAgenda veja o novo agendamento
               refreshAdminData();
               return { success: true, error: null };
@@ -343,6 +348,7 @@ function AppContent() {
     setPostPurchaseService(null);
     setIsQuickRegisterModalOpen(false);
     setTempClientData(null); // Limpa dados temporários
+    setNewlyCreatedUserEmail(null); // Limpa o email do novo usuário
   };
   
   const handleScheduleNow = () => {
@@ -472,7 +478,8 @@ function AppContent() {
             professionals={professionals} 
             clinicOperatingHours={clinicSettings.operatingHours} 
             clinicHolidayExceptions={clinicSettings.holidayExceptions}
-            tempClientData={tempClientData} // Passa os dados temporários
+            tempClientData={tempClientData} 
+            newlyCreatedUserEmail={newlyCreatedUserEmail} // Passa o email do novo usuário
         />}
         {purchaseConfirmation && <PurchaseConfirmationModal service={purchaseConfirmation.service} quantity={purchaseConfirmation.quantity} onConfirm={handleConfirmPurchase} onClose={handleCloseModals} />}
         {purchasePackageConfirmation && <PackagePurchaseConfirmationModal servicePackage={purchasePackageConfirmation} services={services} onConfirm={handleConfirmPackagePurchase} onClose={handleCloseModals} />}
