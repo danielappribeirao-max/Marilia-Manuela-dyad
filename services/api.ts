@@ -409,7 +409,7 @@ const DEFAULT_OPERATING_HOURS: OperatingHours = {
 
 export const DEFAULT_CLINIC_SETTINGS: ClinicSettings = {
     id: SETTINGS_ID,
-    operatingHours: DEFAULT_OPERATING_HOary,
+    operatingHours: DEFAULT_OPERATING_HOURS,
     holidayExceptions: [],
 };
 
@@ -694,7 +694,7 @@ export const getSalesData = async (): Promise<Sale[]> => {
         .in('status', ['Concluído', 'completed']);
 
     if (error) {
-        console.        console.error("Error fetching sales data from bookings:", error);
+        console.error("Error fetching sales data from bookings:", error);
         return [];
     }
 
