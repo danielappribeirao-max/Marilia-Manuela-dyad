@@ -21,7 +21,18 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, isCreditB
   const isNewUserFreeBooking = isFreeConsultation && !!tempClientData;
 
   const [step, setStep] = useState(1);
-  const [selectedDate, setSelectedDate] = useState<Date | null>(booking ? new Date(booking.date) : new Date());
+  
+  // Inicializa a data para o dia atual (meia-noite local) ou a data do agendamento
+  const initialDate = useMemo(() => {
+      if (booking) {
+          const d = new Date(booking.date);
+          return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      }
+      const today = new Date();
+      return new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  }, [booking]);
+  
+  const [selectedDate, setSelectedDate] = useState<Date | null>(initialDate);
   const [selectedTime, setSelectedTime] = useState<string | null>(booking ? new Date(booking.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }).slice(0, 5) : null);
   const [selectedProfessionalId, setSelectedProfessionalId] = useState<string | null>(booking?.professionalId || null);
   const [showConfirmation, setShowConfirmation] = useState(false);
@@ -51,8 +62,8 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, isCreditB
 
   const handleDateChange = (dateString: string) => {
     if (!dateString) return;
-    // CORREÇÃO: Cria a data baseada na string YYYY-MM-DD, mas garante que o objeto Date
-    // represente o início do dia no fuso horário local, evitando que o getDay() retorne o dia anterior.
+    // Cria a data baseada na string YYYY-MM-DD, garantindo que o objeto Date
+    // represente o início do dia no fuso horário local (meia-noite do dia selecionado).
     const [year, month, day] = dateString.split('-').map(Number);
     setSelectedDate(new Date(year, month - 1, day));
   };

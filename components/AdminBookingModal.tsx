@@ -25,17 +25,28 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
   
   const getInitialFormData = () => {
     const service = booking?.serviceId ? services.find(s => s.id === booking.serviceId) : null;
-    const initialDate = booking ? new Date(booking.date) : (defaultDate || new Date());
     
-    // Ajuste para garantir que a data inicial seja apenas a data (sem hora)
-    const datePart = new Date(initialDate.getFullYear(), initialDate.getMonth(), initialDate.getDate());
+    // 1. Determinar a data inicial
+    let initialDate: Date;
+    if (booking) {
+        const d = new Date(booking.date);
+        initialDate = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    } else if (defaultDate) {
+        initialDate = new Date(defaultDate.getFullYear(), defaultDate.getMonth(), defaultDate.getDate());
+    } else {
+        const today = new Date();
+        initialDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    }
+    
+    // 2. Determinar a hora inicial
+    const initialTime = booking ? new Date(booking.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }).slice(0, 5) : (defaultDate ? defaultDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }).slice(0, 5) : '');
     
     return {
       userId: booking?.userId || '',
       serviceId: booking?.serviceId || '',
       professionalId: booking?.professionalId || '',
-      date: datePart.toISOString().split('T')[0],
-      time: booking ? new Date(booking.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }).slice(0, 5) : (defaultDate ? defaultDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }).slice(0, 5) : ''),
+      date: initialDate.toISOString().split('T')[0],
+      time: initialTime,
       status: booking?.status || 'confirmed',
       duration: booking?.duration || service?.duration || 30,
       quantity: 1,
@@ -52,9 +63,9 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
   
   const selectedDate = useMemo(() => {
       if (!formData.date) return null;
-      const d = new Date(formData.date);
+      const [year, month, day] = formData.date.split('-').map(Number);
       // Cria a data base no fuso horário local (meia-noite do dia selecionado)
-      return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      return new Date(year, month - 1, day);
   }, [formData.date]);
 
   const { availableTimes, isClinicOpen, currentDaySettings, loadingAvailability } = useAvailability({
@@ -211,7 +222,7 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
                 </div>
                 <div>
                   <label htmlFor="professionalId" className="block text-sm font-medium text-gray-700 mb-1">Profissional</label>
-                  <select id="professionalId" name="professionalId" value={formData.professionalId} onChange={handleChange} className={`w-full p-2 border bg-white text-gray-900 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500 ${errors.professionalId ? 'border-red-500' : 'border-gray-300'}`}>
+                  <select id="professionalId" name="professionalId" value={formData.professionalId} onChange={handleChange} className={`w-full p-2 border bg-white text-gray-900 border-gray-300 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500 ${errors.professionalId ? 'border-red-500' : 'border-gray-300'}`}>
                     <option value="" disabled>Selecione um profissional</option>
                     {professionals.map(prof => <option key={prof.id} value={prof.id}>{prof.name}</option>)}
                   </select>
