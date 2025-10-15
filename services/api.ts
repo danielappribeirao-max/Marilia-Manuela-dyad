@@ -143,10 +143,13 @@ export const getServices = async (): Promise<Service[]> => {
 export const getServicePackages = async (): Promise<ServicePackage[]> => Promise.resolve(MOCK_PACKAGES);
 
 export const addOrUpdateService = async (service: Service): Promise<Service | null> => {
+    // Garante que o preço seja formatado como string com duas casas decimais para o tipo NUMERIC do PostgreSQL
+    const formattedPrice = service.price.toFixed(2);
+    
     const serviceData = {
         name: service.name,
         description: service.description,
-        price: service.price,
+        price: formattedPrice, // Usando o preço formatado
         duration: service.duration,
         category: service.category,
         image: service.imageUrl,
