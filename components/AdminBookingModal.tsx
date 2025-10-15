@@ -64,7 +64,7 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
   const selectedDate = useMemo(() => {
       if (!formData.date) return null;
       const [year, month, day] = formData.date.split('-').map(Number);
-      // Cria a data base no fuso horário local (meia-noite do dia selecionado)
+      // Usamos o construtor (year, monthIndex, day) que cria a data no fuso horário local
       return new Date(year, month - 1, day);
   }, [formData.date]);
 

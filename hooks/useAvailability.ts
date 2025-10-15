@@ -36,6 +36,7 @@ export const useAvailability = ({
 
     const fetchAvailability = useCallback(async (date: Date) => {
         setLoadingAvailability(true);
+        // Usamos a data ISO string (YYYY-MM-DD) para a API, que é consistente
         const dateString = date.toISOString().split('T')[0];
         const slots = await api.getOccupiedSlots(dateString);
         // Garantir que o ID seja string para comparação
@@ -52,6 +53,7 @@ export const useAvailability = ({
     const currentDaySettings = useMemo((): DayOperatingHours | undefined => {
         if (!selectedDate) return undefined;
         
+        // A data string é usada para buscar exceções (YYYY-MM-DD)
         const dateString = selectedDate.toISOString().split('T')[0];
         
         // 1. Verificar exceções de feriado
@@ -61,8 +63,9 @@ export const useAvailability = ({
         }
 
         // 2. Usar horário padrão
+        // O getDay() retorna o dia da semana localmente (0-6)
         const dayOfWeek = selectedDate.getDay();
-        // CORREÇÃO: Acessa usando a chave string, pois os dados JSONB do Supabase usam chaves string para objetos.
+        // Acessa usando a chave string, pois os dados JSONB do Supabase usam chaves string para objetos.
         return clinicOperatingHours?.[String(dayOfWeek)];
         
     }, [selectedDate, clinicOperatingHours, clinicHolidayExceptions]);

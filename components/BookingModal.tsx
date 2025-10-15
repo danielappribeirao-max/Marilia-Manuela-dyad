@@ -65,6 +65,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, isCreditB
     // Cria a data baseada na string YYYY-MM-DD, garantindo que o objeto Date
     // represente o início do dia no fuso horário local (meia-noite do dia selecionado).
     const [year, month, day] = dateString.split('-').map(Number);
+    // Usamos o construtor (year, monthIndex, day) que cria a data no fuso horário local
     setSelectedDate(new Date(year, month - 1, day));
   };
   
