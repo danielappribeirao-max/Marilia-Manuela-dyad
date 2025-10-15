@@ -145,58 +145,57 @@ export default function AdminManageUsers() {
             </div>
             
             <div className="bg-white shadow-xl rounded-xl overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="min-w-full leading-normal">
-                        <thead>
-                            <tr className="bg-gray-50 text-left text-gray-600 uppercase text-xs font-semibold border-b border-gray-200">
-                                <th className="px-5 py-3 w-1/3">Usuário</th>
-                                <th className="px-5 py-3 w-1/3 hidden sm:table-cell">Contato</th>
-                                <th className="px-5 py-3">Função</th>
-                                <th className="px-5 py-3 text-right">Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody className="text-gray-700">
-                            {filteredUsers.length > 0 ? filteredUsers.map(user => (
-                                <tr key={user.id} className="border-b border-gray-100 hover:bg-pink-50 transition-colors">
-                                    <td className="px-5 py-4 whitespace-nowrap">
-                                        <div className="flex items-center">
-                                            <img 
-                                                src={user.avatarUrl || `https://ui-avatars.com/api/?name=${user.name.replace(/\s/g, '+')}&background=e9d5ff&color=7c3aed`} 
-                                                alt={user.name} 
-                                                className="w-10 h-10 rounded-full object-cover mr-3 bg-gray-200"
-                                            />
-                                            <div>
-                                                <p className="font-semibold text-gray-800">{user.name}</p>
-                                                <p className="text-xs text-gray-500 flex items-center gap-1"><Mail size={12} /> {user.email}</p>
-                                            </div>
+                {/* Removendo overflow-x-auto e min-w-full para permitir que a tabela se ajuste */}
+                <table className="w-full leading-normal table-fixed">
+                    <thead>
+                        <tr className="bg-gray-50 text-left text-gray-600 uppercase text-xs font-semibold border-b border-gray-200">
+                            <th className="px-3 py-3 w-2/5 sm:w-1/3">Usuário</th>
+                            <th className="px-3 py-3 w-1/3 hidden md:table-cell">Contato</th>
+                            <th className="px-3 py-3 w-1/5 sm:w-1/6">Função</th>
+                            <th className="px-3 py-3 w-1/6 text-right">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody className="text-gray-700">
+                        {filteredUsers.length > 0 ? filteredUsers.map(user => (
+                            <tr key={user.id} className="border-b border-gray-100 hover:bg-pink-50 transition-colors">
+                                <td className="px-3 py-3 align-top">
+                                    <div className="flex items-start">
+                                        <img 
+                                            src={user.avatarUrl || `https://ui-avatars.com/api/?name=${user.name.replace(/\s/g, '+')}&background=e9d5ff&color=7c3aed`} 
+                                            alt={user.name} 
+                                            className="w-10 h-10 rounded-full object-cover mr-3 bg-gray-200 flex-shrink-0"
+                                        />
+                                        <div className="min-w-0">
+                                            <p className="font-semibold text-gray-800 break-words">{user.name}</p>
+                                            <p className="text-xs text-gray-500 flex items-center gap-1 break-words"><Mail size={12} /> {user.email}</p>
                                         </div>
-                                    </td>
-                                    <td className="px-5 py-4 hidden sm:table-cell">
-                                        <p className="text-sm flex items-center gap-1.5"><Phone size={14} className="text-pink-500" /> {formatPhone(user.phone)}</p>
-                                        <p className="text-xs text-gray-500 mt-1">CPF: {formatCPF(user.cpf)}</p>
-                                    </td>
-                                    <td className="px-5 py-4">
-                                        <span className={`px-3 py-1 text-xs font-semibold rounded-full capitalize flex items-center gap-1 w-fit ${getRoleClasses(user.role)}`}>
-                                            <Briefcase size={12} /> {user.role.toLowerCase()}
-                                        </span>
-                                    </td>
-                                    <td className="px-5 py-4 text-right whitespace-nowrap">
-                                        <button onClick={() => handleEditUser(user)} className="text-sm text-blue-600 hover:text-blue-800 mr-3 p-1.5 rounded-full hover:bg-blue-50 transition-colors" title="Editar">
-                                            <Edit size={16} />
-                                        </button>
-                                        <button onClick={() => handleDeleteUser(user)} className="text-sm text-red-600 hover:text-red-800 p-1.5 rounded-full hover:bg-red-50 transition-colors" title="Excluir">
-                                            <Trash2 size={16} />
-                                        </button>
-                                    </td>
-                                </tr>
-                            )) : (
-                                <tr>
-                                    <td colSpan={4} className="text-center py-10 text-gray-500">Nenhum usuário encontrado com os filtros aplicados.</td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
+                                    </div>
+                                </td>
+                                <td className="px-3 py-3 hidden md:table-cell align-top">
+                                    <p className="text-sm flex items-center gap-1.5"><Phone size={14} className="text-pink-500" /> {formatPhone(user.phone)}</p>
+                                    <p className="text-xs text-gray-500 mt-1">CPF: {formatCPF(user.cpf)}</p>
+                                </td>
+                                <td className="px-3 py-3 align-top">
+                                    <span className={`px-3 py-1 text-xs font-semibold rounded-full capitalize flex items-center gap-1 w-fit ${getRoleClasses(user.role)}`}>
+                                        <Briefcase size={12} /> {user.role.toLowerCase()}
+                                    </span>
+                                </td>
+                                <td className="px-3 py-3 text-right align-top">
+                                    <button onClick={() => handleEditUser(user)} className="text-sm text-blue-600 hover:text-blue-800 mr-1 p-1.5 rounded-full hover:bg-blue-50 transition-colors" title="Editar">
+                                        <Edit size={16} />
+                                    </button>
+                                    <button onClick={() => handleDeleteUser(user)} className="text-sm text-red-600 hover:text-red-800 p-1.5 rounded-full hover:bg-red-50 transition-colors" title="Excluir">
+                                        <Trash2 size={16} />
+                                    </button>
+                                </td>
+                            </tr>
+                        )) : (
+                            <tr>
+                                <td colSpan={4} className="text-center py-10 text-gray-500">Nenhum usuário encontrado com os filtros aplicados.</td>
+                            </tr>
+                        )}
+                    </tbody>
+                </table>
             </div>
             
             {isModalOpen && (
