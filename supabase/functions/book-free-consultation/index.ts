@@ -99,7 +99,7 @@ serve(async (req) => {
         booking_date: date,
         booking_time: time,
         status: 'Agendado',
-        duration: parsedDuration, // Usando a duração parseada
+        duration: parsedDuration, // CORRIGIDO: Usando parsedDuration
         service_name: serviceName,
         notes: `Consulta Gratuita. Interesse: ${description}`,
       })
