@@ -1,5 +1,5 @@
 import { supabase } from '../supabase/client';
-import { User, Service, Booking, Role, Sale, ServicePackage, ClinicSettings, OperatingHours, HolidayException } from '../types';
+import { User, Service, Booking, Role, Sale, ServicePackage, ClinicSettings, OperatingHours, HolidayException, ServiceInPackage } from '../types';
 import { User as SupabaseAuthUser } from '@supabase/supabase-js'; // Importar o tipo User do Supabase
 
 // Helper to map Supabase user and profile to our app's User type
@@ -114,12 +114,6 @@ export const sendPasswordResetEmail = async (email: string) => {
 // ==================
 // SERVICES & PACKAGES
 // ==================
-const MOCK_PACKAGES: ServicePackage[] = [
-  { id: 'pkg_relax_total', name: 'Pacote Relax Total', description: 'Uma combinação perfeita de massagem relaxante e limpeza de pele para renovante suas energias e cuidar da sua pele.', services: [{ serviceId: 'a1b2c3d4-e5f6-7890-1234-567890abcdef', quantity: 1 }, { serviceId: 'd4c3b2a1-f6e5-0987-4321-fedcba098765', quantity: 2 }], price: 420.00, imageUrl: 'https://picsum.photos/seed/relaxpack/400/300' },
-  { id: 'pkg_pele_renovada', name: 'Pacote Pele Renovada', description: 'Tratamento intensivo para revitalização facial, combinando limpeza profunda com o poder do peeling de diamante.', services: [{ serviceId: 'a1b2c3d4-e5f6-7890-1234-567890abcdef', quantity: 2 }, { serviceId: 'b2c3d4a1-f6e5-7890-1234-abcdef567890', quantity: 1 }], price: 550.00, imageUrl: 'https://picsum.photos/seed/skinpack/400/300' },
-  { id: 'pkg_corpo_leve', name: 'Pacote Corpo Leve', description: 'Sinta-se mais leve e relaxada com sessões de drenagem linfática e massagem para aliviar a tensão e o inchaço.', services: [{ serviceId: 'c3d4a1b2-f6e5-0987-4321-abcdef098765', quantity: 3 }, { serviceId: 'd4c3b2a1-f6e5-0987-4321-fedcba098765', quantity: 1 }], price: 600.00, imageUrl: 'https://picsum.photos/seed/bodypack/400/300' }
-];
-
 const mapDbToService = (dbService: any): Service => ({
     id: dbService.id,
     name: dbService.name,
@@ -131,6 +125,18 @@ const mapDbToService = (dbService: any): Service => ({
     sessions: dbService.sessions,
 });
 
+const mapDbToPackage = (dbPackage: any): ServicePackage => ({
+    id: dbPackage.id,
+    name: dbPackage.name,
+    description: dbPackage.description,
+    price: Number(dbPackage.price),
+    imageUrl: dbPackage.image,
+    services: dbPackage.package_services.map((ps: any) => ({
+        serviceId: ps.service_id,
+        quantity: ps.quantity,
+    })),
+});
+
 export const getServices = async (): Promise<Service[]> => {
     const { data, error } = await supabase.from('services').select('*');
     if (error) {
@@ -140,7 +146,21 @@ export const getServices = async (): Promise<Service[]> => {
     return data.map(mapDbToService);
 };
 
-export const getServicePackages = async (): Promise<ServicePackage[]> => Promise.resolve(MOCK_PACKAGES);
+export const getServicePackages = async (): Promise<ServicePackage[]> => {
+    const { data, error } = await supabase
+        .from('packages')
+        .select(`
+            *,
+            package_services (service_id, quantity)
+        `);
+        
+    if (error) {
+        console.error("Error fetching packages:", error);
+        return [];
+    }
+    // Filtra pacotes que podem ter sido criados sem serviços associados
+    return data.filter(pkg => pkg.package_services && pkg.package_services.length > 0).map(mapDbToPackage);
+};
 
 export const addOrUpdateService = async (service: Service): Promise<Service | null> => {
     // Garante que o preço seja formatado como string com duas casas decimais para o tipo NUMERIC do PostgreSQL
@@ -167,10 +187,8 @@ export const addOrUpdateService = async (service: Service): Promise<Service | nu
             .single();
     } else {
         // Inserir novo serviço (o ID será gerado pelo banco de dados)
-        // Remove o ID do payload para garantir que o banco gere um novo UUID
         const { id, ...insertData } = serviceData; 
         
-        // Garantir que o payload de inserção não contenha 'id'
         const insertPayload = { ...insertData };
         
         result = await supabase
@@ -186,8 +204,6 @@ export const addOrUpdateService = async (service: Service): Promise<Service | nu
         return null;
     }
     
-    // NOVO TRATAMENTO DE ERRO: Se .single() não lançou erro, mas data é nulo,
-    // significa que 0 linhas foram afetadas (provavelmente RLS).
     if (!result.data) {
         console.error("Error: Service save operation returned 0 rows. Check RLS policies for 'services' table.");
         alert("Erro ao salvar serviço: Nenhuma alteração foi feita. Verifique se você tem permissão de administrador.");
@@ -204,9 +220,109 @@ export const deleteService = async (serviceId: string) => {
     }
 };
 
+export const addOrUpdatePackage = async (pkg: ServicePackage): Promise<ServicePackage | null> => {
+    const formattedPrice = pkg.price.toFixed(2);
+    
+    const packageData = {
+        name: pkg.name,
+        description: pkg.description,
+        price: formattedPrice,
+        image: pkg.imageUrl,
+    };
+
+    let packageId = pkg.id;
+    let result;
+
+    if (pkg.id) {
+        // 1. Atualizar pacote existente
+        result = await supabase
+            .from('packages')
+            .update(packageData)
+            .eq('id', pkg.id)
+            .select()
+            .single();
+    } else {
+        // 1. Inserir novo pacote
+        result = await supabase
+            .from('packages')
+            .insert(packageData)
+            .select()
+            .single();
+        
+        if (result.data) {
+            packageId = result.data.id;
+        }
+    }
+
+    if (result.error || !packageId) {
+        console.error("Error adding/updating package:", result.error);
+        alert(`Erro ao salvar pacote: ${result.error?.message || 'ID não gerado.'}`);
+        return null;
+    }
+    
+    // 2. Gerenciar serviços do pacote (package_services)
+    
+    // A. Deletar todos os serviços antigos
+    const { error: deleteError } = await supabase
+        .from('package_services')
+        .delete()
+        .eq('package_id', packageId);
+        
+    if (deleteError) {
+        console.error("Error deleting old package services:", deleteError);
+        // Continuamos, mas alertamos
+        alert(`Aviso: Erro ao limpar serviços antigos do pacote: ${deleteError.message}`);
+    }
+    
+    // B. Inserir novos serviços
+    const servicesToInsert = pkg.services.map(s => ({
+        package_id: packageId,
+        service_id: s.serviceId,
+        quantity: s.quantity,
+    }));
+    
+    const { error: insertError } = await supabase
+        .from('package_services')
+        .insert(servicesToInsert);
+        
+    if (insertError) {
+        console.error("Error inserting new package services:", insertError);
+        alert(`Erro ao adicionar serviços ao pacote: ${insertError.message}`);
+        return null;
+    }
+    
+    // 3. Retornar o pacote completo (recarregando para obter a estrutura completa)
+    const { data: finalData, error: finalError } = await supabase
+        .from('packages')
+        .select(`
+            *,
+            package_services (service_id, quantity)
+        `)
+        .eq('id', packageId)
+        .single();
+        
+    if (finalError) {
+        console.error("Error fetching final package data:", finalError);
+        return null;
+    }
+
+    return mapDbToPackage(finalData);
+};
+
+export const deletePackage = async (packageId: string) => {
+    // A exclusão em cascata deve ser configurada no banco de dados para package_services
+    const { error } = await supabase.from('packages').delete().eq('id', packageId);
+    if (error) {
+        console.error("Error deleting package:", error);
+        alert(`Erro ao excluir pacote: ${error.message}`);
+    }
+};
+
 // ==================
 // USERS & PROFESSIONALS
+// ... (restante do arquivo permanece inalterado)
 // ==================
+`.trim() + `
 export const uploadAvatar = async (userId: string, file: File): Promise<string | null> => {
     const fileExt = file.name.split('.').pop();
     const fileName = `${userId}-${Date.now()}.${fileExt}`;
@@ -237,13 +353,13 @@ export const uploadLogo = async (file: File): Promise<string | null> => {
 
     if (error) {
         console.error('Error uploading logo:', error);
-        alert(`Erro ao enviar logo: ${error.message}`);
+        alert(\`Erro ao enviar logo: \${error.message}\`);
         return null;
     }
 
     const { data } = supabase.storage.from('assets').getPublicUrl(filePath);
     
-    const newUrl = `${data.publicUrl}?t=${new Date().getTime()}`;
+    const newUrl = \`\${data.publicUrl}?t=\${new Date().getTime()}\`;
     return newUrl;
 };
 
@@ -259,13 +375,13 @@ export const uploadHeroImage = async (file: File): Promise<string | null> => {
 
     if (error) {
         console.error('Error uploading hero image:', error);
-        alert(`Erro ao enviar imagem principal: ${error.message}`);
+        alert(\`Erro ao enviar imagem principal: \${error.message}\`);
         return null;
     }
 
     const { data } = supabase.storage.from('assets').getPublicUrl(filePath);
     
-    const newUrl = `${data.publicUrl}?t=${new Date().getTime()}`;
+    const newUrl = \`\${data.publicUrl}?t=\${new Date().getTime()}\`;
     return newUrl;
 };
 
@@ -281,13 +397,13 @@ export const uploadAboutImage = async (file: File): Promise<string | null> => {
 
     if (error) {
         console.error('Error uploading about image:', error);
-        alert(`Erro ao enviar imagem da seção Sobre: ${error.message}`);
+        alert(\`Erro ao enviar imagem da seção Sobre: \${error.message}\`);
         return null;
     }
 
     const { data } = supabase.storage.from('assets').getPublicUrl(filePath);
     
-    const newUrl = `${data.publicUrl}?t=${new Date().getTime()}`;
+    const newUrl = \`\${data.publicUrl}?t=\${new Date().getTime()}\`;
     return newUrl;
 };
 
@@ -297,15 +413,15 @@ export const adminCreateUser = async (userData: Partial<User> & { password?: str
             email: userData.email,
             password: userData.password,
             name: userData.name,
-            phone: userData.phone?.replace(/\D/g, ''),
-            cpf: userData.cpf?.replace(/\D/g, ''),
+            phone: userData.phone?.replace(/\\D/g, ''),
+            cpf: userData.cpf?.replace(/\\D/g, ''),
             role: userData.role === Role.ADMIN ? 'admin' : userData.role === Role.STAFF ? 'staff' : 'user',
         }
     });
 
     if (error) {
         console.error('Error creating user via function:', error);
-        alert(`Erro ao criar usuário: ${error.message}`);
+        alert(\`Erro ao criar usuário: \${error.message}\`);
         return null;
     }
 
@@ -371,8 +487,8 @@ export const getProfessionals = async (): Promise<User[]> => {
 export const updateUserProfile = async (userId: string, updates: Partial<User>): Promise<User | null> => {
     const dbUpdates: { [key: string]: any } = {};
     if (updates.name) dbUpdates.full_name = updates.name;
-    if (updates.phone) dbUpdates.phone = updates.phone.replace(/\D/g, '');
-    if (updates.cpf) dbUpdates.cpf = updates.cpf.replace(/\D/g, '');
+    if (updates.phone) dbUpdates.phone = updates.phone.replace(/\\D/g, '');
+    if (updates.cpf) dbUpdates.cpf = updates.cpf.replace(/\\D/g, '');
     if (updates.credits) dbUpdates.procedure_credits = updates.credits;
     if (updates.avatarUrl) dbUpdates.avatar_url = updates.avatarUrl;
 
@@ -485,7 +601,7 @@ export const updateClinicOperatingHours = async (operatingHours: OperatingHours)
 
     if (error) {
         console.error("Error updating clinic operating hours:", error);
-        alert(`Erro do Supabase: ${error.message}`);
+        alert(\`Erro do Supabase: \${error.message}\`);
         return null;
     }
     
@@ -502,7 +618,7 @@ export const updateClinicHolidayExceptions = async (holidayExceptions: HolidayEx
 
     if (error) {
         console.error("Error updating holiday exceptions:", error);
-        alert(`Erro ao atualizar exceções de feriados: ${error.message}`);
+        alert(\`Erro ao atualizar exceções de feriados: \${error.message}\`);
         return null;
     }
     
@@ -525,7 +641,24 @@ export const returnCreditToUser = async (userId: string, serviceId: string): Pro
     }; 
     return await updateUserProfile(userId, { credits: newCredits }); 
 };
-export const addPackageCreditsToUser = async (userId: string, pkg: ServicePackage): Promise<User | null> => { const userProfile = await getUserProfile(userId); if (!userProfile) return null; const newCredits = { ...(userProfile.credits || {}) }; pkg.services.forEach(item => { const existingCredits = newCredits[item.serviceId] || 0; newCredits[item.serviceId] = existingCredits + item.quantity; }); return await updateUserProfile(userId, { credits: newCredits }); };
+export const addPackageCreditsToUser = async (userId: string, pkg: ServicePackage): Promise<User | null> => { 
+    const userProfile = await getUserProfile(userId); 
+    if (!userProfile) return null; 
+    
+    const newCredits = { ...(userProfile.credits || {}) }; 
+    
+    // Para cada serviço no pacote, adiciona a quantidade de sessões
+    pkg.services.forEach(item => { 
+        const service = getServices().find(s => s.id === item.serviceId); // Nota: getServices é assíncrono, mas aqui estamos usando o mock/cache.
+        const sessionsPerService = service?.sessions || 1;
+        const totalCredits = sessionsPerService * item.quantity;
+        
+        const existingCredits = newCredits[item.serviceId] || 0; 
+        newCredits[item.serviceId] = existingCredits + totalCredits; 
+    }); 
+    
+    return await updateUserProfile(userId, { credits: newCredits }); 
+};
 export const deductCreditFromUser = async (userId: string, serviceId: string): Promise<User | null> => { const userProfile = await getUserProfile(userId); if (!userProfile) return null; const existingCredits = userProfile.credits?.[serviceId] || 0; if (existingCredits <= 0) return userProfile; const newCredits = { ...userProfile.credits, [serviceId]: existingCredits - 1, }; return await updateUserProfile(userId, { credits: newCredits }); };
 
 const mapDbToBooking = (dbBooking: any): Booking => {
@@ -534,7 +667,7 @@ const mapDbToBooking = (dbBooking: any): Booking => {
     
     // Cria a data combinada no fuso horário local
     // Ex: '2024-10-16T09:00:00'
-    const bookingDate = new Date(`${datePart}T${timePart}:00`);
+    const bookingDate = new Date(\`\${datePart}T\${timePart}:00\`);
     
     let status: 'confirmed' | 'completed' | 'canceled';
 
@@ -618,10 +751,10 @@ export const addOrUpdateBooking = async (booking: Partial<Booking> & { serviceNa
     const dateObj = booking.date;
     
     // Formata a data como YYYY-MM-DD (local)
-    const bookingDateStr = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
+    const bookingDateStr = \`\${dateObj.getFullYear()}-\${String(dateObj.getMonth() + 1).padStart(2, '0')}-\${String(dateObj.getDate()).padStart(2, '0')}\`;
     
     // Formata a hora como HH:MM (local)
-    const bookingTimeStr = `${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}`;
+    const bookingTimeStr = \`\${String(dateObj.getHours()).padStart(2, '0')}:\${String(dateObj.getMinutes()).padStart(2, '0')}\`;
     // --------------------------------
 
     let dbStatus = 'Agendado';
@@ -665,14 +798,14 @@ export const bookFreeConsultationForNewUser = async (details: { name: string; ph
         // Enviamos a data como string ISO, mas a Edge Function precisa saber a hora local.
         // Vamos enviar a data e hora separadamente para que a Edge Function possa reconstruir a data localmente.
         const dateObj = details.date;
-        const bookingDate = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
-        const bookingTime = `${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}`;
+        const bookingDate = \`\${dateObj.getFullYear()}-\${String(dateObj.getMonth() + 1).padStart(2, '0')}-\${String(dateObj.getDate()).padStart(2, '0')}\`;
+        const bookingTime = \`\${String(dateObj.getHours()).padStart(2, '0')}:\${String(dateObj.getMinutes()).padStart(2, '0')}\`;
         // --------------------------------
         
         const { data, error } = await supabase.functions.invoke('book-free-consultation', {
             body: {
                 name: details.name,
-                phone: details.phone.replace(/\D/g, ''), // Envia apenas dígitos
+                phone: details.phone.replace(/\\D/g, ''), // Envia apenas dígitos
                 description: details.description,
                 date: bookingDate, // Enviando data YYYY-MM-DD
                 time: bookingTime, // Enviando hora HH:MM
@@ -704,11 +837,11 @@ export const getSalesData = async (): Promise<Sale[]> => {
     // 1. Buscar todos os agendamentos concluídos, juntando com o perfil do cliente e o preço do serviço
     const { data: completedBookings, error } = await supabase
         .from('bookings')
-        .select(`
+        .select(\`
             *, 
             profiles (full_name), 
             services (price)
-        `)
+        \`)
         .in('status', ['Concluído', 'completed']);
 
     if (error) {

@@ -24,9 +24,12 @@ interface AppContextType {
   logout: () => void;
   services: Service[];
   packages: ServicePackage[];
+  setPackages: React.Dispatch<React.SetStateAction<ServicePackage[]>>; // Adicionado
   professionals: User[];
   addOrUpdateService: (service: Service) => Promise<Service | null>;
   deleteService: (serviceId: string) => Promise<void>;
+  addOrUpdatePackage: (pkg: ServicePackage) => Promise<ServicePackage | null>; // Adicionado
+  deletePackage: (packageId: string) => Promise<void>; // Adicionado
   loading: boolean;
   logoUrl: string;
   setLogoUrl: (url: string) => void;
@@ -360,6 +363,25 @@ function AppContent() {
     setServices(prevServices => prevServices.filter(s => s.id !== serviceId));
   }, []);
   
+  const addOrUpdatePackage = useCallback(async (pkg: ServicePackage) => {
+    const savedPackage = await api.addOrUpdatePackage(pkg);
+    if (savedPackage) {
+        setPackages(prevPackages => {
+            const isExisting = prevPackages.some(p => p.id === savedPackage.id);
+            if (isExisting) {
+                return prevPackages.map(p => p.id === savedPackage.id ? savedPackage : p);
+            }
+            return [...prevPackages, savedPackage];
+        });
+    }
+    return savedPackage;
+  }, []);
+  
+  const deletePackage = useCallback(async (packageId: string) => {
+    await api.deletePackage(packageId);
+    setPackages(prevPackages => prevPackages.filter(p => p.id !== packageId));
+  }, []);
+  
   const updateClinicSettings = useCallback(async (operatingHours: OperatingHours) => {
     const updatedSettings = await api.updateClinicOperatingHours(operatingHours);
     if (updatedSettings) {
@@ -383,7 +405,7 @@ function AppContent() {
     }
   }, [refreshAdminData]);
 
-  const appContextValue = useMemo(() => ({ currentUser, setCurrentUser, currentPage, setCurrentPage, logout, services, packages, professionals, addOrUpdateService, deleteService, loading, logoUrl, setLogoUrl, heroImageUrl, setHeroImageUrl, aboutImageUrl, setAboutImageUrl, clinicSettings, updateClinicSettings, updateClinicHolidayExceptions, refreshAdminData }), [currentUser, currentPage, logout, services, packages, professionals, addOrUpdateService, deleteService, loading, logoUrl, heroImageUrl, aboutImageUrl, clinicSettings, updateClinicSettings, updateClinicHolidayExceptions, refreshAdminData]);
+  const appContextValue = useMemo(() => ({ currentUser, setCurrentUser, currentPage, setCurrentPage, logout, services, packages, setPackages, professionals, addOrUpdateService, deleteService, addOrUpdatePackage, deletePackage, loading, logoUrl, setLogoUrl, heroImageUrl, setHeroImageUrl, aboutImageUrl, setAboutImageUrl, clinicSettings, updateClinicSettings, updateClinicHolidayExceptions, refreshAdminData }), [currentUser, currentPage, logout, services, packages, setPackages, professionals, addOrUpdateService, deleteService, addOrUpdatePackage, deletePackage, loading, logoUrl, heroImageUrl, aboutImageUrl, clinicSettings, updateClinicSettings, updateClinicHolidayExceptions, refreshAdminData]);
 
   const renderPage = () => {
     if(loading) {
