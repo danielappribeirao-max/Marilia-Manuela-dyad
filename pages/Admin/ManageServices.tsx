@@ -90,6 +90,7 @@ export default function AdminManageServices() {
         const finalOrderUpdates = freeConsultationService ? [{ id: freeConsultationService.id, order: 0 }, ...orderUpdates] : orderUpdates;
         
         const success = await api.updateServiceOrder(finalOrderUpdates);
+        
         if (success) {
             // Atualiza o estado global com a nova ordem
             const updatedServicesMap = new Map(finalOrderUpdates.map(u => [u.id, u.order]));

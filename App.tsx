@@ -23,6 +23,7 @@ interface AppContextType {
   setCurrentPage: (page: Page) => void;
   logout: () => void;
   services: Service[];
+  setServices: React.Dispatch<React.SetStateAction<Service[]>>; // Adicionado
   packages: ServicePackage[];
   setPackages: React.Dispatch<React.SetStateAction<ServicePackage[]>>;
   professionals: User[];
@@ -37,11 +38,10 @@ interface AppContextType {
   setHeroImageUrl: (url: string) => void;
   aboutImageUrl: string;
   setAboutImageUrl: (url: string) => void;
-  clinicSettings: ClinicSettings; // Alterado para não-nullable
+  clinicSettings: ClinicSettings;
   updateClinicSettings: (hours: OperatingHours) => Promise<void>;
   updateClinicHolidayExceptions: (exceptions: HolidayException[]) => Promise<void>;
-  updateFeaturedServices: (serviceIds: string[]) => Promise<void>; // NOVO
-  // Adicionando função de recarregamento para a agenda
+  updateFeaturedServices: (serviceIds: string[]) => Promise<void>;
   refreshAdminData: () => void;
 }
 
@@ -422,7 +422,7 @@ function AppContent() {
     }
   }, []);
 
-  const appContextValue = useMemo(() => ({ currentUser, setCurrentUser, currentPage, setCurrentPage, logout, services, packages, setPackages, professionals, addOrUpdateService, deleteService, addOrUpdatePackage, deletePackage, loading, logoUrl, setLogoUrl, heroImageUrl, setHeroImageUrl, aboutImageUrl, setAboutImageUrl, clinicSettings, updateClinicSettings, updateClinicHolidayExceptions, updateFeaturedServices, refreshAdminData }), [currentUser, currentPage, logout, services, packages, setPackages, professionals, addOrUpdateService, deleteService, addOrUpdatePackage, deletePackage, loading, logoUrl, heroImageUrl, aboutImageUrl, clinicSettings, updateClinicSettings, updateClinicHolidayExceptions, updateFeaturedServices, refreshAdminData]);
+  const appContextValue = useMemo(() => ({ currentUser, setCurrentUser, currentPage, setCurrentPage, logout, services, setServices, packages, setPackages, professionals, addOrUpdateService, deleteService, addOrUpdatePackage, deletePackage, loading, logoUrl, setLogoUrl, heroImageUrl, setHeroImageUrl, aboutImageUrl, setAboutImageUrl, clinicSettings, updateClinicSettings, updateClinicHolidayExceptions, updateFeaturedServices, refreshAdminData }), [currentUser, currentPage, logout, services, setServices, packages, setPackages, professionals, addOrUpdateService, deleteService, addOrUpdatePackage, deletePackage, loading, logoUrl, heroImageUrl, aboutImageUrl, clinicSettings, updateClinicSettings, updateClinicHolidayExceptions, updateFeaturedServices, refreshAdminData]);
 
   const renderPage = () => {
     if(loading) {
