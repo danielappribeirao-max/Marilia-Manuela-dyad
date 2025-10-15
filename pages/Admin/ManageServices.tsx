@@ -14,7 +14,7 @@ export default function AdminManageServices() {
     const [modalKey, setModalKey] = useState(0); // Novo estado para forçar a remontagem
 
     // Filtra o serviço de consulta gratuita para que não possa ser editado/excluído
-    const editableServices = services.filter(s => s.id !== FREE_CONSULTATION_SERVICE_ID);
+    const editableServices = services; // Agora mostramos todos, a restrição de exclusão/edição é feita abaixo.
 
     const handleAddNew = () => {
         setSelectedService(null);
@@ -23,10 +23,6 @@ export default function AdminManageServices() {
     };
 
     const handleEdit = (service: Service) => {
-        if (service.id === FREE_CONSULTATION_SERVICE_ID) {
-            alert("O serviço de Consulta de Avaliação Gratuita não pode ser editado ou excluído.");
-            return;
-        }
         // Passa uma cópia do objeto para garantir que o modal não altere o objeto original
         setSelectedService({ ...service }); 
         setModalKey(prev => prev + 1); // Também incrementa para edição, garantindo o reset
@@ -35,7 +31,7 @@ export default function AdminManageServices() {
 
     const handleDelete = (service: Service) => {
         if (service.id === FREE_CONSULTATION_SERVICE_ID) {
-            alert("O serviço de Consulta de Avaliação Gratuita não pode ser editado ou excluído.");
+            alert("O serviço de Consulta de Avaliação Gratuita não pode ser excluído.");
             return;
         }
         setServiceToDelete(service);
@@ -50,6 +46,15 @@ export default function AdminManageServices() {
 
     const handleSave = async (savedService: Service) => {
         console.log("Attempting to save service:", savedService);
+        
+        if (savedService.id === FREE_CONSULTATION_SERVICE_ID) {
+            alert("O serviço de Consulta Gratuita é um serviço especial e não pode ser salvo no banco de dados. Apenas a imagem pode ser atualizada localmente.");
+            // Se for a consulta gratuita, não faz nada no banco, apenas fecha o modal.
+            setSelectedService(null); 
+            setIsServiceModalOpen(false);
+            return;
+        }
+        
         const result = await addOrUpdateService(savedService);
         
         if (result) {
@@ -76,10 +81,10 @@ export default function AdminManageServices() {
                 </button>
             </div>
             
-            <h3 className="text-2xl font-bold mb-4">Serviços Atuais ({editableServices.length})</h3>
+            <h3 className="text-2xl font-bold mb-4">Serviços Atuais ({services.length})</h3>
             
             <div className="space-y-4">
-                {editableServices.map(service => (
+                {services.map(service => (
                     <AdminServiceCard 
                         key={service.id} 
                         service={service} 

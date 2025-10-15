@@ -114,6 +114,7 @@ function AppContent() {
           const userProfile = await api.getUserProfile(session.user.id);
           if (userProfile) {
             setCurrentUser(userProfile);
+            // Não redireciona aqui, o listener de auth faz isso
           }
         }
       } catch (error) {
@@ -329,6 +330,16 @@ function AppContent() {
   };
 
   const addOrUpdateService = useCallback(async (service: Service) => {
+    // Se for o serviço de consulta gratuita, atualiza apenas o estado local
+    if (service.id === FREE_CONSULTATION_SERVICE_ID) {
+        setServices(prevServices => {
+            return prevServices.map(s => s.id === FREE_CONSULTATION_SERVICE_ID ? service : s);
+        });
+        // Retorna o serviço atualizado para o modal saber que foi salvo
+        return service;
+    }
+    
+    // Para todos os outros serviços, chama a API
     const savedService = await api.addOrUpdateService(service);
     if (savedService) {
       setServices(prevServices => {
@@ -336,7 +347,9 @@ function AppContent() {
         if (isExisting) {
           return prevServices.map(s => s.id === savedService.id ? savedService : s);
         }
-        return [...prevServices, savedService];
+        // Garante que o serviço de consulta gratuita permaneça no início da lista
+        const filtered = prevServices.filter(s => s.id !== FREE_CONSULTATION_SERVICE_ID);
+        return [FREE_CONSULTATION_SERVICE, ...filtered, savedService];
       });
     }
     return savedService;
