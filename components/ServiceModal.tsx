@@ -77,10 +77,18 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave, e
     e.preventDefault();
     if (validate()) {
       const finalFormData = { ...formData };
-      if (!finalFormData.imageUrl) {
-        // Se não houver imagem, usa um placeholder baseado no nome
-        finalFormData.imageUrl = `https://picsum.photos/seed/${finalFormData.name?.replace(/\s/g, '') || 'service'}/400/300`;
+      
+      // 1. Garantir que o ID seja undefined para novos serviços
+      if (!isEditing) {
+          delete finalFormData.id;
       }
+      
+      // 2. Garantir uma URL de imagem válida
+      if (!finalFormData.imageUrl) {
+        const seed = finalFormData.name?.replace(/\s/g, '') || 'service';
+        finalFormData.imageUrl = `https://picsum.photos/seed/${seed}/400/300`;
+      }
+      
       onSave(finalFormData as Service);
     }
   };
@@ -172,7 +180,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave, e
                     </svg>
                   )}
                 </span>
-                <label htmlFor="image-upload" className="cursor-pointer bg-white py-2 px-3 border border-gray-300 rounded-md shadow-sm text-sm leading-4 font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500">
+                <label htmlFor="image-upload" className="cursor-pointer w-full sm:w-auto text-center bg-white py-2 px-4 border border-gray-300 rounded-full shadow-sm text-sm leading-4 font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-pink-500">
                   <span>Selecionar Imagem</span>
                   <input id="image-upload" name="image-upload" type="file" className="sr-only" accept="image/*" onChange={handleImageChange} />
                 </label>
