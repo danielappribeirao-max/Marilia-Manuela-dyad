@@ -19,7 +19,8 @@ export default function AdminManageServices() {
     };
 
     const handleEdit = (service: Service) => {
-        setSelectedService(service);
+        // Passa uma cópia do objeto para garantir que o modal não altere o objeto original
+        setSelectedService({ ...service }); 
         setModalKey(prev => prev + 1); // Também incrementa para edição, garantindo o reset
         setIsServiceModalOpen(true);
     };
@@ -41,8 +42,9 @@ export default function AdminManageServices() {
         
         if (result) {
             console.log("Service saved successfully:", result);
+            // Limpa o estado antes de fechar o modal
+            setSelectedService(null); 
             setIsServiceModalOpen(false);
-            setSelectedService(null);
             alert(`Serviço "${result.name}" salvo com sucesso!`);
         } else {
             console.error("Failed to save service. Result was null.");
