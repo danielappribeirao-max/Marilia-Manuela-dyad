@@ -169,8 +169,8 @@ export const addOrUpdateService = async (service: Service): Promise<Service | nu
         
         // Garantir que o payload de inserção não contenha 'id'
         const insertPayload = { ...insertData };
-        if (insertPayload.id) delete insertPayload.id;
-
+        // Não precisamos verificar insertPayload.id aqui, pois já desestruturamos.
+        
         result = await supabase
             .from('services')
             .insert(insertPayload)
