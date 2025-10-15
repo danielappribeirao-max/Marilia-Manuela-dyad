@@ -24,26 +24,7 @@ serve(async (req) => {
         throw new Error("Todos os campos de agendamento são obrigatórios.");
     }
     
-    // --- 1. VERIFICAR DISPONIBILIDADE USANDO FUNÇÃO SQL ---
-    const { data: availabilityData, error: availabilityError } = await supabaseAdmin.rpc('is_professional_available', {
-        p_professional_id: professionalId,
-        p_booking_date: date,
-        p_booking_time: time,
-        p_duration: duration,
-    }).single();
-
-    if (availabilityError) {
-        console.error("Error checking availability:", availabilityError);
-        throw new Error("Erro ao verificar disponibilidade.");
-    }
-    
-    if (availabilityData === false) {
-        // Se a função retornar FALSE, o slot está ocupado
-        throw new Error("O horário selecionado não está mais disponível. Por favor, escolha outro horário.");
-    }
-    // --- FIM DA VERIFICAÇÃO DE DISPONIBILIDADE ---
-
-    // 2. Criar um e-mail temporário e senha padrão para o novo usuário
+    // 1. Criar um e-mail temporário e senha padrão para o novo usuário
     const email = `${phone}@mariliamanuela.com`;
     const password = Math.random().toString(36).slice(-8); // Senha aleatória
 
@@ -70,7 +51,7 @@ serve(async (req) => {
 
     const userId = authData.user.id
     
-    // 3. Inserir o agendamento usando as strings de data e hora locais
+    // 2. Inserir o agendamento usando as strings de data e hora locais
     const { data: bookingData, error: bookingError } = await supabaseAdmin
       .from('bookings')
       .insert({
@@ -91,7 +72,7 @@ serve(async (req) => {
       throw bookingError
     }
     
-    // 4. Retornar sucesso
+    // 3. Retornar sucesso
     return new Response(JSON.stringify({ 
         success: true, 
         booking: bookingData, 
