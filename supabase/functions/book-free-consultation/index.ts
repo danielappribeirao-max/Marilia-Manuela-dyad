@@ -26,12 +26,20 @@ serve(async (req) => {
         });
     }
     
+    const parsedDuration = parseInt(duration);
+    if (isNaN(parsedDuration) || parsedDuration <= 0) {
+        return new Response(JSON.stringify({ error: "Duração do serviço inválida." }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 400,
+        });
+    }
+    
     // --- 1. VERIFICAÇÃO DE DISPONIBILIDADE NO BACKEND ---
     const { data: isAvailable, error: availabilityError } = await supabaseAdmin.rpc('check_full_availability', {
         p_professional_id: professionalId,
         p_booking_date: date,
         p_booking_time: time,
-        p_duration: duration,
+        p_duration: parsedDuration, // Usando a duração parseada
     });
 
     if (availabilityError) {
@@ -91,7 +99,7 @@ serve(async (req) => {
         booking_date: date,
         booking_time: time,
         status: 'Agendado',
-        duration: duration,
+        duration: parsedDuration, // Usando a duração parseada
         service_name: serviceName,
         notes: `Consulta Gratuita. Interesse: ${description}`,
       })
