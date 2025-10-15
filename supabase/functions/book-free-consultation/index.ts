@@ -17,11 +17,13 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    // Recebendo data e hora como strings locais
     const { name, phone, description, date, time, professionalId, serviceId, serviceName, duration } = await req.json()
 
     if (!name || !phone || !description || !date || !time || !professionalId || !serviceId || !serviceName || !duration) {
-        throw new Error("Todos os campos de agendamento são obrigatórios.");
+        return new Response(JSON.stringify({ error: "Todos os campos de agendamento são obrigatórios." }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 400,
+        });
     }
     
     // --- 1. VERIFICAÇÃO DE DISPONIBILIDADE NO BACKEND ---
@@ -34,11 +36,18 @@ serve(async (req) => {
 
     if (availabilityError) {
         console.error("RPC Availability Error:", availabilityError);
-        throw new Error("Erro ao verificar disponibilidade. Tente novamente.");
+        // Retorna 400 com a mensagem de erro do banco de dados, se disponível
+        return new Response(JSON.stringify({ error: `Erro ao verificar disponibilidade: ${availabilityError.message}` }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 400,
+        });
     }
 
     if (isAvailable === false) {
-        throw new Error("O horário selecionado não está mais disponível. Por favor, escolha outro horário.");
+        return new Response(JSON.stringify({ error: "O horário selecionado não está mais disponível. Por favor, escolha outro horário." }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 400,
+        });
     }
     // ----------------------------------------------------
     
@@ -49,7 +58,7 @@ serve(async (req) => {
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email: email,
       password: password,
-      email_confirm: false, // Não confirmamos automaticamente para e-mails temporários
+      email_confirm: false,
       user_metadata: {
         full_name: name,
         phone: phone,
@@ -57,28 +66,31 @@ serve(async (req) => {
     })
 
     if (authError) {
-      // Se o erro for 'User already exists', tentamos prosseguir com o agendamento
       if (authError.message.includes('User already exists')) {
-          // Não podemos prosseguir com o agendamento sem o ID do usuário logado.
-          // Neste fluxo, forçamos a criação de um novo usuário temporário.
-          // Se o e-mail já existe, o cliente deve ser redirecionado para o login.
-          throw new Error("Já existe um usuário cadastrado com este telefone. Por favor, faça login primeiro.");
+          return new Response(JSON.stringify({ error: "Já existe um usuário cadastrado com este telefone. Por favor, faça login primeiro." }), {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              status: 400,
+          });
       }
-      throw authError
+      console.error("Auth Error:", authError);
+      return new Response(JSON.stringify({ error: `Erro de autenticação: ${authError.message}` }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400,
+      });
     }
 
     const userId = authData.user.id
     
-    // 3. Inserir o agendamento usando as strings de data e hora locais
+    // 3. Inserir o agendamento
     const { data: bookingData, error: bookingError } = await supabaseAdmin
       .from('bookings')
       .insert({
         user_id: userId,
         service_id: serviceId,
         professional_id: professionalId,
-        booking_date: date, // YYYY-MM-DD local
-        booking_time: time, // HH:MM local
-        status: 'Agendado', // Usando o valor padrão do banco
+        booking_date: date,
+        booking_time: time,
+        status: 'Agendado',
         duration: duration,
         service_name: serviceName,
         notes: `Consulta Gratuita. Interesse: ${description}`,
@@ -87,7 +99,11 @@ serve(async (req) => {
       .single()
 
     if (bookingError) {
-      throw bookingError
+      console.error("Booking Insert Error:", bookingError);
+      return new Response(JSON.stringify({ error: `Erro ao inserir agendamento: ${bookingError.message}` }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400,
+      });
     }
     
     // 4. Retornar sucesso
@@ -102,9 +118,10 @@ serve(async (req) => {
       status: 200,
     })
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
+    console.error("Unexpected Edge Function Error:", error);
+    return new Response(JSON.stringify({ error: error.message || "Erro interno inesperado no servidor." }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 400,
+      status: 500,
     })
   }
 })

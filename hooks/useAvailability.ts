@@ -91,18 +91,28 @@ export const useAvailability = ({
 
         const times: string[] = [];
         
+        // Filtra slots ocupados apenas para o profissional selecionado
         const professionalOccupiedSlots = occupiedSlots.filter(slot => slot.professional_id === selectedProfessionalId);
+
+        // Calcula o início do dia atual em minutos (para evitar agendamentos no passado)
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const isToday = selectedDate.toDateString() === today.toDateString();
+        const currentMinutes = isToday ? (now.getHours() * 60) + now.getMinutes() : -1;
 
         for (let minutes = startDayMinutes; minutes < endDayMinutes; minutes += interval) {
             const slotStartTime = minutes;
             const slotEndTime = minutes + serviceDuration;
             
-            // 1. Verificar se o serviço termina antes do fim do dia
+            // 1. Verificar se o slot já passou (apenas para o dia atual)
+            if (isToday && slotStartTime < currentMinutes) continue;
+
+            // 2. Verificar se o serviço termina antes do fim do dia
             if (slotEndTime > endDayMinutes) continue;
 
             let isAvailable = true;
 
-            // 2. Verificar sobreposição com o horário de almoço
+            // 3. Verificar sobreposição com o horário de almoço
             if (hasLunchBreak) {
                 // Um slot se sobrepõe ao almoço se:
                 // O slot começar antes do fim do almoço E o almoço começar antes do fim do slot.
@@ -114,7 +124,7 @@ export const useAvailability = ({
 
             if (!isAvailable) continue;
 
-            // 3. Verificar sobreposição com agendamentos existentes
+            // 4. Verificar sobreposição com agendamentos existentes
             for (const occupied of professionalOccupiedSlots) {
                 const occupiedStart = timeToMinutes(occupied.booking_time);
                 const occupiedEnd = occupiedStart + occupied.duration;
