@@ -124,6 +124,7 @@ const mapDbToService = (dbService: any): Service => ({
     imageUrl: dbService.image,
     category: dbService.category,
     sessions: dbService.sessions,
+    order: dbService.order, // Mapeando o novo campo
 });
 
 const mapDbToPackage = (dbPackage: any): ServicePackage => ({
@@ -148,6 +149,7 @@ const DEFAULT_FREE_CONSULTATION_SERVICE: Service = {
     imageUrl: 'https://picsum.photos/seed/freeconsult/400/300',
     category: 'Avaliação',
     sessions: 1,
+    order: 0, // Definindo ordem padrão
 };
 
 export const ensureFreeConsultationServiceExists = async (): Promise<Service | null> => {
@@ -178,6 +180,7 @@ export const ensureFreeConsultationServiceExists = async (): Promise<Service | n
                 category: DEFAULT_FREE_CONSULTATION_SERVICE.category,
                 image: DEFAULT_FREE_CONSULTATION_SERVICE.imageUrl,
                 sessions: DEFAULT_FREE_CONSULTATION_SERVICE.sessions,
+                order: DEFAULT_FREE_CONSULTATION_SERVICE.order,
             })
             .select()
             .single();
@@ -191,7 +194,8 @@ export const ensureFreeConsultationServiceExists = async (): Promise<Service | n
 };
 
 export const getServices = async (): Promise<Service[]> => {
-    const { data, error } = await supabase.from('services').select('*');
+    // Ordena por 'order' e depois por 'name' como fallback
+    const { data, error } = await supabase.from('services').select('*').order('order', { ascending: true }).order('name', { ascending: true });
     if (error) {
         console.error("Error fetching services:", error);
         return [];
@@ -219,7 +223,7 @@ export const addOrUpdateService = async (service: Service): Promise<Service | nu
     // Garante que o preço seja formatado como string com duas casas decimais para o tipo NUMERIC do PostgreSQL
     const formattedPrice = service.price.toFixed(2);
     
-    const serviceData = {
+    const serviceData: { [key: string]: any } = {
         name: service.name,
         description: service.description,
         price: formattedPrice, // Usando o preço formatado
@@ -227,6 +231,7 @@ export const addOrUpdateService = async (service: Service): Promise<Service | nu
         category: service.category,
         image: service.imageUrl,
         sessions: service.sessions,
+        order: service.order, // Incluindo a ordem
     };
 
     let result;
@@ -369,6 +374,27 @@ export const deletePackage = async (packageId: string) => {
         console.error("Error deleting package:", error);
         alert(`Erro ao excluir pacote: ${error.message}`);
     }
+};
+
+export const updateServiceOrder = async (orderUpdates: { id: string; order: number }[]): Promise<boolean> => {
+    // Cria um array de promessas de atualização
+    const updatePromises = orderUpdates.map(update => 
+        supabase
+            .from('services')
+            .update({ order: update.order })
+            .eq('id', update.id)
+    );
+
+    // Executa todas as atualizações em paralelo
+    const results = await Promise.all(updatePromises);
+
+    const hasError = results.some(result => result.error);
+
+    if (hasError) {
+        console.error("Error updating service order:", results.find(r => r.error)?.error);
+        return false;
+    }
+    return true;
 };
 
 // ==================

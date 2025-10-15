@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { Service, ServicePackage } from '../types';
 import ServiceCard from '../components/ServiceCard';
@@ -35,6 +34,7 @@ export default function ServicesPage({ onPurchaseOrBook, onPurchasePackage }: Se
             );
         }
         
+        // A ordenação principal já é feita na API, mas garantimos que a lista filtrada mantenha essa ordem.
         return filtered;
     }, [selectedCategory, searchQuery, services]);
 

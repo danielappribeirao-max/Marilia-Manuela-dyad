@@ -39,6 +39,7 @@ export interface Service {
   imageUrl: string;
   category: string;
   sessions?: number;
+  order?: number; // NOVO: Posição de ordenação
 }
 
 export interface ServiceInPackage {

@@ -1,17 +1,28 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Service } from '../../types';
 import ServiceModal from '../../components/ServiceModal';
 import ConfirmationModal from '../../components/ConfirmationModal';
 import AdminServiceCard from '../../components/AdminServiceCard';
+import ServiceReorderList from '../../components/ServiceReorderList';
 import { useApp } from '../../App';
 import { FREE_CONSULTATION_SERVICE_ID } from '../../constants';
+import * as api from '../../services/api'; // Importar a API para salvar a ordem
 
 export default function AdminManageServices() {
-    const { services, addOrUpdateService, deleteService } = useApp();
+    const { services, setServices, addOrUpdateService, deleteService } = useApp();
     const [isServiceModalOpen, setIsServiceModalOpen] = useState(false);
     const [selectedService, setSelectedService] = useState<Partial<Service> | null>(null);
     const [serviceToDelete, setServiceToDelete] = useState<Service | null>(null);
-    const [modalKey, setModalKey] = useState(0); // Novo estado para forçar a remontagem
+    const [modalKey, setModalKey] = useState(0);
+    const [activeTab, setActiveTab] = useState<'manage' | 'reorder'>('manage');
+    
+    // Estado local para a ordem dos serviços (usado apenas na aba 'reorder')
+    const [reorderableServices, setReorderableServices] = useState<Service[]>(services);
+
+    // Atualiza a lista de reordenação sempre que a lista principal de serviços mudar
+    useMemo(() => {
+        setReorderableServices(services);
+    }, [services]);
 
     // Filtra o serviço de consulta gratuita para que não possa ser editado/excluído
     const editableServices = services; // Mostramos todos
@@ -47,6 +58,11 @@ export default function AdminManageServices() {
     const handleSave = async (savedService: Service) => {
         console.log("Attempting to save service:", savedService);
         
+        // Se for um novo serviço, define a ordem como o último item
+        if (!savedService.id) {
+            savedService.order = services.length + 1;
+        }
+        
         const result = await addOrUpdateService(savedService);
         
         if (result) {
@@ -67,9 +83,39 @@ export default function AdminManageServices() {
         }
     };
     
+    const handleSaveOrder = async (orderUpdates: { id: string; order: number }[]): Promise<boolean> => {
+        const success = await api.updateServiceOrder(orderUpdates);
+        if (success) {
+            // Atualiza o estado global com a nova ordem
+            const updatedServicesMap = new Map(orderUpdates.map(u => [u.id, u.order]));
+            setServices(prev => {
+                const newServices = prev.map(s => ({
+                    ...s,
+                    order: updatedServicesMap.get(s.id) || s.order,
+                }));
+                // Reordena a lista localmente para refletir a ordem salva
+                return newServices.sort((a, b) => (a.order || 0) - (b.order || 0));
+            });
+        }
+        return success;
+    };
+    
+    const TabButton: React.FC<{tab: 'manage' | 'reorder', label: string}> = ({tab, label}) => (
+        <button
+            onClick={() => setActiveTab(tab)}
+            className={`px-6 py-2 rounded-t-lg font-bold text-md transition-colors duration-300 focus:outline-none ${
+                activeTab === tab 
+                ? 'bg-white text-pink-600 border-b-2 border-pink-600' 
+                : 'bg-gray-100 text-gray-500 hover:bg-white'
+            }`}
+        >
+            {label}
+        </button>
+    );
+
     return (
         <div>
-            <div className="flex justify-between items-center mb-8">
+            <div className="flex justify-between items-center mb-6">
                 <h2 className="text-3xl font-bold">Gerenciar Serviços</h2>
                 <button 
                     onClick={handleAddNew}
@@ -79,18 +125,32 @@ export default function AdminManageServices() {
                 </button>
             </div>
             
-            <h3 className="text-2xl font-bold mb-4">Serviços Atuais ({services.length})</h3>
-            
-            <div className="space-y-4">
-                {services.map(service => (
-                    <AdminServiceCard 
-                        key={service.id} 
-                        service={service} 
-                        onEdit={handleEdit} 
-                        onDelete={handleDelete} 
-                    />
-                ))}
+            <div className="border-b border-gray-200 flex mb-6">
+                <TabButton tab="manage" label="Detalhes dos Serviços" />
+                <TabButton tab="reorder" label="Reordenar Exibição" />
             </div>
+            
+            {activeTab === 'manage' && (
+                <div className="space-y-4">
+                    <h3 className="text-2xl font-bold mb-4">Serviços Atuais ({services.length})</h3>
+                    {services.map(service => (
+                        <AdminServiceCard 
+                            key={service.id} 
+                            service={service} 
+                            onEdit={handleEdit} 
+                            onDelete={handleDelete} 
+                        />
+                    ))}
+                </div>
+            )}
+            
+            {activeTab === 'reorder' && (
+                <ServiceReorderList 
+                    services={reorderableServices}
+                    onReorder={setReorderableServices}
+                    onSaveOrder={handleSaveOrder}
+                />
+            )}
 
             {isServiceModalOpen && (
                 <ServiceModal 
