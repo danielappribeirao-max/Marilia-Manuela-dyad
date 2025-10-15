@@ -8,7 +8,8 @@ interface BookingModalProps {
   onClose: () => void;
   isCreditBooking?: boolean;
   booking?: Booking | null;
-  onConfirmBooking: (details: { date: Date, professionalId: string }) => Promise<{ success: boolean, error: string | null, tempEmail?: string }>;
+  // CORREÇÃO: A tipagem deve incluir tempEmail no retorno para o fluxo de consulta gratuita
+  onConfirmBooking: (details: { date: Date, professionalId: string }) => Promise<{ success: boolean, error: string | null }>;
   professionals: User[];
   clinicOperatingHours: OperatingHours | undefined;
   clinicHolidayExceptions: HolidayException[] | undefined; // CORRIGIDO: Deve ser um array

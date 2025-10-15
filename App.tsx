@@ -277,6 +277,7 @@ function AppContent() {
       setBookingService(freeConsultationService);
   }, [services]);
 
+  // CORREÇÃO: A função agora retorna o objeto completo, incluindo tempEmail
   const handleConfirmFinalBooking = useCallback(async (details: { date: Date, professionalId: string }): Promise<{ success: boolean, error: string | null }> => {
     if (!currentUser && !tempClientData) return { success: false, error: "Usuário não autenticado." };
     
@@ -329,6 +330,8 @@ function AppContent() {
               }
               // Força o recarregamento dos dados administrativos para que o AdminAgenda veja o novo agendamento
               refreshAdminData();
+              // Retorna o sucesso, mas o BookingModal não precisa do tempEmail no retorno da Promise,
+              // ele o lê do estado `newlyCreatedUserEmail`.
               return { success: true, error: null };
           } else {
               // Retorna o erro específico da Edge Function
