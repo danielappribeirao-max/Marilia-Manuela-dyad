@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Service } from '../types';
 
 interface ServiceModalProps {
@@ -9,7 +9,6 @@ interface ServiceModalProps {
 }
 
 const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave, existingServices }) => {
-  // Determina se está editando com base na presença de um ID válido
   const isEditing = !!service?.id;
   
   const [formData, setFormData] = useState<Partial<Service>>({
@@ -25,6 +24,21 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave, e
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [isNewCategory, setIsNewCategory] = useState(false);
 
+  // Efeito para garantir que o estado seja resetado se a prop 'service' mudar (embora a chave já faça isso)
+  useEffect(() => {
+    setFormData({
+      id: service?.id, 
+      name: service?.name || '',
+      description: service?.description || '',
+      price: service?.price || 0,
+      duration: service?.duration || 30,
+      category: service?.category || '',
+      imageUrl: service?.imageUrl || '',
+      sessions: service?.sessions || 1,
+    });
+    setIsNewCategory(false);
+    setErrors({});
+  }, [service]);
   
   const existingCategories = useMemo(() => {
     const categories = new Set(existingServices.map(s => s.category).filter(Boolean));
@@ -35,9 +49,16 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave, e
     const newErrors: { [key: string]: string } = {};
     if (!formData.name?.trim()) newErrors.name = 'O nome é obrigatório.';
     if (!formData.description?.trim()) newErrors.description = 'A descrição é obrigatória.';
-    if (!formData.price || formData.price <= 0) newErrors.price = 'O preço deve ser maior que zero.';
-    if (!formData.duration || formData.duration <= 0) newErrors.duration = 'A duração deve ser maior que zero.';
-    if (!formData.sessions || formData.sessions < 1) newErrors.sessions = 'A quantidade de sessões deve ser de no mínimo 1.';
+    
+    // Validação de números
+    const price = Number(formData.price);
+    const duration = Number(formData.duration);
+    const sessions = Number(formData.sessions);
+    
+    if (isNaN(price) || price <= 0) newErrors.price = 'O preço deve ser maior que zero.';
+    if (isNaN(duration) || duration <= 0) newErrors.duration = 'A duração deve ser maior que zero.';
+    if (isNaN(sessions) || sessions < 1) newErrors.sessions = 'A quantidade de sessões deve ser de no mínimo 1.';
+    
     if (!formData.category?.trim()) newErrors.category = 'A categoria é obrigatória.';
     
     setErrors(newErrors);
@@ -80,7 +101,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave, e
     if (validate()) {
       const finalFormData = { ...formData };
       
-      // 1. Garantir que o ID seja undefined para novos serviços
+      // 1. Garantir que o ID seja undefined para novos serviços (para o Supabase gerar um novo UUID)
       if (!isEditing) {
           delete finalFormData.id;
       }
@@ -91,8 +112,19 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave, e
         finalFormData.imageUrl = `https://picsum.photos/seed/${seed}/400/300`;
       }
       
-      // O onSave espera um objeto Service completo.
-      onSave(finalFormData as Service);
+      // 3. Garantir que os campos numéricos sejam números
+      const serviceToSave: Service = {
+          id: finalFormData.id || '', // O ID será ignorado na API se for novo
+          name: finalFormData.name!,
+          description: finalFormData.description!,
+          price: Number(finalFormData.price),
+          duration: Number(finalFormData.duration),
+          category: finalFormData.category!,
+          imageUrl: finalFormData.imageUrl!,
+          sessions: Number(finalFormData.sessions),
+      };
+      
+      onSave(serviceToSave);
     }
   };
 
@@ -107,28 +139,28 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave, e
             {/* Form fields */}
             <div>
               <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">Nome do Serviço</label>
-              <input type="text" id="name" name="name" value={formData.name} onChange={handleChange} className={`w-full p-2 border bg-white text-gray-900 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500 ${errors.name ? 'border-red-500' : 'border-gray-300'}`} />
+              <input type="text" id="name" name="name" value={formData.name || ''} onChange={handleChange} className={`w-full p-2 border bg-white text-gray-900 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500 ${errors.name ? 'border-red-500' : 'border-gray-300'}`} />
               {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
             </div>
             <div>
               <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
-              <textarea id="description" name="description" value={formData.description} onChange={handleChange} rows={3} className={`w-full p-2 border bg-white text-gray-900 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500 ${errors.description ? 'border-red-500' : 'border-gray-300'}`} />
+              <textarea id="description" name="description" value={formData.description || ''} onChange={handleChange} rows={3} className={`w-full p-2 border bg-white text-gray-900 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500 ${errors.description ? 'border-red-500' : 'border-gray-300'}`} />
               {errors.description && <p className="text-red-500 text-xs mt-1">{errors.description}</p>}
             </div>
             <div>
               <label htmlFor="sessions" className="block text-sm font-medium text-gray-700 mb-1">Quantidade de Sessões (para pacotes)</label>
-              <input type="number" id="sessions" name="sessions" value={formData.sessions} onChange={handleChange} min="1" className={`w-full p-2 border bg-white text-gray-900 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500 ${errors.sessions ? 'border-red-500' : 'border-gray-300'}`} />
+              <input type="number" id="sessions" name="sessions" value={formData.sessions || 1} onChange={handleChange} min="1" className={`w-full p-2 border bg-white text-gray-900 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500 ${errors.sessions ? 'border-red-500' : 'border-gray-300'}`} />
               {errors.sessions && <p className="text-red-500 text-xs mt-1">{errors.sessions}</p>}
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-1">Preço (R$)</label>
-                <input type="number" id="price" name="price" value={formData.price} onChange={handleChange} step="0.01" min="0" className={`w-full p-2 border bg-white text-gray-900 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500 ${errors.price ? 'border-red-500' : 'border-gray-300'}`} />
+                <input type="number" id="price" name="price" value={formData.price || 0} onChange={handleChange} step="0.01" min="0" className={`w-full p-2 border bg-white text-gray-900 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500 ${errors.price ? 'border-red-500' : 'border-gray-300'}`} />
                 {errors.price && <p className="text-red-500 text-xs mt-1">{errors.price}</p>}
               </div>
               <div>
                 <label htmlFor="duration" className="block text-sm font-medium text-gray-700 mb-1">Duração (minutos)</label>
-                <input type="number" id="duration" name="duration" value={formData.duration} onChange={handleChange} min="0" className={`w-full p-2 border bg-white text-gray-900 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500 ${errors.duration ? 'border-red-500' : 'border-gray-300'}`} />
+                <input type="number" id="duration" name="duration" value={formData.duration || 0} onChange={handleChange} min="0" className={`w-full p-2 border bg-white text-gray-900 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500 ${errors.duration ? 'border-red-500' : 'border-gray-300'}`} />
                 {errors.duration && <p className="text-red-500 text-xs mt-1">{errors.duration}</p>}
               </div>
             </div>
@@ -142,7 +174,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave, e
                             type="text" 
                             id="category" 
                             name="category" 
-                            value={formData.category} 
+                            value={formData.category || ''} 
                             onChange={handleChange} 
                             placeholder="Digite o nome da nova categoria"
                             className={`w-full p-2 border bg-white text-gray-900 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500 ${errors.category ? 'border-red-500' : 'border-gray-300'}`} 
