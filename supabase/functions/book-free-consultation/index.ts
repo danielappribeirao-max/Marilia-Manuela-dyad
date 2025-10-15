@@ -62,6 +62,7 @@ serve(async (req) => {
     const email = `${phone}@mariliamanuela.com`;
     let userId: string;
     let tempPassword = '';
+    let userWasCreated = false;
 
     // Tenta criar o usuário
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
@@ -98,6 +99,7 @@ serve(async (req) => {
     } else {
         userId = authData.user.id;
         tempPassword = 'senhaPadrao123'; // Usamos uma senha padrão para o frontend informar
+        userWasCreated = true;
     }
     
     // 3. Inserir o agendamento
@@ -126,13 +128,18 @@ serve(async (req) => {
     }
     
     // 4. Retornar sucesso
-    return new Response(JSON.stringify({ 
+    const responsePayload = { 
         success: true, 
         booking: bookingData, 
         newUserId: userId,
         tempEmail: email,
-        tempPassword: tempPassword, 
-    }), {
+        // Retorna a senha temporária apenas se o usuário foi criado agora
+        tempPassword: userWasCreated ? tempPassword : undefined, 
+    };
+    
+    console.log("Booking successful. Payload:", responsePayload);
+
+    return new Response(JSON.stringify(responsePayload), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
     })

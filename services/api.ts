@@ -662,7 +662,7 @@ const mapDbToClinicSettings = (dbSettings: any): ClinicSettings => ({
     featuredServiceIds: dbSettings.featured_service_ids || [], // Mapeando o novo campo
     heroText: dbSettings.hero_text || 'Sua Beleza, Nosso Compromisso.', // Mapeando e fornecendo fallback
     heroSubtitle: dbSettings.hero_subtitle || 'Descubra tratamentos estéticos de ponta e agende seu momento de cuidado em um ambiente de luxo e bem-estar.', // NOVO: Mapeando e fornecendo fallback
-    aboutText: dbSettings.about_text || 'Descubra tratamentos estéticos de ponta e agende seu momento de cuidado em um ambiente de luxo e bem-estar.', // Mapeando e fornecendo fallback
+    aboutText: dbSettings.about_text || 'Descubra tratamentos estéticos de ponta e agende seu momento de cuidado em um ambiente de luxo e bem-estar.',
 });
 
 // NOVOS HORÁRIOS PADRÃO
@@ -973,7 +973,7 @@ export const addOrUpdateBooking = async (booking: Partial<Booking> & { serviceNa
     }
 };
 
-export const bookFreeConsultationForNewUser = async (details: { name: string; phone: string; description: string; date: Date; professionalId: string; serviceId: string; serviceName: string; duration: number }): Promise<{ success: boolean, error: string | null, newUserId?: string }> => {
+export const bookFreeConsultationForNewUser = async (details: { name: string; phone: string; description: string; date: Date; professionalId: string; serviceId: string; serviceName: string; duration: number }): Promise<{ success: boolean, error: string | null, newUserId?: string, tempEmail?: string }> => {
     try {
         // --- CORREÇÃO DE FUSO HORÁRIO ---
         // Enviamos a data como string ISO, mas a Edge Function precisa saber a hora local.
@@ -1005,10 +1005,17 @@ export const bookFreeConsultationForNewUser = async (details: { name: string; ph
         
         // Se a Edge Function retornou um erro no corpo (status 400), data.error estará preenchido
         if (data.error) {
+            console.error("Edge Function returned application error:", data.error);
             return { success: false, error: data.error };
         }
 
-        return { success: true, error: null, newUserId: data.newUserId };
+        // Se a Edge Function retornou sucesso, mas faltam dados essenciais
+        if (!data.success) {
+             console.error("Edge Function returned success: false without specific error.");
+             return { success: false, error: "Falha desconhecida ao agendar a consulta. Tente novamente." };
+        }
+
+        return { success: true, error: null, newUserId: data.newUserId, tempEmail: data.tempEmail };
 
     } catch (e) {
         console.error("Unexpected error during free consultation booking:", e);
