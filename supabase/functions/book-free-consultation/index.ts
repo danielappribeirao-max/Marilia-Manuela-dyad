@@ -39,12 +39,11 @@ serve(async (req) => {
         p_professional_id: professionalId,
         p_booking_date: date,
         p_booking_time: time,
-        p_duration: parsedDuration, // Usando a duração parseada
+        p_duration: parsedDuration,
     });
 
     if (availabilityError) {
         console.error("RPC Availability Error:", availabilityError);
-        // Retorna 400 com a mensagem de erro do banco de dados, se disponível
         return new Response(JSON.stringify({ error: `Erro ao verificar disponibilidade: ${availabilityError.message}` }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 400,
@@ -99,7 +98,7 @@ serve(async (req) => {
         booking_date: date,
         booking_time: time,
         status: 'Agendado',
-        duration: parsedDuration, // CORRIGIDO: Usando parsedDuration
+        duration: parsedDuration,
         service_name: serviceName,
         notes: `Consulta Gratuita. Interesse: ${description}`,
       })
@@ -107,8 +106,11 @@ serve(async (req) => {
       .single()
 
     if (bookingError) {
+      // Se a inserção falhar, tentamos excluir o usuário temporário para evitar lixo
+      await supabaseAdmin.auth.admin.deleteUser(userId);
+      
       console.error("Booking Insert Error:", bookingError);
-      return new Response(JSON.stringify({ error: `Erro ao inserir agendamento: ${bookingError.message}` }), {
+      return new Response(JSON.stringify({ error: `Erro ao inserir agendamento: ${bookingError.message}. Usuário temporário excluído.` }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           status: 400,
       });
