@@ -3,6 +3,7 @@ import { useApp } from '../../App';
 import * as api from '../../services/api';
 import OperatingHoursForm from '../../components/OperatingHoursForm';
 import HolidayExceptionForm from '../../components/HolidayExceptionForm';
+import FeaturedServicesForm from '../../components/FeaturedServicesForm'; // Importado
 import { OperatingHours, HolidayException } from '../../types';
 
 const ImageUploadCard: React.FC<{
@@ -86,7 +87,7 @@ const ImageUploadCard: React.FC<{
 
 
 export default function AdminSettingsPage() {
-  const { logoUrl, setLogoUrl, heroImageUrl, setHeroImageUrl, aboutImageUrl, setAboutImageUrl, clinicSettings, updateClinicSettings, updateClinicHolidayExceptions } = useApp();
+  const { services, logoUrl, setLogoUrl, heroImageUrl, setHeroImageUrl, aboutImageUrl, setAboutImageUrl, clinicSettings, updateClinicSettings, updateClinicHolidayExceptions, updateFeaturedServices } = useApp();
 
   const handleSaveLogo = async (file: File) => {
     const newUrl = await api.uploadLogo(file);
@@ -116,6 +117,15 @@ export default function AdminSettingsPage() {
     <div>
       <h2 className="text-3xl font-bold mb-6">Configurações do Site</h2>
       <div className="space-y-8">
+        
+        <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+            <h3 className="text-xl font-semibold text-gray-800 mb-4">Serviços em Destaque (Home Page)</h3>
+            <FeaturedServicesForm
+                initialFeaturedIds={clinicSettings.featuredServiceIds || []}
+                availableServices={services}
+                onSave={updateFeaturedServices}
+            />
+        </div>
         
         <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
             <h3 className="text-xl font-semibold text-gray-800 mb-4">Horários de Funcionamento Padrão</h3>

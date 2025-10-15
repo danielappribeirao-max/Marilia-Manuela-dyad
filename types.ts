@@ -100,4 +100,5 @@ export interface ClinicSettings {
   id: string;
   operatingHours: OperatingHours;
   holidayExceptions?: HolidayException[];
+  featuredServiceIds?: string[]; // NOVO: IDs dos serviços em destaque
 }

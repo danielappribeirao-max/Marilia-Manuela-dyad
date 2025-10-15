@@ -322,7 +322,6 @@ export const deletePackage = async (packageId: string) => {
 // USERS & PROFESSIONALS
 // ... (restante do arquivo permanece inalterado)
 // ==================
-`.trim() + `
 export const uploadAvatar = async (userId: string, file: File): Promise<string | null> => {
     const fileExt = file.name.split('.').pop();
     const fileName = `${userId}-${Date.now()}.${fileExt}`;
@@ -529,6 +528,7 @@ const mapDbToClinicSettings = (dbSettings: any): ClinicSettings => ({
     id: dbSettings.id,
     operatingHours: dbSettings.operating_hours,
     holidayExceptions: dbSettings.holiday_exceptions || [],
+    featuredServiceIds: dbSettings.featured_service_ids || [], // Mapeando o novo campo
 });
 
 // NOVOS HORÁRIOS PADRÃO
@@ -546,13 +546,14 @@ export const DEFAULT_CLINIC_SETTINGS: ClinicSettings = {
     id: SETTINGS_ID,
     operatingHours: DEFAULT_OPERATING_HOURS,
     holidayExceptions: [],
+    featuredServiceIds: [], // Padrão vazio
 };
 
 export const getClinicSettings = async (): Promise<ClinicSettings> => {
     try {
         const { data, error } = await supabase
             .from('clinic_settings')
-            .select('id, operating_hours, holiday_exceptions')
+            .select('id, operating_hours, holiday_exceptions, featured_service_ids') // Incluindo o novo campo
             .eq('id', SETTINGS_ID)
             .single();
 
@@ -570,8 +571,9 @@ export const getClinicSettings = async (): Promise<ClinicSettings> => {
                     id: SETTINGS_ID, 
                     operating_hours: DEFAULT_OPERATING_HOURS,
                     holiday_exceptions: [],
+                    featured_service_ids: [], // Inserindo o novo campo
                 })
-                .select('id, operating_hours, holiday_exceptions')
+                .select('id, operating_hours, holiday_exceptions, featured_service_ids')
                 .single();
                 
             if (insertError) {
@@ -596,7 +598,7 @@ export const updateClinicOperatingHours = async (operatingHours: OperatingHours)
         .from('clinic_settings')
         .update({ operating_hours: operatingHours })
         .eq('id', SETTINGS_ID)
-        .select()
+        .select('id, operating_hours, holiday_exceptions, featured_service_ids')
         .single();
 
     if (error) {
@@ -613,12 +615,29 @@ export const updateClinicHolidayExceptions = async (holidayExceptions: HolidayEx
         .from('clinic_settings')
         .update({ holiday_exceptions: holidayExceptions })
         .eq('id', SETTINGS_ID)
-        .select()
+        .select('id, operating_hours, holiday_exceptions, featured_service_ids')
         .single();
 
     if (error) {
         console.error("Error updating holiday exceptions:", error);
         alert(\`Erro ao atualizar exceções de feriados: \${error.message}\`);
+        return null;
+    }
+    
+    return mapDbToClinicSettings(data);
+};
+
+export const updateFeaturedServices = async (serviceIds: string[]): Promise<ClinicSettings | null> => {
+    const { data, error } = await supabase
+        .from('clinic_settings')
+        .update({ featured_service_ids: serviceIds })
+        .eq('id', SETTINGS_ID)
+        .select('id, operating_hours, holiday_exceptions, featured_service_ids')
+        .single();
+
+    if (error) {
+        console.error("Error updating featured services:", error);
+        alert(\`Erro ao atualizar serviços em destaque: \${error.message}\`);
         return null;
     }
     
@@ -679,7 +698,7 @@ const mapDbToBooking = (dbBooking: any): Booking => {
         const now = new Date();
         // Se a data do agendamento já passou, ele é considerado 'completed'
         if (bookingDate < now) {
-            status = 'completed';
+            status = 'confirmed'; // Mantemos como confirmed se não tiver passado
         } else {
             // Se ainda não passou, continua 'confirmed'
             status = 'confirmed';

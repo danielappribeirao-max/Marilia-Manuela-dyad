@@ -24,12 +24,12 @@ interface AppContextType {
   logout: () => void;
   services: Service[];
   packages: ServicePackage[];
-  setPackages: React.Dispatch<React.SetStateAction<ServicePackage[]>>; // Adicionado
+  setPackages: React.Dispatch<React.SetStateAction<ServicePackage[]>>;
   professionals: User[];
   addOrUpdateService: (service: Service) => Promise<Service | null>;
   deleteService: (serviceId: string) => Promise<void>;
-  addOrUpdatePackage: (pkg: ServicePackage) => Promise<ServicePackage | null>; // Adicionado
-  deletePackage: (packageId: string) => Promise<void>; // Adicionado
+  addOrUpdatePackage: (pkg: ServicePackage) => Promise<ServicePackage | null>;
+  deletePackage: (packageId: string) => Promise<void>;
   loading: boolean;
   logoUrl: string;
   setLogoUrl: (url: string) => void;
@@ -40,6 +40,7 @@ interface AppContextType {
   clinicSettings: ClinicSettings; // Alterado para não-nullable
   updateClinicSettings: (hours: OperatingHours) => Promise<void>;
   updateClinicHolidayExceptions: (exceptions: HolidayException[]) => Promise<void>;
+  updateFeaturedServices: (serviceIds: string[]) => Promise<void>; // NOVO
   // Adicionando função de recarregamento para a agenda
   refreshAdminData: () => void;
 }
@@ -404,8 +405,18 @@ function AppContent() {
         alert("Erro ao atualizar exceções de feriados.");
     }
   }, [refreshAdminData]);
+  
+  const updateFeaturedServices = useCallback(async (serviceIds: string[]) => {
+    const updatedSettings = await api.updateFeaturedServices(serviceIds);
+    if (updatedSettings) {
+        setClinicSettings(updatedSettings);
+        alert("Serviços em destaque atualizados com sucesso!");
+    } else {
+        alert("Erro ao atualizar serviços em destaque.");
+    }
+  }, []);
 
-  const appContextValue = useMemo(() => ({ currentUser, setCurrentUser, currentPage, setCurrentPage, logout, services, packages, setPackages, professionals, addOrUpdateService, deleteService, addOrUpdatePackage, deletePackage, loading, logoUrl, setLogoUrl, heroImageUrl, setHeroImageUrl, aboutImageUrl, setAboutImageUrl, clinicSettings, updateClinicSettings, updateClinicHolidayExceptions, refreshAdminData }), [currentUser, currentPage, logout, services, packages, setPackages, professionals, addOrUpdateService, deleteService, addOrUpdatePackage, deletePackage, loading, logoUrl, heroImageUrl, aboutImageUrl, clinicSettings, updateClinicSettings, updateClinicHolidayExceptions, refreshAdminData]);
+  const appContextValue = useMemo(() => ({ currentUser, setCurrentUser, currentPage, setCurrentPage, logout, services, packages, setPackages, professionals, addOrUpdateService, deleteService, addOrUpdatePackage, deletePackage, loading, logoUrl, setLogoUrl, heroImageUrl, setHeroImageUrl, aboutImageUrl, setAboutImageUrl, clinicSettings, updateClinicSettings, updateClinicHolidayExceptions, updateFeaturedServices, refreshAdminData }), [currentUser, currentPage, logout, services, packages, setPackages, professionals, addOrUpdateService, deleteService, addOrUpdatePackage, deletePackage, loading, logoUrl, heroImageUrl, aboutImageUrl, clinicSettings, updateClinicSettings, updateClinicHolidayExceptions, updateFeaturedServices, refreshAdminData]);
 
   const renderPage = () => {
     if(loading) {

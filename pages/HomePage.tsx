@@ -12,8 +12,17 @@ interface HomePageProps {
 }
 
 export default function HomePage({ onPurchaseOrBook, onPurchasePackage, onStartFreeConsultation }: HomePageProps) {
-  const { setCurrentPage, services, packages, heroImageUrl, aboutImageUrl } = useApp();
-  const featuredServices = services.slice(0, 3);
+  const { setCurrentPage, services, packages, heroImageUrl, aboutImageUrl, clinicSettings } = useApp();
+  
+  // Filtra os serviços em destaque com base nas configurações
+  const featuredServiceIds = clinicSettings.featuredServiceIds || [];
+  const featuredServices = featuredServiceIds
+    .map(id => services.find(s => s.id === id))
+    .filter(Boolean) as Service[];
+    
+  // Se não houver destaques configurados, usa os 3 primeiros (fallback)
+  const finalFeaturedServices = featuredServices.length > 0 ? featuredServices : services.slice(0, 3);
+  
   const featuredPackages = packages.slice(0, 2);
 
   return (
@@ -45,7 +54,7 @@ export default function HomePage({ onPurchaseOrBook, onPurchasePackage, onStartF
           <h2 className="text-4xl font-bold text-center text-gray-800 mb-2">Tratamentos em Destaque</h2>
           <p className="text-center text-gray-600 mb-12">Os procedimentos mais amados por nossas clientes.</p>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
-            {featuredServices.map(service => (
+            {finalFeaturedServices.map(service => (
               <ServiceCard key={service.id} service={service} onPurchaseOrBook={onPurchaseOrBook} />
             ))}
           </div>
