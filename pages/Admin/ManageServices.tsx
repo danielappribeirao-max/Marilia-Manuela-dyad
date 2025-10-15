@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Service } from '../../types';
 import ServiceModal from '../../components/ServiceModal';
 import ConfirmationModal from '../../components/ConfirmationModal';
@@ -17,15 +17,14 @@ export default function AdminManageServices() {
     const [activeTab, setActiveTab] = useState<'manage' | 'reorder'>('manage');
     
     // Estado local para a ordem dos serviços (usado apenas na aba 'reorder')
-    const [reorderableServices, setReorderableServices] = useState<Service[]>(services);
+    const [reorderableServices, setReorderableServices] = useState<Service[]>([]);
 
-    // Atualiza a lista de reordenação sempre que a lista principal de serviços mudar
-    useMemo(() => {
-        setReorderableServices(services);
+    // Inicializa e atualiza a lista de reordenação sempre que a lista principal de serviços mudar
+    useEffect(() => {
+        // Filtra o serviço de consulta gratuita da lista de reordenação, pois ele deve ser sempre o primeiro (order: 0)
+        const filteredServices = services.filter(s => s.id !== FREE_CONSULTATION_SERVICE_ID);
+        setReorderableServices(filteredServices);
     }, [services]);
-
-    // Filtra o serviço de consulta gratuita para que não possa ser editado/excluído
-    const editableServices = services; // Mostramos todos
 
     const handleAddNew = () => {
         setSelectedService(null);
@@ -60,7 +59,9 @@ export default function AdminManageServices() {
         
         // Se for um novo serviço, define a ordem como o último item
         if (!savedService.id) {
-            savedService.order = services.length + 1;
+            // O serviço de consulta gratuita tem order 0. Novos serviços começam a partir de 1.
+            const maxOrder = services.reduce((max, s) => Math.max(max, s.order || 0), 0);
+            savedService.order = maxOrder + 1;
         }
         
         const result = await addOrUpdateService(savedService);
@@ -84,10 +85,14 @@ export default function AdminManageServices() {
     };
     
     const handleSaveOrder = async (orderUpdates: { id: string; order: number }[]): Promise<boolean> => {
-        const success = await api.updateServiceOrder(orderUpdates);
+        // Inclui o serviço de consulta gratuita na ordem 0, se ele existir
+        const freeConsultationService = services.find(s => s.id === FREE_CONSULTATION_SERVICE_ID);
+        const finalOrderUpdates = freeConsultationService ? [{ id: freeConsultationService.id, order: 0 }, ...orderUpdates] : orderUpdates;
+        
+        const success = await api.updateServiceOrder(finalOrderUpdates);
         if (success) {
             // Atualiza o estado global com a nova ordem
-            const updatedServicesMap = new Map(orderUpdates.map(u => [u.id, u.order]));
+            const updatedServicesMap = new Map(finalOrderUpdates.map(u => [u.id, u.order]));
             setServices(prev => {
                 const newServices = prev.map(s => ({
                     ...s,
@@ -112,6 +117,10 @@ export default function AdminManageServices() {
             {label}
         </button>
     );
+    
+    // Filtra o serviço de consulta gratuita da lista de gerenciamento (manage) para que ele não possa ser excluído/editado facilmente
+    const servicesForManagement = services.filter(s => s.id !== FREE_CONSULTATION_SERVICE_ID);
+    const freeConsultationService = services.find(s => s.id === FREE_CONSULTATION_SERVICE_ID);
 
     return (
         <div>
@@ -133,7 +142,24 @@ export default function AdminManageServices() {
             {activeTab === 'manage' && (
                 <div className="space-y-4">
                     <h3 className="text-2xl font-bold mb-4">Serviços Atuais ({services.length})</h3>
-                    {services.map(service => (
+                    
+                    {/* Exibe o serviço de consulta gratuita separadamente, se existir */}
+                    {freeConsultationService && (
+                        <div className="bg-yellow-50 border-yellow-300 border-l-4 p-4 rounded-lg mb-4 flex justify-between items-center">
+                            <div>
+                                <p className="font-bold text-yellow-800">Consulta de Avaliação Gratuita</p>
+                                <p className="text-sm text-yellow-700">Este serviço é fixo e não pode ser excluído. Edite apenas os detalhes.</p>
+                            </div>
+                            <button 
+                                onClick={() => handleEdit(freeConsultationService)} 
+                                className="px-3 py-1.5 bg-yellow-200 text-yellow-800 rounded-full text-sm font-semibold hover:bg-yellow-300 transition-colors"
+                            >
+                                Editar Detalhes
+                            </button>
+                        </div>
+                    )}
+                    
+                    {servicesForManagement.map(service => (
                         <AdminServiceCard 
                             key={service.id} 
                             service={service} 
