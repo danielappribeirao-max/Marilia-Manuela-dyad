@@ -14,7 +14,7 @@ export default function AdminManageServices() {
     const [modalKey, setModalKey] = useState(0); // Novo estado para forçar a remontagem
 
     // Filtra o serviço de consulta gratuita para que não possa ser editado/excluído
-    const editableServices = services; // Agora mostramos todos, a restrição de exclusão/edição é feita abaixo.
+    const editableServices = services; // Mostramos todos
 
     const handleAddNew = () => {
         setSelectedService(null);
@@ -47,14 +47,6 @@ export default function AdminManageServices() {
     const handleSave = async (savedService: Service) => {
         console.log("Attempting to save service:", savedService);
         
-        if (savedService.id === FREE_CONSULTATION_SERVICE_ID) {
-            alert("O serviço de Consulta Gratuita é um serviço especial e não pode ser salvo no banco de dados. Apenas a imagem pode ser atualizada localmente.");
-            // Se for a consulta gratuita, não faz nada no banco, apenas fecha o modal.
-            setSelectedService(null); 
-            setIsServiceModalOpen(false);
-            return;
-        }
-        
         const result = await addOrUpdateService(savedService);
         
         if (result) {
@@ -62,7 +54,13 @@ export default function AdminManageServices() {
             // Limpa o estado antes de fechar o modal
             setSelectedService(null); 
             setIsServiceModalOpen(false);
-            alert(`Serviço "${result.name}" salvo com sucesso!`);
+            
+            // Alerta específico para o serviço de consulta gratuita
+            if (savedService.id === FREE_CONSULTATION_SERVICE_ID) {
+                alert(`Serviço "${result.name}" atualizado localmente com sucesso!`);
+            } else {
+                alert(`Serviço "${result.name}" salvo com sucesso!`);
+            }
         } else {
             console.error("Failed to save service. Result was null.");
             alert("Falha ao salvar o serviço. Verifique os dados e tente novamente.");
