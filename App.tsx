@@ -326,7 +326,8 @@ function AppContent() {
               refreshAdminData();
               return true;
           } else {
-              // O erro já foi alertado dentro da Edge Function ou na chamada da API
+              // Se houver erro, exibe a mensagem específica
+              alert(`Erro ao agendar consulta: ${result.error}`);
               return false;
           }
       }
