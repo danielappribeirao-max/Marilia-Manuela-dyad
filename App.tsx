@@ -23,7 +23,7 @@ interface AppContextType {
   setCurrentPage: (page: Page) => void;
   logout: () => void;
   services: Service[];
-  setServices: React.Dispatch<React.SetStateAction<Service[]>>; // Adicionado
+  setServices: React.Dispatch<React.SetStateAction<Service[]>>;
   packages: ServicePackage[];
   setPackages: React.Dispatch<React.SetStateAction<ServicePackage[]>>;
   professionals: User[];
@@ -83,9 +83,10 @@ function AppContent() {
 
   const [showWhatsApp, setShowWhatsApp] = useState(false);
   
-  const [logoUrl, setLogoUrl] = useState('https://mdxqiozhqmcriiqspbqf.supabase.co/storage/v1/object/public/assets/logo-marilia-manuela.jpeg');
-  const [heroImageUrl, setHeroImageUrl] = useState('https://picsum.photos/seed/spa/1600/900');
-  const [aboutImageUrl, setAboutImageUrl] = useState('https://picsum.photos/seed/clinic/600/400');
+  // Inicialização com URLs que forçam o cache a ser ignorado
+  const [logoUrl, setLogoUrl] = useState(api.getAssetUrl('logo-marilia-manuela.jpeg'));
+  const [heroImageUrl, setHeroImageUrl] = useState(api.getAssetUrl('hero-image.jpeg'));
+  const [aboutImageUrl, setAboutImageUrl] = useState(api.getAssetUrl('about-image.jpeg'));
   
   // Estado para forçar o recarregamento de dados administrativos (Agenda, Usuários)
   const [adminDataRefreshKey, setAdminDataRefreshKey] = useState(0);

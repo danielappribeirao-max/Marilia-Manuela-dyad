@@ -424,6 +424,13 @@ export const uploadAvatar = async (userId: string, file: File): Promise<string |
     return data.publicUrl;
 };
 
+// Função auxiliar para obter a URL pública com carimbo de data/hora
+const getPublicAssetUrl = (filePath: string): string => {
+    const { data } = supabase.storage.from('assets').getPublicUrl(filePath);
+    // Adiciona um carimbo de data/hora para forçar o cache a ser ignorado
+    return data.publicUrl + '?t=' + new Date().getTime();
+};
+
 export const uploadLogo = async (file: File): Promise<string | null> => {
     const filePath = 'logo-marilia-manuela.jpeg'; // Manter o nome do arquivo consistente
     
@@ -440,10 +447,7 @@ export const uploadLogo = async (file: File): Promise<string | null> => {
         return null;
     }
 
-    const { data } = supabase.storage.from('assets').getPublicUrl(filePath);
-    
-    const newUrl = data.publicUrl + '?t=' + new Date().getTime();
-    return newUrl;
+    return getPublicAssetUrl(filePath);
 };
 
 export const uploadHeroImage = async (file: File): Promise<string | null> => {
@@ -462,10 +466,7 @@ export const uploadHeroImage = async (file: File): Promise<string | null> => {
         return null;
     }
 
-    const { data } = supabase.storage.from('assets').getPublicUrl(filePath);
-    
-    const newUrl = data.publicUrl + '?t=' + new Date().getTime();
-    return newUrl;
+    return getPublicAssetUrl(filePath);
 };
 
 export const uploadAboutImage = async (file: File): Promise<string | null> => {
@@ -484,11 +485,11 @@ export const uploadAboutImage = async (file: File): Promise<string | null> => {
         return null;
     }
 
-    const { data } = supabase.storage.from('assets').getPublicUrl(filePath);
-    
-    // Adiciona um carimbo de data/hora para forçar o cache a ser ignorado
-    const newUrl = data.publicUrl + '?t=' + new Date().getTime();
-    return newUrl;
+    return getPublicAssetUrl(filePath);
+};
+
+export const getAssetUrl = (filePath: string): string => {
+    return getPublicAssetUrl(filePath);
 };
 
 export const adminCreateUser = async (userData: Partial<User> & { password?: string, avatarUrl?: string }): Promise<User | null> => {
