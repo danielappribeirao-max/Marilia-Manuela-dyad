@@ -401,6 +401,7 @@ export const uploadAboutImage = async (file: File): Promise<string | null> => {
 
     const { data } = supabase.storage.from('assets').getPublicUrl(filePath);
     
+    // Adiciona um carimbo de data/hora para forçar o cache a ser ignorado
     const newUrl = data.publicUrl + '?t=' + new Date().getTime();
     return newUrl;
 };
