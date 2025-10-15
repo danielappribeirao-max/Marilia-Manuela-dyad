@@ -55,8 +55,12 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave, e
     const duration = Number(formData.duration);
     const sessions = Number(formData.sessions);
     
-    if (isNaN(price) || price <= 0) newErrors.price = 'O preço deve ser maior que zero.';
-    if (isNaN(duration) || duration <= 0) newErrors.duration = 'A duração deve ser maior que zero.';
+    // ALTERAÇÃO: Permite preço zero
+    if (isNaN(price) || price < 0) newErrors.price = 'O preço deve ser zero ou maior.';
+    
+    // ALTERAÇÃO: Permite duração zero
+    if (isNaN(duration) || duration < 0) newErrors.duration = 'A duração deve ser zero ou maior.';
+    
     if (isNaN(sessions) || sessions < 1) newErrors.sessions = 'A quantidade de sessões deve ser de no mínimo 1.';
     
     if (!formData.category?.trim()) newErrors.category = 'A categoria é obrigatória.';
