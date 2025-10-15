@@ -8,6 +8,8 @@ interface FeaturedServicesFormProps {
   onSave: (featuredIds: string[]) => Promise<void>;
 }
 
+const MAX_FEATURED_SERVICES = 4;
+
 const FeaturedServicesForm: React.FC<FeaturedServicesFormProps> = ({ initialFeaturedIds, availableServices, onSave }) => {
   const [selectedIds, setSelectedIds] = useState<string[]>(initialFeaturedIds);
   const [isSaving, setIsSaving] = useState(false);
@@ -20,10 +22,10 @@ const FeaturedServicesForm: React.FC<FeaturedServicesFormProps> = ({ initialFeat
     setSelectedIds(prev => {
       if (prev.includes(serviceId)) {
         return prev.filter(id => id !== serviceId);
-      } else if (prev.length < 3) {
+      } else if (prev.length < MAX_FEATURED_SERVICES) {
         return [...prev, serviceId];
       }
-      return prev; // Limite de 3
+      return prev; // Limite de 4
     });
   };
 
@@ -42,11 +44,11 @@ const FeaturedServicesForm: React.FC<FeaturedServicesFormProps> = ({ initialFeat
   return (
     <div className="space-y-6">
       <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-        <p className="text-sm text-gray-600">Selecione até 3 serviços para aparecerem em destaque na seção "Tratamentos em Destaque" da página inicial.</p>
+        <p className="text-sm text-gray-600">Selecione até {MAX_FEATURED_SERVICES} serviços para aparecerem em destaque na seção "Tratamentos em Destaque" da página inicial.</p>
       </div>
 
       <div className="space-y-4">
-        <h4 className="font-semibold text-gray-700">Serviços em Destaque ({selectedIds.length} de 3)</h4>
+        <h4 className="font-semibold text-gray-700">Serviços em Destaque ({selectedIds.length} de {MAX_FEATURED_SERVICES})</h4>
         <div className="flex flex-wrap gap-3">
           {featuredServices.map(service => (
             <div key={service.id} className="flex items-center bg-pink-100 text-pink-700 px-4 py-2 rounded-full text-sm font-medium border border-pink-300">
@@ -66,7 +68,7 @@ const FeaturedServicesForm: React.FC<FeaturedServicesFormProps> = ({ initialFeat
             <button
               key={service.id}
               onClick={() => toggleService(service.id)}
-              disabled={selectedIds.length >= 3 && !selectedIds.includes(service.id)}
+              disabled={selectedIds.length >= MAX_FEATURED_SERVICES && !selectedIds.includes(service.id)}
               className={`flex items-center justify-between p-3 rounded-lg text-left transition-colors border ${
                 selectedIds.includes(service.id)
                   ? 'bg-green-50 text-green-700 border-green-300'
