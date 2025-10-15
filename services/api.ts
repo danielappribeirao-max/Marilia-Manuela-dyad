@@ -999,15 +999,16 @@ export const bookFreeConsultationForNewUser = async (details: { name: string; ph
 
         if (error) {
             console.error("Error invoking book-free-consultation function:", error);
-            // Se for um erro de rede ou erro 500 do Deno, retornamos uma mensagem genérica
+            // Se for um erro de rede ou timeout, retornamos a mensagem de erro do Supabase Client
             return { success: false, error: error.message };
         }
         
-        // Se a Edge Function retornou um erro no corpo (status 400), data.error estará preenchido
+        // Se a Edge Function retornou um erro no corpo (status 400 ou 500), data.error estará preenchido
         if (data.error) {
             return { success: false, error: data.error };
         }
 
+        // Se chegou aqui, a Edge Function retornou 200 e success: true
         return { success: true, error: null, newUserId: data.newUserId };
 
     } catch (e) {
