@@ -9,8 +9,11 @@ interface ServiceModalProps {
 }
 
 const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave, existingServices }) => {
+  const isEditing = !!service?.id;
+  
   const [formData, setFormData] = useState<Partial<Service>>({
-    id: service?.id,
+    // Se estiver editando, usa o ID. Se for novo, o ID deve ser undefined.
+    id: isEditing ? service?.id : undefined, 
     name: service?.name || '',
     description: service?.description || '',
     price: service?.price || 0,
@@ -22,7 +25,6 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave, e
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [isNewCategory, setIsNewCategory] = useState(false);
 
-  const isEditing = !!service?.id;
   
   const existingCategories = useMemo(() => {
     const categories = new Set(existingServices.map(s => s.category).filter(Boolean));
@@ -78,7 +80,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave, e
     if (validate()) {
       const finalFormData = { ...formData };
       
-      // 1. Garantir que o ID seja undefined para novos serviços
+      // 1. Garantir que o ID seja undefined para novos serviços (redundante, mas seguro)
       if (!isEditing) {
           delete finalFormData.id;
       }
