@@ -2,20 +2,22 @@ import React, { useState, useEffect } from 'react';
 
 interface TextSettingsFormProps {
   initialHeroText: string;
+  initialHeroSubtitle: string; // NOVO
   initialAboutText: string;
-  onSave: (texts: { heroText: string; aboutText: string }) => Promise<void>;
+  onSave: (texts: { heroText: string; heroSubtitle: string; aboutText: string }) => Promise<void>; // NOVO
 }
 
-const TextSettingsForm: React.FC<TextSettingsFormProps> = ({ initialHeroText, initialAboutText, onSave }) => {
+const TextSettingsForm: React.FC<TextSettingsFormProps> = ({ initialHeroText, initialHeroSubtitle, initialAboutText, onSave }) => {
   const [formData, setFormData] = useState({
     heroText: initialHeroText,
+    heroSubtitle: initialHeroSubtitle, // NOVO
     aboutText: initialAboutText,
   });
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    setFormData({ heroText: initialHeroText, aboutText: initialAboutText });
-  }, [initialHeroText, initialAboutText]);
+    setFormData({ heroText: initialHeroText, heroSubtitle: initialHeroSubtitle, aboutText: initialAboutText });
+  }, [initialHeroText, initialHeroSubtitle, initialAboutText]);
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -35,7 +37,7 @@ const TextSettingsForm: React.FC<TextSettingsFormProps> = ({ initialHeroText, in
         <p className="text-sm text-gray-600">Personalize os textos principais exibidos na página inicial para refletir a mensagem da sua clínica.</p>
       </div>
 
-      {/* Hero Text */}
+      {/* Hero Text (Title) */}
       <div>
         <label htmlFor="heroText" className="block text-sm font-medium text-gray-700 mb-1">Texto Principal da Home (Título)</label>
         <textarea
@@ -49,6 +51,20 @@ const TextSettingsForm: React.FC<TextSettingsFormProps> = ({ initialHeroText, in
           placeholder="Ex: Sua Beleza, Nosso Compromisso."
         />
         <p className="text-xs text-gray-500 mt-1">Máximo de 100 caracteres.</p>
+      </div>
+      
+      {/* Hero Subtitle (NEW) */}
+      <div>
+        <label htmlFor="heroSubtitle" className="block text-sm font-medium text-gray-700 mb-1">Subtítulo da Home (Abaixo do Título)</label>
+        <textarea
+          id="heroSubtitle"
+          name="heroSubtitle"
+          value={formData.heroSubtitle}
+          onChange={handleChange}
+          rows={3}
+          className="w-full p-3 border bg-white text-gray-900 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500"
+          placeholder="Ex: Descubra tratamentos estéticos de ponta e agende seu momento de cuidado em um ambiente de luxo e bem-estar."
+        />
       </div>
 
       {/* About Text */}

@@ -42,7 +42,7 @@ interface AppContextType {
   updateClinicSettings: (hours: OperatingHours) => Promise<void>;
   updateClinicHolidayExceptions: (exceptions: HolidayException[]) => Promise<void>;
   updateFeaturedServices: (serviceIds: string[]) => Promise<void>;
-  updateClinicTexts: (texts: { heroText: string; aboutText: string }) => Promise<void>; // Adicionado
+  updateClinicTexts: (texts: { heroText: string; heroSubtitle: string; aboutText: string }) => Promise<void>; // ATUALIZADO
   refreshAdminData: () => void;
 }
 
@@ -424,7 +424,7 @@ function AppContent() {
     }
   }, []);
   
-  const updateClinicTexts = useCallback(async (texts: { heroText: string; aboutText: string }) => {
+  const updateClinicTexts = useCallback(async (texts: { heroText: string; heroSubtitle: string; aboutText: string }) => {
     const updatedSettings = await api.updateClinicTexts(texts);
     if (updatedSettings) {
         setClinicSettings(updatedSettings);

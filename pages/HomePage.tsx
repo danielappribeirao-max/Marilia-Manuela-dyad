@@ -32,7 +32,7 @@ export default function HomePage({ onPurchaseOrBook, onPurchasePackage, onStartF
         <div className="absolute inset-0 bg-black bg-opacity-40"></div>
         <div className="relative container mx-auto px-6 h-full flex flex-col justify-center items-start">
           <h1 className="text-5xl md:text-6xl font-bold leading-tight">{clinicSettings.heroText}</h1>
-          <p className="mt-4 text-xl max-w-lg">Descubra tratamentos estéticos de ponta e agende seu momento de cuidado em um ambiente de luxo e bem-estar.</p>
+          <p className="mt-4 text-xl max-w-lg">{clinicSettings.heroSubtitle}</p> {/* AGORA DINÂMICO */}
           <div className="flex flex-col sm:flex-row gap-4 mt-8">
             <button 
               onClick={() => setCurrentPage(Page.SERVICES)}

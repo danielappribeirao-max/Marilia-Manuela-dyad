@@ -101,17 +101,6 @@ export const signOut = async () => {
     return { error: null };
 };
 
-export const sendPasswordResetEmail = async (email: string) => {
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/update-password`,
-    });
-    if (error) {
-        console.error("Error sending password reset email:", error);
-        return { error };
-    }
-    return { error: null };
-};
-
 // ==================
 // SERVICES & PACKAGES
 // ==================
@@ -672,6 +661,7 @@ const mapDbToClinicSettings = (dbSettings: any): ClinicSettings => ({
     holidayExceptions: dbSettings.holiday_exceptions || [],
     featuredServiceIds: dbSettings.featured_service_ids || [], // Mapeando o novo campo
     heroText: dbSettings.hero_text || 'Sua Beleza, Nosso Compromisso.', // Mapeando e fornecendo fallback
+    heroSubtitle: dbSettings.hero_subtitle || 'Descubra tratamentos estéticos de ponta e agende seu momento de cuidado em um ambiente de luxo e bem-estar.', // NOVO: Mapeando e fornecendo fallback
     aboutText: dbSettings.about_text || 'Descubra tratamentos estéticos de ponta e agende seu momento de cuidado em um ambiente de luxo e bem-estar.', // Mapeando e fornecendo fallback
 });
 
@@ -692,6 +682,7 @@ export const DEFAULT_CLINIC_SETTINGS: ClinicSettings = {
     holidayExceptions: [],
     featuredServiceIds: [], // Padrão vazio
     heroText: 'Sua Beleza, Nosso Compromisso.',
+    heroSubtitle: 'Descubra tratamentos estéticos de ponta e agende seu momento de cuidado em um ambiente de luxo e bem-estar.', // NOVO
     aboutText: 'Descubra tratamentos estéticos de ponta e agende seu momento de cuidado em um ambiente de luxo e bem-estar.',
 };
 
@@ -699,7 +690,7 @@ export const getClinicSettings = async (): Promise<ClinicSettings> => {
     try {
         const { data, error } = await supabase
             .from('clinic_settings')
-            .select('id, operating_hours, holiday_exceptions, featured_service_ids, hero_text, about_text') // Incluindo os novos campos
+            .select('id, operating_hours, holiday_exceptions, featured_service_ids, hero_text, hero_subtitle, about_text') // Incluindo o novo campo
             .eq('id', SETTINGS_ID)
             .single();
 
@@ -718,10 +709,11 @@ export const getClinicSettings = async (): Promise<ClinicSettings> => {
                     operating_hours: DEFAULT_OPERATING_HOURS,
                     holiday_exceptions: [],
                     featured_service_ids: [],
-                    hero_text: DEFAULT_CLINIC_SETTINGS.heroText, // Inserindo o novo campo
-                    about_text: DEFAULT_CLINIC_SETTINGS.aboutText, // Inserindo o novo campo
+                    hero_text: DEFAULT_CLINIC_SETTINGS.heroText, 
+                    hero_subtitle: DEFAULT_CLINIC_SETTINGS.heroSubtitle, // Inserindo o novo campo
+                    about_text: DEFAULT_CLINIC_SETTINGS.aboutText, 
                 })
-                .select('id, operating_hours, holiday_exceptions, featured_service_ids, hero_text, about_text')
+                .select('id, operating_hours, holiday_exceptions, featured_service_ids, hero_text, hero_subtitle, about_text')
                 .single();
                 
             if (insertError) {
@@ -746,7 +738,7 @@ export const updateClinicOperatingHours = async (operatingHours: OperatingHours)
         .from('clinic_settings')
         .update({ operating_hours: operatingHours })
         .eq('id', SETTINGS_ID)
-        .select('id, operating_hours, holiday_exceptions, featured_service_ids, hero_text, about_text')
+        .select('id, operating_hours, holiday_exceptions, featured_service_ids, hero_text, hero_subtitle, about_text')
         .single();
 
     if (error) {
@@ -763,7 +755,7 @@ export const updateClinicHolidayExceptions = async (holidayExceptions: HolidayEx
         .from('clinic_settings')
         .update({ holiday_exceptions: holidayExceptions })
         .eq('id', SETTINGS_ID)
-        .select('id, operating_hours, holiday_exceptions, featured_service_ids, hero_text, about_text')
+        .select('id, operating_hours, holiday_exceptions, featured_service_ids, hero_text, hero_subtitle, about_text')
         .single();
 
     if (error) {
@@ -780,7 +772,7 @@ export const updateFeaturedServices = async (serviceIds: string[]): Promise<Clin
         .from('clinic_settings')
         .update({ featured_service_ids: serviceIds })
         .eq('id', SETTINGS_ID)
-        .select('id, operating_hours, holiday_exceptions, featured_service_ids, hero_text, about_text')
+        .select('id, operating_hours, holiday_exceptions, featured_service_ids, hero_text, hero_subtitle, about_text')
         .single();
 
     if (error) {
@@ -792,15 +784,16 @@ export const updateFeaturedServices = async (serviceIds: string[]): Promise<Clin
     return mapDbToClinicSettings(data);
 };
 
-export const updateClinicTexts = async (texts: { heroText: string; aboutText: string }): Promise<ClinicSettings | null> => {
+export const updateClinicTexts = async (texts: { heroText: string; heroSubtitle: string; aboutText: string }): Promise<ClinicSettings | null> => {
     const { data, error } = await supabase
         .from('clinic_settings')
         .update({ 
             hero_text: texts.heroText,
+            hero_subtitle: texts.heroSubtitle, // NOVO
             about_text: texts.aboutText,
         })
         .eq('id', SETTINGS_ID)
-        .select('id, operating_hours, holiday_exceptions, featured_service_ids, hero_text, about_text')
+        .select('id, operating_hours, holiday_exceptions, featured_service_ids, hero_text, hero_subtitle, about_text')
         .single();
 
     if (error) {
