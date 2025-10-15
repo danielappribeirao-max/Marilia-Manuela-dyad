@@ -4,6 +4,8 @@ import { User, Role, Service } from '../../types';
 import UserModal from '../../components/UserModal';
 import ConfirmationModal from '../../components/ConfirmationModal';
 import { useApp } from '../../App';
+import { formatCPF, formatPhone } from '../../utils/formatters';
+import { Search, User as UserIcon, Phone, Mail, Briefcase, Edit, Trash2 } from 'lucide-react';
 
 export default function AdminManageUsers() {
     const [users, setUsers] = useState<User[]>([]);
@@ -11,6 +13,8 @@ export default function AdminManageUsers() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedUser, setSelectedUser] = useState<Partial<User> | null>(null);
     const [userToDelete, setUserToDelete] = useState<User | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [filterRole, setFilterRole] = useState<Role | 'all'>('all');
     const { services } = useApp();
 
 
@@ -66,8 +70,44 @@ export default function AdminManageUsers() {
             setUserToDelete(null);
         }
     };
+    
+    const filteredUsers = useMemo(() => {
+        let filtered = users;
 
-    if (loading) return <div>Carregando usuários...</div>
+        if (filterRole !== 'all') {
+            filtered = filtered.filter(u => u.role === filterRole);
+        }
+
+        if (searchQuery.trim() !== '') {
+            const lowercasedQuery = searchQuery.toLowerCase();
+            filtered = filtered.filter(u => 
+                u.name.toLowerCase().includes(lowercasedQuery) || 
+                u.email.toLowerCase().includes(lowercasedQuery) ||
+                u.phone.replace(/\D/g, '').includes(searchQuery.replace(/\D/g, '')) ||
+                u.cpf.replace(/\D/g, '').includes(searchQuery.replace(/\D/g, ''))
+            );
+        }
+        
+        return filtered;
+    }, [users, filterRole, searchQuery]);
+
+    const roleOptions = [
+        { value: 'all', label: 'Todas as Funções' },
+        { value: Role.CLIENT, label: 'Clientes' },
+        { value: Role.STAFF, label: 'Profissionais' },
+        { value: Role.ADMIN, label: 'Administradores' },
+    ];
+    
+    const getRoleClasses = (role: Role) => {
+        switch (role) {
+            case Role.ADMIN: return 'bg-purple-100 text-purple-800';
+            case Role.STAFF: return 'bg-blue-100 text-blue-800';
+            case Role.CLIENT: return 'bg-green-100 text-green-800';
+            default: return 'bg-gray-100 text-gray-800';
+        }
+    };
+
+    if (loading) return <div className="text-center py-10 text-gray-500">Carregando usuários...</div>
 
     return (
         <div>
@@ -75,49 +115,90 @@ export default function AdminManageUsers() {
                 <h2 className="text-3xl font-bold">Gerenciar Usuários</h2>
                 <button 
                     onClick={handleAddNewUser}
-                    className="px-4 py-2 bg-pink-500 text-white rounded-full hover:bg-pink-600"
+                    className="px-4 py-2 bg-pink-500 text-white rounded-full hover:bg-pink-600 font-semibold shadow-md transition-colors"
                 >
-                    Adicionar Usuário
+                    + Adicionar Usuário
                 </button>
             </div>
             
-            <div className="bg-white shadow-md rounded-lg overflow-x-auto">
-                <table className="min-w-full leading-normal">
-                    <thead>
-                        <tr className="bg-gray-100 text-left text-gray-600 uppercase text-sm">
-                            <th className="px-5 py-3">Nome</th>
-                            <th className="px-5 py-3">Email</th>
-                            <th className="px-5 py-3">Função</th>
-                            <th className="px-5 py-3 text-right">Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody className="text-gray-700">
-                        {users.map(user => (
-                            <tr key={user.id} className="border-b border-gray-200 hover:bg-gray-50">
-                                <td className="px-5 py-4 whitespace-nowrap">
-                                    <p className="font-semibold">{user.name}</p>
-                                </td>
-                                <td className="px-5 py-4 whitespace-nowrap">
-                                    <p>{user.email}</p>
-                                </td>
-                                <td className="px-5 py-4">
-                                     <span className={`px-2 py-1 text-xs font-semibold rounded-full capitalize ${
-                                         user.role === Role.ADMIN ? 'bg-purple-200 text-purple-800' :
-                                         user.role === Role.CLIENT ? 'bg-green-200 text-green-800' :
-                                         'bg-blue-200 text-blue-800'
-                                     }`}>
-                                        {user.role.toLowerCase()}
-                                     </span>
-                                </td>
-                                <td className="px-5 py-4 text-right whitespace-nowrap">
-                                    <button onClick={() => handleEditUser(user)} className="text-sm text-blue-600 hover:text-blue-800 mr-2">Editar</button>
-                                    <button onClick={() => handleDeleteUser(user)} className="text-sm text-red-600 hover:text-red-800">Excluir</button>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
+            {/* Search and Filter Bar */}
+            <div className="mb-6 flex flex-col sm:flex-row gap-4">
+                <div className="relative flex-grow">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                        type="text"
+                        placeholder="Buscar por nome, email, telefone ou CPF..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-300 transition-shadow"
+                    />
+                </div>
+                <select
+                    value={filterRole}
+                    onChange={(e) => setFilterRole(e.target.value as Role | 'all')}
+                    className="sm:w-52 w-full p-2 border border-gray-300 bg-white text-gray-700 rounded-lg shadow-sm focus:ring-pink-500 focus:border-pink-500"
+                >
+                    {roleOptions.map(option => (
+                        <option key={option.value} value={option.value}>{option.label}</option>
+                    ))}
+                </select>
             </div>
+            
+            <div className="bg-white shadow-xl rounded-xl overflow-hidden">
+                <div className="overflow-x-auto">
+                    <table className="min-w-full leading-normal">
+                        <thead>
+                            <tr className="bg-gray-50 text-left text-gray-600 uppercase text-xs font-semibold border-b border-gray-200">
+                                <th className="px-5 py-3 w-1/3">Usuário</th>
+                                <th className="px-5 py-3 w-1/3 hidden sm:table-cell">Contato</th>
+                                <th className="px-5 py-3">Função</th>
+                                <th className="px-5 py-3 text-right">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody className="text-gray-700">
+                            {filteredUsers.length > 0 ? filteredUsers.map(user => (
+                                <tr key={user.id} className="border-b border-gray-100 hover:bg-pink-50 transition-colors">
+                                    <td className="px-5 py-4 whitespace-nowrap">
+                                        <div className="flex items-center">
+                                            <img 
+                                                src={user.avatarUrl || `https://ui-avatars.com/api/?name=${user.name.replace(/\s/g, '+')}&background=e9d5ff&color=7c3aed`} 
+                                                alt={user.name} 
+                                                className="w-10 h-10 rounded-full object-cover mr-3 bg-gray-200"
+                                            />
+                                            <div>
+                                                <p className="font-semibold text-gray-800">{user.name}</p>
+                                                <p className="text-xs text-gray-500 flex items-center gap-1"><Mail size={12} /> {user.email}</p>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td className="px-5 py-4 hidden sm:table-cell">
+                                        <p className="text-sm flex items-center gap-1.5"><Phone size={14} className="text-pink-500" /> {formatPhone(user.phone)}</p>
+                                        <p className="text-xs text-gray-500 mt-1">CPF: {formatCPF(user.cpf)}</p>
+                                    </td>
+                                    <td className="px-5 py-4">
+                                        <span className={`px-3 py-1 text-xs font-semibold rounded-full capitalize flex items-center gap-1 w-fit ${getRoleClasses(user.role)}`}>
+                                            <Briefcase size={12} /> {user.role.toLowerCase()}
+                                        </span>
+                                    </td>
+                                    <td className="px-5 py-4 text-right whitespace-nowrap">
+                                        <button onClick={() => handleEditUser(user)} className="text-sm text-blue-600 hover:text-blue-800 mr-3 p-1.5 rounded-full hover:bg-blue-50 transition-colors" title="Editar">
+                                            <Edit size={16} />
+                                        </button>
+                                        <button onClick={() => handleDeleteUser(user)} className="text-sm text-red-600 hover:text-red-800 p-1.5 rounded-full hover:bg-red-50 transition-colors" title="Excluir">
+                                            <Trash2 size={16} />
+                                        </button>
+                                    </td>
+                                </tr>
+                            )) : (
+                                <tr>
+                                    <td colSpan={4} className="text-center py-10 text-gray-500">Nenhum usuário encontrado com os filtros aplicados.</td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
             {isModalOpen && (
                 <UserModal 
                     user={selectedUser}
