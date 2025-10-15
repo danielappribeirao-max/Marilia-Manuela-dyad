@@ -907,7 +907,7 @@ export const getOccupiedSlots = async (dateString: string): Promise<{ profession
         console.error("Error fetching occupied slots:", error);
         return [];
     }
-    // CORREÇÃO: Garantir que o ID seja string
+    // CORREÇÃO: Garantir que o ID seja string para evitar problemas de tipagem
     return data.map(d => ({
         id: String(d.id),
         professional_id: d.professional_id,
