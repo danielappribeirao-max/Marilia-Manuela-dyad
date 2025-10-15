@@ -166,15 +166,22 @@ export const addOrUpdateService = async (service: Service): Promise<Service | nu
         // Inserir novo serviço (o ID será gerado pelo banco de dados)
         // Remove o ID do payload para garantir que o banco gere um novo UUID
         const { id, ...insertData } = serviceData; 
+        
+        // Garantir que o payload de inserção não contenha 'id'
+        const insertPayload = { ...insertData };
+        if (insertPayload.id) delete insertPayload.id;
+
         result = await supabase
             .from('services')
-            .insert(insertData)
+            .insert(insertPayload)
             .select()
             .single();
     }
 
     if (result.error) {
         console.error("Error adding/updating service:", result.error);
+        // Adicionando um alerta mais detalhado para o console
+        alert(`Erro ao salvar serviço: ${result.error.message}`);
         return null;
     }
     return mapDbToService(result.data);
