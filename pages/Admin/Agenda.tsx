@@ -45,12 +45,11 @@ export default function AdminAgenda() {
         setLoading(false);
     }, []);
 
-    // Usa a chave de atualização do AppContext para forçar o recarregamento
-    // O AdminDashboardPage passa a chave via prop 'key', que força a remontagem do componente,
-    // mas o useEffect abaixo garante que o fetchData seja chamado.
+    // O AdminDashboardPage passa a chave via prop 'key', que força a remontagem do componente.
+    // O useEffect garante que os dados sejam carregados na montagem e sempre que a chave de atualização mudar.
     useEffect(() => {
         fetchData();
-    }, [fetchData]);
+    }, [fetchData, refreshAdminData]); // Adicionando refreshAdminData como dependência para garantir que o fetchData seja chamado quando o App.tsx o acionar.
 
     const openCreateModal = useCallback((date?: Date) => {
         setSelectedBooking(null);
@@ -110,6 +109,7 @@ export default function AdminAgenda() {
             }
         }
         setIsModalOpen(false);
+        fetchData(); // Garante que a lista seja recarregada após salvar/cancelar
     };
 
     const handleNavigate = (direction: 'prev' | 'next' | 'today') => {
