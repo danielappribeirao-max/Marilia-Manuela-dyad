@@ -173,7 +173,6 @@ export const addOrUpdateService = async (service: Service): Promise<Service | nu
 
     if (result.error) {
         console.error("Error adding/updating service:", result.error);
-        alert(`Erro ao salvar serviço: ${result.error.message}`);
         return null;
     }
     return mapDbToService(result.data);
