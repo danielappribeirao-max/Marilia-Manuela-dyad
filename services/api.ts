@@ -194,7 +194,7 @@ export const ensureFreeConsultationServiceExists = async (): Promise<Service | n
 };
 
 export const getServices = async (): Promise<Service[]> => {
-    // Ordena por 'order' e depois por 'name' como fallback
+    // Ordena por 'order' (ascendente) e depois por 'name' (ascendente) como fallback
     const { data, error } = await supabase.from('services').select('*').order('order', { ascending: true }).order('name', { ascending: true });
     if (error) {
         console.error("Error fetching services:", error);
@@ -246,6 +246,12 @@ export const addOrUpdateService = async (service: Service): Promise<Service | nu
     } else {
         // Inserir novo serviço (o ID será gerado pelo banco de dados)
         const { id, ...insertData } = serviceData; 
+        
+        // 1. Determinar a próxima ordem se não for fornecida
+        if (insertData.order === undefined || insertData.order === null) {
+            const { data: maxOrderData } = await supabase.from('services').select('order').order('order', { ascending: false }).limit(1).single();
+            insertData.order = (maxOrderData?.order || 0) + 1;
+        }
         
         const insertPayload = { ...insertData };
         
