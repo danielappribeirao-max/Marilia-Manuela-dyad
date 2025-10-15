@@ -49,6 +49,7 @@ export default function AdminManageUsers() {
 
         if (result) {
            await fetchUsers(); // Recarrega a lista para mostrar as alterações
+           alert(`Usuário ${result.name} salvo com sucesso!`);
         } else {
             // A mensagem de erro específica já é mostrada pela função da API
         }
@@ -61,14 +62,17 @@ export default function AdminManageUsers() {
     };
     
     const handleConfirmDelete = async () => {
-        if (userToDelete) {
-            // Nota: A exclusão de usuários pode ser complexa devido a restrições de chave estrangeira.
-            // Esta é uma versão simplificada. Uma aplicação real poderia desativar os usuários em vez de excluí-los.
-            alert("A funcionalidade de exclusão de usuários está desabilitada nesta demonstração para evitar a remoção de dados essenciais.");
-            // await api.deleteUser(userToDelete.id);
-            // await fetchUsers();
-            setUserToDelete(null);
+        if (!userToDelete) return;
+        
+        const result = await api.deleteUser(userToDelete.id);
+        
+        if (result.success) {
+            alert(`Usuário ${userToDelete.name} excluído com sucesso.`);
+            await fetchUsers();
+        } else {
+            alert(`Falha ao excluir usuário: ${result.error}`);
         }
+        setUserToDelete(null);
     };
     
     const filteredUsers = useMemo(() => {

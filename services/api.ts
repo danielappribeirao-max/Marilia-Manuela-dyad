@@ -446,6 +446,29 @@ export const adminCreateUser = async (userData: Partial<User> & { password?: str
     return createdUser;
 };
 
+export const deleteUser = async (userId: string): Promise<{ success: boolean, error: string | null }> => {
+    try {
+        const { data, error } = await supabase.functions.invoke('admin-delete-user', {
+            body: { userId },
+        });
+
+        if (error) {
+            console.error("Error invoking admin-delete-user function:", error);
+            return { success: false, error: error.message };
+        }
+        
+        if (data.error) {
+            return { success: false, error: data.error };
+        }
+
+        return { success: true, error: null };
+
+    } catch (e) {
+        console.error("Unexpected error during user deletion:", e);
+        return { success: false, error: "Erro inesperado ao tentar excluir o usuário." };
+    }
+};
+
 export const getUsersWithRoles = async (): Promise<User[]> => {
     // 1. Buscar todos os perfis (que contêm nome, função, cpf, telefone e avatar_url)
     const { data: profiles, error: profileError } = await supabase
@@ -483,7 +506,7 @@ export const getUsersWithRoles = async (): Promise<User[]> => {
         return {
             id: profile.id,
             email: email,
-            name: profile.full_name || authUser?.user_metadata?.full_name || 'Usuário',
+            name: profile.full_name || authUser?.user_metadata?.full_name || authUser?.email || 'Usuário',
             phone: profile.phone || authUser?.user_metadata?.phone || '',
             cpf: profile.cpf || '',
             role: appRole,
