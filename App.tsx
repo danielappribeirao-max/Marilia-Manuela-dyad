@@ -183,13 +183,35 @@ function AppContent() {
     }
   }, []);
 
+  const handleStartFreeConsultation = useCallback(() => {
+      const freeConsultationService = services.find(s => s.id === FREE_CONSULTATION_SERVICE_ID);
+      if (!freeConsultationService) {
+          alert("Serviço de consulta gratuita não encontrado.");
+          return;
+      }
+      
+      if (currentUser) {
+          // Se o usuário estiver logado, pula o cadastro rápido e vai direto para o agendamento
+          setBookingService(freeConsultationService);
+      } else {
+          // Se não estiver logado, abre o modal de cadastro rápido
+          setIsQuickRegisterModalOpen(true);
+      }
+  }, [currentUser, services]);
+
   const handlePurchaseOrBook = useCallback((service: Service, quantity: number) => {
+    // NOVO: Se for o serviço de consulta gratuita, redireciona para o fluxo de agendamento rápido
+    if (service.id === FREE_CONSULTATION_SERVICE_ID) {
+        handleStartFreeConsultation();
+        return;
+    }
+    
     if (!currentUser) {
         setCurrentPage(Page.LOGIN);
         return;
     }
     setPurchaseConfirmation({ service, quantity });
-  }, [currentUser]);
+  }, [currentUser, handleStartFreeConsultation]);
   
   const handlePurchasePackage = useCallback((pkg: ServicePackage) => {
     if (!currentUser) {
@@ -241,23 +263,6 @@ function AppContent() {
   const handleStartReschedule = useCallback((booking: Booking) => {
     setReschedulingBooking(booking);
   }, []);
-  
-  // NOVO: Inicia o fluxo de consulta gratuita
-  const handleStartFreeConsultation = useCallback(() => {
-      const freeConsultationService = services.find(s => s.id === FREE_CONSULTATION_SERVICE_ID);
-      if (!freeConsultationService) {
-          alert("Serviço de consulta gratuita não encontrado.");
-          return;
-      }
-      
-      if (currentUser) {
-          // Se o usuário estiver logado, pula o cadastro rápido e vai direto para o agendamento
-          setBookingService(freeConsultationService);
-      } else {
-          // Se não estiver logado, abre o modal de cadastro rápido
-          setIsQuickRegisterModalOpen(true);
-      }
-  }, [currentUser, services]);
   
   // NOVO: Lida com o cadastro rápido e abre o modal de agendamento
   const handleQuickRegisterAndBook = useCallback((data: { name: string; phone: string; description: string }) => {
