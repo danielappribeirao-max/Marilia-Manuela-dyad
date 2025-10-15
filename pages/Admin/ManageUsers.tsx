@@ -145,20 +145,21 @@ export default function AdminManageUsers() {
             </div>
             
             <div className="bg-white shadow-xl rounded-xl overflow-hidden">
-                {/* Removendo overflow-x-auto e min-w-full para permitir que a tabela se ajuste */}
                 <table className="w-full leading-normal table-fixed">
                     <thead>
                         <tr className="bg-gray-50 text-left text-gray-600 uppercase text-xs font-semibold border-b border-gray-200">
-                            <th className="px-3 py-3 w-2/5 sm:w-1/3">Usuário</th>
-                            <th className="px-3 py-3 w-1/3 hidden md:table-cell">Contato</th>
-                            <th className="px-3 py-3 w-1/5 sm:w-1/6">Função</th>
-                            <th className="px-3 py-3 w-1/6 text-right">Ações</th>
+                            {/* Aumentando a largura da coluna de Usuário */}
+                            <th className="px-5 py-3 w-1/2 sm:w-2/5">Usuário</th>
+                            {/* Ocultando em telas pequenas, mostrando em telas médias */}
+                            <th className="px-5 py-3 w-1/4 hidden md:table-cell">Contato</th>
+                            <th className="px-5 py-3 w-1/4 sm:w-1/5">Função</th>
+                            <th className="px-5 py-3 w-1/6 sm:w-1/5 text-right">Ações</th>
                         </tr>
                     </thead>
                     <tbody className="text-gray-700">
                         {filteredUsers.length > 0 ? filteredUsers.map(user => (
                             <tr key={user.id} className="border-b border-gray-100 hover:bg-pink-50 transition-colors">
-                                <td className="px-3 py-3 align-top">
+                                <td className="px-5 py-4 align-top">
                                     <div className="flex items-start">
                                         <img 
                                             src={user.avatarUrl || `https://ui-avatars.com/api/?name=${user.name.replace(/\s/g, '+')}&background=e9d5ff&color=7c3aed`} 
@@ -166,21 +167,23 @@ export default function AdminManageUsers() {
                                             className="w-10 h-10 rounded-full object-cover mr-3 bg-gray-200 flex-shrink-0"
                                         />
                                         <div className="min-w-0">
-                                            <p className="font-semibold text-gray-800 break-words">{user.name}</p>
-                                            <p className="text-xs text-gray-500 flex items-center gap-1 break-words"><Mail size={12} /> {user.email}</p>
+                                            {/* Removendo break-words para evitar quebras excessivas, mas garantindo que o contêiner se ajuste */}
+                                            <p className="font-semibold text-gray-800 truncate">{user.name}</p>
+                                            <p className="text-xs text-gray-500 flex items-center gap-1 truncate"><Mail size={12} /> {user.email}</p>
                                         </div>
                                     </div>
                                 </td>
-                                <td className="px-3 py-3 hidden md:table-cell align-top">
+                                {/* Ocultando em telas pequenas, mostrando em telas médias */}
+                                <td className="px-5 py-4 hidden md:table-cell align-top">
                                     <p className="text-sm flex items-center gap-1.5"><Phone size={14} className="text-pink-500" /> {formatPhone(user.phone)}</p>
                                     <p className="text-xs text-gray-500 mt-1">CPF: {formatCPF(user.cpf)}</p>
                                 </td>
-                                <td className="px-3 py-3 align-top">
+                                <td className="px-5 py-4 align-top">
                                     <span className={`px-3 py-1 text-xs font-semibold rounded-full capitalize flex items-center gap-1 w-fit ${getRoleClasses(user.role)}`}>
                                         <Briefcase size={12} /> {user.role.toLowerCase()}
                                     </span>
                                 </td>
-                                <td className="px-3 py-3 text-right align-top">
+                                <td className="px-5 py-4 text-right align-top">
                                     <button onClick={() => handleEditUser(user)} className="text-sm text-blue-600 hover:text-blue-800 mr-1 p-1.5 rounded-full hover:bg-blue-50 transition-colors" title="Editar">
                                         <Edit size={16} />
                                     </button>
