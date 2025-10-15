@@ -407,38 +407,52 @@ const DEFAULT_OPERATING_HOURS: OperatingHours = {
     6: { open: true, start: '07:00', end: '14:00' } // Sábado (sem almoço)
 };
 
-export const getClinicSettings = async (): Promise<ClinicSettings | null> => {
-    const { data, error } = await supabase
-        .from('clinic_settings')
-        .select('id, operating_hours, holiday_exceptions')
-        .eq('id', SETTINGS_ID)
-        .single();
+const DEFAULT_CLINIC_SETTINGS: ClinicSettings = {
+    id: SETTINGS_ID,
+    operatingHours: DEFAULT_OPERATING_HOURS,
+    holidayExceptions: [],
+};
 
-    if (error && error.code !== 'PGRST116') { // PGRST116 = No rows found
-        console.error("Error fetching clinic settings:", error);
-        return null;
-    }
-    
-    if (!data) {
-        // Se não houver dados, insere a linha padrão
-        const { data: insertData, error: insertError } = await supabase
+export const getClinicSettings = async (): Promise<ClinicSettings> => {
+    try {
+        const { data, error } = await supabase
             .from('clinic_settings')
-            .insert({ 
-                id: SETTINGS_ID, 
-                operating_hours: DEFAULT_OPERATING_HOURS,
-                holiday_exceptions: [],
-            })
             .select('id, operating_hours, holiday_exceptions')
+            .eq('id', SETTINGS_ID)
             .single();
-            
-        if (insertError) {
-            console.error("Error inserting default clinic settings:", insertError);
-            return null;
-        }
-        return mapDbToClinicSettings(insertData);
-    }
 
-    return mapDbToClinicSettings(data);
+        if (error && error.code !== 'PGRST116') { // PGRST116 = No rows found
+            console.error("Error fetching clinic settings:", error);
+            // Fallback para padrões se houver erro de conexão/permissão
+            return DEFAULT_CLINIC_SETTINGS;
+        }
+        
+        if (!data) {
+            // Se não houver dados, insere a linha padrão
+            const { data: insertData, error: insertError } = await supabase
+                .from('clinic_settings')
+                .insert({ 
+                    id: SETTINGS_ID, 
+                    operating_hours: DEFAULT_OPERATING_HOURS,
+                    holiday_exceptions: [],
+                })
+                .select('id, operating_hours, holiday_exceptions')
+                .single();
+                
+            if (insertError) {
+                console.error("Error inserting default clinic settings:", insertError);
+                // Fallback para padrões se a inserção falhar
+                return DEFAULT_CLINIC_SETTINGS;
+            }
+            return mapDbToClinicSettings(insertData);
+        }
+
+        return mapDbToClinicSettings(data);
+    } catch (e) {
+        console.error("Unexpected error in getClinicSettings:", e);
+        // Fallback final em caso de erro inesperado
+        return DEFAULT_CLINIC_SETTINGS;
+    }
 };
 
 export const updateClinicOperatingHours = async (operatingHours: OperatingHours): Promise<ClinicSettings | null> => {

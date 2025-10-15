@@ -112,17 +112,6 @@ export default function AdminSettingsPage() {
     return newUrl;
   };
 
-  // Definindo o padrão localmente para garantir que o formulário seja inicializado corretamente
-  const defaultOperatingHours: OperatingHours = {
-    0: { open: false }, 
-    1: { open: true, start: '07:00', end: '20:00', lunchStart: '13:00', lunchEnd: '14:00' }, 
-    2: { open: true, start: '07:00', end: '20:00', lunchStart: '13:00', lunchEnd: '14:00' }, 
-    3: { open: true, start: '07:00', end: '20:00', lunchStart: '13:00', lunchEnd: '14:00' }, 
-    4: { open: true, start: '07:00', end: '20:00', lunchStart: '13:00', lunchEnd: '14:00' }, 
-    5: { open: true, start: '07:00', end: '20:00', lunchStart: '13:00', lunchEnd: '14:00' }, 
-    6: { open: true, start: '07:00', end: '14:00' }
-  };
-
   return (
     <div>
       <h2 className="text-3xl font-bold mb-6">Configurações do Site</h2>
@@ -131,7 +120,7 @@ export default function AdminSettingsPage() {
         <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
             <h3 className="text-xl font-semibold text-gray-800 mb-4">Horários de Funcionamento Padrão</h3>
             <OperatingHoursForm 
-                initialHours={clinicSettings?.operatingHours || defaultOperatingHours}
+                initialHours={clinicSettings.operatingHours}
                 onSave={updateClinicSettings}
             />
         </div>
@@ -139,7 +128,7 @@ export default function AdminSettingsPage() {
         <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
             <h3 className="text-xl font-semibold text-gray-800 mb-4">Exceções de Feriados e Datas Especiais</h3>
             <HolidayExceptionForm
-                initialExceptions={clinicSettings?.holidayExceptions || []}
+                initialExceptions={clinicSettings.holidayExceptions || []}
                 onSave={updateClinicHolidayExceptions}
             />
         </div>

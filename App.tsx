@@ -34,7 +34,7 @@ interface AppContextType {
   setHeroImageUrl: (url: string) => void;
   aboutImageUrl: string;
   setAboutImageUrl: (url: string) => void;
-  clinicSettings: ClinicSettings | null;
+  clinicSettings: ClinicSettings; // Alterado para não-nullable
   updateClinicSettings: (hours: OperatingHours) => Promise<void>;
   updateClinicHolidayExceptions: (exceptions: HolidayException[]) => Promise<void>;
   // Adicionando função de recarregamento para a agenda
@@ -63,7 +63,8 @@ function AppContent() {
   const [services, setServices] = useState<Service[]>([]);
   const [packages, setPackages] = useState<ServicePackage[]>([]);
   const [professionals, setProfessionals] = useState<User[]>([]);
-  const [clinicSettings, setClinicSettings] = useState<ClinicSettings | null>(null);
+  // Inicializa com um objeto vazio para evitar null/undefined no contexto
+  const [clinicSettings, setClinicSettings] = useState<ClinicSettings>(api.DEFAULT_CLINIC_SETTINGS); 
   
   const [bookingService, setBookingService] = useState<Service | null>(null);
   const [purchaseConfirmation, setPurchaseConfirmation] = useState<{ service: Service, quantity: number } | null>(null);
@@ -97,7 +98,7 @@ function AppContent() {
           api.getServices(),
           api.getProfessionals(),
           api.getServicePackages(),
-          api.getClinicSettings(),
+          api.getClinicSettings(), // Agora retorna ClinicSettings, nunca null
         ]);
         
         // Adiciona o serviço de consulta gratuita à lista de serviços
@@ -117,6 +118,8 @@ function AppContent() {
         }
       } catch (error) {
         console.error("Error initializing app:", error);
+        // Em caso de falha total, ainda usamos os padrões
+        setClinicSettings(api.DEFAULT_CLINIC_SETTINGS);
       } finally {
         setLoading(false);
       }
@@ -396,8 +399,8 @@ function AppContent() {
             isCreditBooking={!!creditBookingService} 
             onConfirmBooking={handleConfirmFinalBooking} 
             professionals={professionals} 
-            clinicOperatingHours={clinicSettings?.operatingHours} 
-            clinicHolidayExceptions={clinicSettings?.holidayExceptions}
+            clinicOperatingHours={clinicSettings.operatingHours} 
+            clinicHolidayExceptions={clinicSettings.holidayExceptions}
             tempClientData={tempClientData} // Passa os dados temporários
         />}
         {purchaseConfirmation && <PurchaseConfirmationModal service={purchaseConfirmation.service} quantity={purchaseConfirmation.quantity} onConfirm={handleConfirmPurchase} onClose={handleCloseModals} />}
