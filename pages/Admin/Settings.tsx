@@ -112,14 +112,15 @@ export default function AdminSettingsPage() {
     return newUrl;
   };
 
+  // Definindo o padrão localmente para garantir que o formulário seja inicializado corretamente
   const defaultOperatingHours: OperatingHours = {
     0: { open: false }, 
-    1: { open: true, start: '08:00', end: '20:00' }, 
-    2: { open: true, start: '08:00', end: '20:00' }, 
-    3: { open: true, start: '08:00', end: '20:00' }, 
-    4: { open: true, start: '08:00', end: '20:00' }, 
-    5: { open: true, start: '08:00', end: '20:00' }, 
-    6: { open: false }
+    1: { open: true, start: '07:00', end: '20:00', lunchStart: '13:00', lunchEnd: '14:00' }, 
+    2: { open: true, start: '07:00', end: '20:00', lunchStart: '13:00', lunchEnd: '14:00' }, 
+    3: { open: true, start: '07:00', end: '20:00', lunchStart: '13:00', lunchEnd: '14:00' }, 
+    4: { open: true, start: '07:00', end: '20:00', lunchStart: '13:00', lunchEnd: '14:00' }, 
+    5: { open: true, start: '07:00', end: '20:00', lunchStart: '13:00', lunchEnd: '14:00' }, 
+    6: { open: true, start: '07:00', end: '14:00' }
   };
 
   return (

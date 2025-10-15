@@ -396,14 +396,15 @@ const mapDbToClinicSettings = (dbSettings: any): ClinicSettings => ({
     holidayExceptions: dbSettings.holiday_exceptions || [],
 });
 
+// NOVOS HORÁRIOS PADRÃO
 const DEFAULT_OPERATING_HOURS: OperatingHours = {
-    0: { open: false }, 
-    1: { open: true, start: '07:00', end: '20:00', lunchStart: '13:00', lunchEnd: '14:00' }, 
-    2: { open: true, start: '07:00', end: '20:00', lunchStart: '13:00', lunchEnd: '14:00' }, 
-    3: { open: true, start: '07:00', end: '20:00', lunchStart: '13:00', lunchEnd: '14:00' }, 
-    4: { open: true, start: '07:00', end: '20:00', lunchStart: '13:00', lunchEnd: '14:00' }, 
-    5: { open: true, start: '07:00', end: '20:00', lunchStart: '13:00', lunchEnd: '14:00' }, 
-    6: { open: true, start: '07:00', end: '13:00' }
+    0: { open: false }, // Domingo
+    1: { open: true, start: '07:00', end: '20:00', lunchStart: '13:00', lunchEnd: '14:00' }, // Segunda
+    2: { open: true, start: '07:00', end: '20:00', lunchStart: '13:00', lunchEnd: '14:00' }, // Terça
+    3: { open: true, start: '07:00', end: '20:00', lunchStart: '13:00', lunchEnd: '14:00' }, // Quarta
+    4: { open: true, start: '07:00', end: '20:00', lunchStart: '13:00', lunchEnd: '14:00' }, // Quinta
+    5: { open: true, start: '07:00', end: '20:00', lunchStart: '13:00', lunchEnd: '14:00' }, // Sexta
+    6: { open: true, start: '07:00', end: '14:00' } // Sábado (sem almoço)
 };
 
 export const getClinicSettings = async (): Promise<ClinicSettings | null> => {
