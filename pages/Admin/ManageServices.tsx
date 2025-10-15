@@ -32,9 +32,14 @@ export default function AdminManageServices() {
     };
 
     const handleSave = async (savedService: Service) => {
-        await addOrUpdateService(savedService);
-        setIsServiceModalOpen(false);
-        setSelectedService(null);
+        const result = await addOrUpdateService(savedService);
+        if (result) {
+            setIsServiceModalOpen(false);
+            setSelectedService(null);
+            alert(`Serviço "${result.name}" salvo com sucesso!`);
+        } else {
+            alert("Falha ao salvar o serviço. Verifique os dados e tente novamente.");
+        }
     };
     
     return (
