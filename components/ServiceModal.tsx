@@ -23,8 +23,13 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave, e
   });
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [isNewCategory, setIsNewCategory] = useState(false);
+  
+  // Novo estado para controlar se o preço é fixo ou gratuito
+  const [priceType, setPriceType] = useState<'fixed' | 'free'>(
+      (service?.price === 0 || !service?.price) ? 'free' : 'fixed'
+  );
 
-  // Efeito para garantir que o estado seja resetado se a prop 'service' mudar (embora a chave já faça isso)
+  // Efeito para garantir que o estado seja resetado se a prop 'service' mudar
   useEffect(() => {
     setFormData({
       id: service?.id, 
@@ -36,6 +41,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave, e
       imageUrl: service?.imageUrl || '',
       sessions: service?.sessions || 1,
     });
+    setPriceType((service?.price === 0 || !service?.price) ? 'free' : 'fixed');
     setIsNewCategory(false);
     setErrors({});
   }, [service]);
@@ -55,10 +61,15 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave, e
     const duration = Number(formData.duration);
     const sessions = Number(formData.sessions);
     
-    // ALTERAÇÃO: Permite preço zero
-    if (isNaN(price) || price < 0) newErrors.price = 'O preço deve ser zero ou maior.';
+    // Validação de Preço
+    if (priceType === 'fixed') {
+        if (isNaN(price) || price <= 0) newErrors.price = 'O preço deve ser maior que zero para preço fixo.';
+    } else {
+        // Se for 'free', o preço deve ser 0
+        if (price !== 0) newErrors.price = 'Erro interno: Preço deve ser 0 para Grátis.';
+    }
     
-    // ALTERAÇÃO: Permite duração zero
+    // Permite duração zero ou maior
     if (isNaN(duration) || duration < 0) newErrors.duration = 'A duração deve ser zero ou maior.';
     
     if (isNaN(sessions) || sessions < 1) newErrors.sessions = 'A quantidade de sessões deve ser de no mínimo 1.';
@@ -92,6 +103,18 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave, e
     }
   };
   
+  const handlePriceTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+      const newType = e.target.value as 'fixed' | 'free';
+      setPriceType(newType);
+      if (newType === 'free') {
+          setFormData(prev => ({ ...prev, price: 0 }));
+      } else {
+          // Define um valor padrão se for para fixo
+          setFormData(prev => ({ ...prev, price: prev.price === 0 ? 50.00 : prev.price }));
+      }
+      if (errors.price) setErrors(prev => ({ ...prev, price: '' }));
+  };
+
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -164,10 +187,36 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave, e
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
+                <label htmlFor="priceType" className="block text-sm font-medium text-gray-700 mb-1">Tipo de Preço</label>
+                <select 
+                    id="priceType" 
+                    name="priceType" 
+                    value={priceType} 
+                    onChange={handlePriceTypeChange} 
+                    className="w-full p-2 border bg-white text-gray-900 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500 border-gray-300"
+                >
+                    <option value="fixed">Preço Fixo (R$)</option>
+                    <option value="free">Grátis (R$ 0,00)</option>
+                </select>
+              </div>
+              <div>
                 <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-1">Preço (R$)</label>
-                <input type="number" id="price" name="price" value={formData.price || 0} onChange={handleChange} step="0.01" min="0" className={`w-full p-2 border bg-white text-gray-900 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500 ${errors.price ? 'border-red-500' : 'border-gray-300'}`} />
+                <input 
+                    type="number" 
+                    id="price" 
+                    name="price" 
+                    value={formData.price || 0} 
+                    onChange={handleChange} 
+                    step="0.01" 
+                    min={priceType === 'fixed' ? '0.01' : '0'}
+                    disabled={priceType === 'free'}
+                    className={`w-full p-2 border bg-white text-gray-900 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500 ${errors.price ? 'border-red-500' : 'border-gray-300'} ${priceType === 'free' ? 'bg-gray-100 cursor-not-allowed' : ''}`} 
+                />
                 {errors.price && <p className="text-red-500 text-xs mt-1">{errors.price}</p>}
               </div>
+            </div>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label htmlFor="duration" className="block text-sm font-medium text-gray-700 mb-1">Duração (minutos)</label>
                 <input type="number" id="duration" name="duration" value={formData.duration || 0} onChange={handleChange} min="0" className={`w-full p-2 border bg-white text-gray-900 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500 ${errors.duration ? 'border-red-500' : 'border-gray-300'}`} />
