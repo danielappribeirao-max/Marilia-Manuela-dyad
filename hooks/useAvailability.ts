@@ -36,11 +36,10 @@ export const useAvailability = ({
 
     const fetchAvailability = useCallback(async (date: Date) => {
         setLoadingAvailability(true);
-        // Usamos a data ISO string (YYYY-MM-DD) para a API, que é consistente
         const dateString = date.toISOString().split('T')[0];
         const slots = await api.getOccupiedSlots(dateString);
-        // Garantir que o ID seja string para comparação
         setOccupiedSlots(slots.map(s => ({ ...s, id: String(s.id) })));
+        console.log(`[useAvailability] Fetched occupied slots for ${dateString}:`, slots); // LOG DE DEBUG
         setLoadingAvailability(false);
     }, []);
 
@@ -53,19 +52,14 @@ export const useAvailability = ({
     const currentDaySettings = useMemo((): DayOperatingHours | undefined => {
         if (!selectedDate) return undefined;
         
-        // A data string é usada para buscar exceções (YYYY-MM-DD)
         const dateString = selectedDate.toISOString().split('T')[0];
         
-        // 1. Verificar exceções de feriado
         const holidayException = clinicHolidayExceptions?.find(ex => ex.date === dateString);
         if (holidayException) {
             return holidayException;
         }
 
-        // 2. Usar horário padrão
-        // O getDay() retorna o dia da semana localmente (0-6)
         const dayOfWeek = selectedDate.getDay();
-        // Acessa usando a chave string, pois os dados JSONB do Supabase usam chaves string para objetos.
         return clinicOperatingHours?.[String(dayOfWeek)];
         
     }, [selectedDate, clinicOperatingHours, clinicHolidayExceptions]);
@@ -93,6 +87,8 @@ export const useAvailability = ({
         
         // Filtra slots ocupados apenas para o profissional selecionado
         const professionalOccupiedSlots = occupiedSlots.filter(slot => slot.professional_id === selectedProfessionalId);
+        
+        console.log(`[useAvailability] Professional occupied slots (${selectedProfessionalId}):`, professionalOccupiedSlots); // LOG DE DEBUG
 
         // Calcula o início do dia atual em minutos (para evitar agendamentos no passado)
         const now = new Date();
@@ -105,7 +101,6 @@ export const useAvailability = ({
             const slotEndTime = minutes + serviceDuration;
             
             // 1. Verificar se o slot já passou (apenas para o dia atual)
-            // Adicionamos uma margem de 1 minuto para evitar agendamentos no exato minuto atual
             if (isToday && slotStartTime < currentMinutes + 1) continue;
 
             // 2. Verificar se o serviço termina antes do fim do dia
@@ -115,8 +110,6 @@ export const useAvailability = ({
 
             // 3. Verificar sobreposição com o horário de almoço
             if (hasLunchBreak) {
-                // Um slot se sobrepõe ao almoço se:
-                // O slot começar antes do fim do almoço E o almoço começar antes do fim do slot.
                 const overlapsWithLunch = (slotStartTime < lunchEndMinutes && lunchStartMinutes < slotEndTime);
                 if (overlapsWithLunch) {
                     isAvailable = false;
@@ -133,8 +126,7 @@ export const useAvailability = ({
                 // Ignorar o agendamento que está sendo editado/reagendado
                 if (bookingToIgnoreId && bookingToIgnoreId === occupied.id) continue;
 
-                // Um slot se sobrepõe a um agendamento se:
-                // O slot começar antes do fim do agendamento E o agendamento começar antes do fim do slot.
+                // Lógica de sobreposição: (Novo.start < Existente.end) AND (Existente.start < Novo.end)
                 const overlaps = (slotStartTime < occupiedEnd && occupiedStart < slotEndTime);
 
                 if (overlaps) {
