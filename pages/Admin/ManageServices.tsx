@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Service } from '../../types';
 import ServiceModal from '../../components/ServiceModal';
 import ConfirmationModal from '../../components/ConfirmationModal';
+import AdminServiceCard from '../../components/AdminServiceCard';
 import { useApp } from '../../App';
 
 export default function AdminManageServices() {
@@ -57,41 +58,17 @@ export default function AdminManageServices() {
                 </button>
             </div>
             
-            <h3 className="text-2xl font-bold mb-4">Serviços Atuais</h3>
-            <div className="bg-white shadow-md rounded-lg overflow-x-auto">
-                <table className="min-w-full leading-normal">
-                    <thead>
-                        <tr className="bg-gray-100 text-left text-gray-600 uppercase text-sm">
-                            <th className="px-5 py-3">Serviço</th>
-                            <th className="px-5 py-3">Sessões</th>
-                            <th className="px-5 py-3">Preço</th>
-                            <th className="px-5 py-3">Duração</th>
-                            <th className="px-5 py-3 text-right">Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody className="text-gray-700">
-                        {services.map(service => (
-                            <tr key={service.id} className="border-b border-gray-200 hover:bg-gray-50">
-                                <td className="px-5 py-4 whitespace-nowrap">
-                                    <p className="font-semibold">{service.name}</p>
-                                </td>
-                                <td className="px-5 py-4">
-                                    <p>{service.sessions || 1}</p>
-                                </td>
-                                <td className="px-5 py-4 whitespace-nowrap">
-                                    <p>R$ {service.price.toFixed(2).replace('.', ',')}</p>
-                                </td>
-                                <td className="px-5 py-4 whitespace-nowrap">
-                                    <p>{service.duration} min</p>
-                                </td>
-                                <td className="px-5 py-4 text-right whitespace-nowrap">
-                                    <button onClick={() => handleEdit(service)} className="text-sm font-semibold text-blue-600 hover:text-blue-800 mr-4">Editar</button>
-                                    <button onClick={() => handleDelete(service)} className="text-sm font-semibold text-red-600 hover:text-red-800">Excluir</button>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
+            <h3 className="text-2xl font-bold mb-4">Serviços Atuais ({services.length})</h3>
+            
+            <div className="space-y-4">
+                {services.map(service => (
+                    <AdminServiceCard 
+                        key={service.id} 
+                        service={service} 
+                        onEdit={handleEdit} 
+                        onDelete={handleDelete} 
+                    />
+                ))}
             </div>
 
             {isServiceModalOpen && (
