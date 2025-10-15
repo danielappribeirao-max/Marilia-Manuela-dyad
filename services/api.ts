@@ -352,13 +352,13 @@ export const uploadLogo = async (file: File): Promise<string | null> => {
 
     if (error) {
         console.error('Error uploading logo:', error);
-        alert(\`Erro ao enviar logo: \${error.message}\`);
+        alert('Erro ao enviar logo: ' + error.message);
         return null;
     }
 
     const { data } = supabase.storage.from('assets').getPublicUrl(filePath);
     
-    const newUrl = \`\${data.publicUrl}?t=\${new Date().getTime()}\`;
+    const newUrl = data.publicUrl + '?t=' + new Date().getTime();
     return newUrl;
 };
 
@@ -374,13 +374,13 @@ export const uploadHeroImage = async (file: File): Promise<string | null> => {
 
     if (error) {
         console.error('Error uploading hero image:', error);
-        alert(\`Erro ao enviar imagem principal: \${error.message}\`);
+        alert('Erro ao enviar imagem principal: ' + error.message);
         return null;
     }
 
     const { data } = supabase.storage.from('assets').getPublicUrl(filePath);
     
-    const newUrl = \`\${data.publicUrl}?t=\${new Date().getTime()}\`;
+    const newUrl = data.publicUrl + '?t=' + new Date().getTime();
     return newUrl;
 };
 
@@ -396,13 +396,13 @@ export const uploadAboutImage = async (file: File): Promise<string | null> => {
 
     if (error) {
         console.error('Error uploading about image:', error);
-        alert(\`Erro ao enviar imagem da seção Sobre: \${error.message}\`);
+        alert('Erro ao enviar imagem da seção Sobre: ' + error.message);
         return null;
     }
 
     const { data } = supabase.storage.from('assets').getPublicUrl(filePath);
     
-    const newUrl = \`\${data.publicUrl}?t=\${new Date().getTime()}\`;
+    const newUrl = data.publicUrl + '?t=' + new Date().getTime();
     return newUrl;
 };
 
@@ -412,15 +412,15 @@ export const adminCreateUser = async (userData: Partial<User> & { password?: str
             email: userData.email,
             password: userData.password,
             name: userData.name,
-            phone: userData.phone?.replace(/\\D/g, ''),
-            cpf: userData.cpf?.replace(/\\D/g, ''),
+            phone: userData.phone?.replace(/\D/g, ''),
+            cpf: userData.cpf?.replace(/\D/g, ''),
             role: userData.role === Role.ADMIN ? 'admin' : userData.role === Role.STAFF ? 'staff' : 'user',
         }
     });
 
     if (error) {
         console.error('Error creating user via function:', error);
-        alert(\`Erro ao criar usuário: \${error.message}\`);
+        alert(`Erro ao criar usuário: ${error.message}`);
         return null;
     }
 
@@ -486,8 +486,8 @@ export const getProfessionals = async (): Promise<User[]> => {
 export const updateUserProfile = async (userId: string, updates: Partial<User>): Promise<User | null> => {
     const dbUpdates: { [key: string]: any } = {};
     if (updates.name) dbUpdates.full_name = updates.name;
-    if (updates.phone) dbUpdates.phone = updates.phone.replace(/\\D/g, '');
-    if (updates.cpf) dbUpdates.cpf = updates.cpf.replace(/\\D/g, '');
+    if (updates.phone) dbUpdates.phone = updates.phone.replace(/\D/g, '');
+    if (updates.cpf) dbUpdates.cpf = updates.cpf.replace(/\D/g, '');
     if (updates.credits) dbUpdates.procedure_credits = updates.credits;
     if (updates.avatarUrl) dbUpdates.avatar_url = updates.avatarUrl;
 
@@ -603,7 +603,7 @@ export const updateClinicOperatingHours = async (operatingHours: OperatingHours)
 
     if (error) {
         console.error("Error updating clinic operating hours:", error);
-        alert(\`Erro do Supabase: \${error.message}\`);
+        alert(`Erro do Supabase: ${error.message}`);
         return null;
     }
     
@@ -620,7 +620,7 @@ export const updateClinicHolidayExceptions = async (holidayExceptions: HolidayEx
 
     if (error) {
         console.error("Error updating holiday exceptions:", error);
-        alert(\`Erro ao atualizar exceções de feriados: \${error.message}\`);
+        alert(`Erro ao atualizar exceções de feriados: ${error.message}`);
         return null;
     }
     
@@ -637,7 +637,7 @@ export const updateFeaturedServices = async (serviceIds: string[]): Promise<Clin
 
     if (error) {
         console.error("Error updating featured services:", error);
-        alert(\`Erro ao atualizar serviços em destaque: \${error.message}\`);
+        alert(`Erro ao atualizar serviços em destaque: ${error.message}`);
         return null;
     }
     
@@ -686,7 +686,7 @@ const mapDbToBooking = (dbBooking: any): Booking => {
     
     // Cria a data combinada no fuso horário local
     // Ex: '2024-10-16T09:00:00'
-    const bookingDate = new Date(\`\${datePart}T\${timePart}:00\`);
+    const bookingDate = new Date(`${datePart}T${timePart}:00`);
     
     let status: 'confirmed' | 'completed' | 'canceled';
 
@@ -770,10 +770,10 @@ export const addOrUpdateBooking = async (booking: Partial<Booking> & { serviceNa
     const dateObj = booking.date;
     
     // Formata a data como YYYY-MM-DD (local)
-    const bookingDateStr = \`\${dateObj.getFullYear()}-\${String(dateObj.getMonth() + 1).padStart(2, '0')}-\${String(dateObj.getDate()).padStart(2, '0')}\`;
+    const bookingDateStr = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
     
     // Formata a hora como HH:MM (local)
-    const bookingTimeStr = \`\${String(dateObj.getHours()).padStart(2, '0')}:\${String(dateObj.getMinutes()).padStart(2, '0')}\`;
+    const bookingTimeStr = `${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}`;
     // --------------------------------
 
     let dbStatus = 'Agendado';
@@ -817,14 +817,14 @@ export const bookFreeConsultationForNewUser = async (details: { name: string; ph
         // Enviamos a data como string ISO, mas a Edge Function precisa saber a hora local.
         // Vamos enviar a data e hora separadamente para que a Edge Function possa reconstruir a data localmente.
         const dateObj = details.date;
-        const bookingDate = \`\${dateObj.getFullYear()}-\${String(dateObj.getMonth() + 1).padStart(2, '0')}-\${String(dateObj.getDate()).padStart(2, '0')}\`;
-        const bookingTime = \`\${String(dateObj.getHours()).padStart(2, '0')}:\${String(dateObj.getMinutes()).padStart(2, '0')}\`;
+        const bookingDate = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
+        const bookingTime = `${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}`;
         // --------------------------------
         
         const { data, error } = await supabase.functions.invoke('book-free-consultation', {
             body: {
                 name: details.name,
-                phone: details.phone.replace(/\\D/g, ''), // Envia apenas dígitos
+                phone: details.phone.replace(/\D/g, ''), // Envia apenas dígitos
                 description: details.description,
                 date: bookingDate, // Enviando data YYYY-MM-DD
                 time: bookingTime, // Enviando hora HH:MM
@@ -856,11 +856,11 @@ export const getSalesData = async (): Promise<Sale[]> => {
     // 1. Buscar todos os agendamentos concluídos, juntando com o perfil do cliente e o preço do serviço
     const { data: completedBookings, error } = await supabase
         .from('bookings')
-        .select(\`
+        .select(`
             *, 
             profiles (full_name), 
             services (price)
-        \`)
+        `)
         .in('status', ['Concluído', 'completed']);
 
     if (error) {
