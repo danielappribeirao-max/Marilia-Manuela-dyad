@@ -320,7 +320,6 @@ export const deletePackage = async (packageId: string) => {
 
 // ==================
 // USERS & PROFESSIONALS
-// ... (restante do arquivo permanece inalterado)
 // ==================
 export const uploadAvatar = async (userId: string, file: File): Promise<string | null> => {
     const fileExt = file.name.split('.').pop();
@@ -448,21 +447,54 @@ export const adminCreateUser = async (userData: Partial<User> & { password?: str
 };
 
 export const getUsersWithRoles = async (): Promise<User[]> => {
-    const { data, error } = await supabase.rpc('get_all_users_for_admin');
-    if (error) {
-        console.error("Error fetching users with roles via RPC:", error);
+    // O RPC get_all_users_for_admin retorna: id, email, full_name, phone, cpf, role, credits
+    // Ele não retorna avatar_url. Precisamos buscar o avatar_url separadamente ou modificar o RPC.
+    // Como não podemos modificar o RPC, vamos buscar o perfil completo para obter o avatar_url.
+    
+    // 1. Buscar todos os usuários (auth.users)
+    const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
+    if (authError) {
+        console.error("Error fetching auth users:", authError);
         return [];
     }
-    return data.map((profile: any) => ({
-        id: profile.id,
-        email: profile.email || '',
-        name: profile.full_name || profile.email || '',
-        phone: profile.phone || '',
-        cpf: profile.cpf || '',
-        role: profile.role === 'admin' ? Role.ADMIN : profile.role === 'staff' ? Role.STAFF : Role.CLIENT,
-        credits: profile.credits || {},
-        avatarUrl: profile.avatar_url || '',
-    }));
+    
+    const userIds = authUsers.users.map(u => u.id);
+    
+    // 2. Buscar todos os perfis correspondentes
+    const { data: profiles, error: profileError } = await supabase
+        .from('profiles')
+        .select('id, full_name, phone, cpf, role, procedure_credits, avatar_url')
+        .in('id', userIds);
+
+    if (profileError) {
+        console.error("Error fetching profiles:", profileError);
+        return [];
+    }
+    
+    const profileMap = new Map(profiles.map(p => [p.id, p]));
+
+    // 3. Combinar e mapear
+    return authUsers.users.map(authUser => {
+        const profile = profileMap.get(authUser.id);
+        
+        let appRole: Role = Role.CLIENT;
+        if (profile?.role === 'admin') {
+            appRole = Role.ADMIN;
+        } else if (profile?.role === 'staff') {
+            appRole = Role.STAFF;
+        }
+
+        return {
+            id: authUser.id,
+            email: authUser.email || '',
+            name: profile?.full_name || authUser.user_metadata?.full_name || authUser.email || 'Usuário',
+            phone: profile?.phone || authUser.user_metadata?.phone || '',
+            cpf: profile?.cpf || '',
+            role: appRole,
+            credits: profile?.procedure_credits || {},
+            avatarUrl: profile?.avatar_url || '', // Mapeamento correto
+        };
+    });
 };
 
 export const getProfessionals = async (): Promise<User[]> => {
