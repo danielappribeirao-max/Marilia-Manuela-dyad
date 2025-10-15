@@ -4,7 +4,7 @@ import * as api from '../../services/api';
 import OperatingHoursForm from '../../components/OperatingHoursForm';
 import HolidayExceptionForm from '../../components/HolidayExceptionForm';
 import FeaturedServicesForm from '../../components/FeaturedServicesForm';
-import TextSettingsForm from '../../components/TextSettingsForm'; // Importado
+import TextSettingsForm from '../../components/TextSettingsForm';
 import { OperatingHours, HolidayException } from '../../types';
 
 const ImageUploadCard: React.FC<{
@@ -17,6 +17,12 @@ const ImageUploadCard: React.FC<{
   const [previewUrl, setPreviewUrl] = React.useState<string | null>(null);
   const [isUploading, setIsUploading] = React.useState(false);
   const [feedback, setFeedback] = React.useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  // UseEffect para resetar o preview se a URL externa mudar (após um save bem-sucedido)
+  React.useEffect(() => {
+      setPreviewUrl(null);
+      setSelectedFile(null);
+  }, [currentImageUrl]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -35,8 +41,7 @@ const ImageUploadCard: React.FC<{
     setIsUploading(false);
     if (newUrl) {
       setFeedback({ type: 'success', message: 'Imagem atualizada com sucesso!' });
-      setSelectedFile(null);
-      setPreviewUrl(null);
+      // Não precisamos resetar o estado aqui, pois o useEffect fará isso quando currentImageUrl mudar.
     } else {
       setFeedback({ type: 'error', message: 'Ocorreu um erro ao enviar a imagem.' });
     }
@@ -114,7 +119,7 @@ export default function AdminSettingsPage() {
     return newUrl;
   };
   
-  const handleSaveTexts = async (texts: { heroText: string; aboutText: string }) => {
+  const handleSaveTexts = async (texts: { heroText: string; heroSubtitle: string; aboutText: string }) => {
       await updateClinicTexts(texts);
   };
 
@@ -127,6 +132,7 @@ export default function AdminSettingsPage() {
             <h3 className="text-xl font-semibold text-gray-800 mb-4">Textos da Página Inicial</h3>
             <TextSettingsForm
                 initialHeroText={clinicSettings.heroText}
+                initialHeroSubtitle={clinicSettings.heroSubtitle}
                 initialAboutText={clinicSettings.aboutText}
                 onSave={handleSaveTexts}
             />
@@ -158,18 +164,21 @@ export default function AdminSettingsPage() {
         </div>
         
         <ImageUploadCard
+          key={`logo-${logoUrl}`} // Adicionando chave
           title="Logotipo Principal"
           description="Este logo aparece no cabeçalho e no rodapé do site. Use um formato PNG com fundo transparente."
           currentImageUrl={logoUrl}
           onSave={handleSaveLogo}
         />
         <ImageUploadCard
+          key={`hero-${heroImageUrl}`} // Adicionando chave
           title="Imagem da Página Inicial"
           description="A imagem principal que aparece no topo da home page. Use uma imagem de alta qualidade (ex: 1600x900 pixels)."
           currentImageUrl={heroImageUrl}
           onSave={handleSaveHeroImage}
         />
         <ImageUploadCard
+          key={`about-${aboutImageUrl}`} // Adicionando chave
           title="Imagem da Seção 'Sobre'"
           description="A imagem que aparece ao lado do texto 'Bem-vinda à Marília Manuela' na página inicial."
           currentImageUrl={aboutImageUrl}
