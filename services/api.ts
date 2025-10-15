@@ -447,54 +447,54 @@ export const adminCreateUser = async (userData: Partial<User> & { password?: str
 };
 
 export const getUsersWithRoles = async (): Promise<User[]> => {
-    // O RPC get_all_users_for_admin retorna: id, email, full_name, phone, cpf, role, credits
-    // Ele não retorna avatar_url. Precisamos buscar o avatar_url separadamente ou modificar o RPC.
-    // Como não podemos modificar o RPC, vamos buscar o perfil completo para obter o avatar_url.
-    
-    // 1. Buscar todos os usuários (auth.users)
-    const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
-    if (authError) {
-        console.error("Error fetching auth users:", authError);
-        return [];
-    }
-    
-    const userIds = authUsers.users.map(u => u.id);
-    
-    // 2. Buscar todos os perfis correspondentes
+    // 1. Buscar todos os perfis (que contêm nome, função, cpf, telefone e avatar_url)
     const { data: profiles, error: profileError } = await supabase
         .from('profiles')
-        .select('id, full_name, phone, cpf, role, procedure_credits, avatar_url')
-        .in('id', userIds);
+        .select('id, full_name, phone, cpf, role, procedure_credits, avatar_url');
 
     if (profileError) {
         console.error("Error fetching profiles:", profileError);
         return [];
     }
     
-    const profileMap = new Map(profiles.map(p => [p.id, p]));
-
-    // 3. Combinar e mapear
-    return authUsers.users.map(authUser => {
-        const profile = profileMap.get(authUser.id);
+    // 2. Buscar os dados de autenticação (e-mail) para cada perfil
+    const usersWithEmailPromises = profiles.map(async (profile) => {
+        // Nota: O auth.admin.getUserById só funciona se o usuário logado for ADMIN
+        const { data: authData, error: authError } = await supabase.auth.admin.getUserById(profile.id);
         
+        let email = 'Email não disponível';
+        let authUser: SupabaseAuthUser | null = null;
+
+        if (authData.user) {
+            authUser = authData.user;
+            email = authData.user.email || 'Email não disponível';
+        } else if (authError) {
+            console.warn(`Could not fetch auth data for user ${profile.id}:`, authError.message);
+        }
+
+        // Mapeia o perfil e o usuário de autenticação para o tipo User do aplicativo
         let appRole: Role = Role.CLIENT;
-        if (profile?.role === 'admin') {
+        if (profile.role === 'admin') {
             appRole = Role.ADMIN;
-        } else if (profile?.role === 'staff') {
+        } else if (profile.role === 'staff') {
             appRole = Role.STAFF;
         }
 
         return {
-            id: authUser.id,
-            email: authUser.email || '',
-            name: profile?.full_name || authUser.user_metadata?.full_name || authUser.email || 'Usuário',
-            phone: profile?.phone || authUser.user_metadata?.phone || '',
-            cpf: profile?.cpf || '',
+            id: profile.id,
+            email: email,
+            name: profile.full_name || authUser?.user_metadata?.full_name || 'Usuário',
+            phone: profile.phone || authUser?.user_metadata?.phone || '',
+            cpf: profile.cpf || '',
             role: appRole,
-            credits: profile?.procedure_credits || {},
-            avatarUrl: profile?.avatar_url || '', // Mapeamento correto
-        };
+            credits: profile.procedure_credits || {},
+            avatarUrl: profile.avatar_url || '',
+        } as User;
     });
+
+    // 3. Esperar por todas as promessas e retornar
+    const usersWithEmail = await Promise.all(usersWithEmailPromises);
+    return usersWithEmail;
 };
 
 export const getProfessionals = async (): Promise<User[]> => {
