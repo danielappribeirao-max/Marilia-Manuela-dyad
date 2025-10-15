@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Service } from '../types';
-import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
+import { Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 import { GripVertical, Check } from 'lucide-react';
+import DndWrapper from './DndWrapper'; // Importando o novo wrapper
 
 interface ServiceReorderListProps {
   services: Service[];
@@ -69,7 +70,7 @@ const ServiceReorderList: React.FC<ServiceReorderListProps> = ({ services, onReo
             </button>
         </div>
         
-        <DragDropContext onDragEnd={onDragEnd}>
+        <DndWrapper onDragEnd={onDragEnd}>
             <Droppable droppableId="service-list">
                 {(provided) => (
                     <div
@@ -107,7 +108,7 @@ const ServiceReorderList: React.FC<ServiceReorderListProps> = ({ services, onReo
                     </div>
                 )}
             </Droppable>
-        </DragDropContext>
+        </DndWrapper>
     </div>
   );
 };
