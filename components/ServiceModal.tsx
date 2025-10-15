@@ -72,9 +72,15 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave, e
         setIsNewCategory(true);
         setFormData(prev => ({ ...prev, category: '' }));
     } else {
+        let finalValue: string | number = value;
+        if (type === 'number') {
+            // Converte para número, mas permite string vazia para campos de input
+            finalValue = value === '' ? 0 : parseFloat(value);
+        }
+        
         setFormData(prev => ({ 
             ...prev, 
-            [name]: type === 'number' ? parseFloat(value) : value 
+            [name]: finalValue 
         }));
         if (errors[name]) {
             setErrors(prev => ({ ...prev, [name]: '' }));
@@ -112,7 +118,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave, e
         finalFormData.imageUrl = `https://picsum.photos/seed/${seed}/400/300`;
       }
       
-      // 3. Garantir que os campos numéricos sejam números
+      // 3. Garantir que os campos numéricos sejam números (final check)
       const serviceToSave: Service = {
           id: finalFormData.id || '', // O ID será ignorado na API se for novo
           name: finalFormData.name!,
