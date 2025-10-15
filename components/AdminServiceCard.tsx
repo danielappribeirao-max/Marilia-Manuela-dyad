@@ -44,17 +44,17 @@ const AdminServiceCard: React.FC<AdminServiceCardProps> = ({ service, onEdit, on
           </span>
         </div>
 
-        {/* Actions */}
-        <div className="flex space-x-3 flex-shrink-0">
+        {/* Actions - Vertical Stack */}
+        <div className="flex flex-col space-y-2 flex-shrink-0 w-full sm:w-auto">
           <button 
             onClick={() => onEdit(service)} 
-            className="flex items-center gap-1.5 px-3 py-2 bg-blue-50 text-blue-600 rounded-full text-sm font-semibold hover:bg-blue-100 transition-colors"
+            className="flex items-center justify-center gap-1.5 px-3 py-2 bg-blue-50 text-blue-600 rounded-full text-sm font-semibold hover:bg-blue-100 transition-colors"
           >
             <Edit size={16} /> Editar
           </button>
           <button 
             onClick={() => onDelete(service)} 
-            className="flex items-center gap-1.5 px-3 py-2 bg-red-50 text-red-600 rounded-full text-sm font-semibold hover:bg-red-100 transition-colors"
+            className="flex items-center justify-center gap-1.5 px-3 py-2 bg-red-50 text-red-600 rounded-full text-sm font-semibold hover:bg-red-100 transition-colors"
           >
             <Trash2 size={16} /> Excluir
           </button>
