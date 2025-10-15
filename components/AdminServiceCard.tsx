@@ -20,7 +20,7 @@ const AdminServiceCard: React.FC<AdminServiceCardProps> = ({ service, onEdit, on
           className="w-16 h-16 object-cover rounded-lg flex-shrink-0"
         />
         <div className="min-w-0">
-          <h3 className="text-lg font-bold text-gray-800 truncate">{service.name}</h3>
+          <h3 className="text-lg font-bold text-gray-800">{service.name}</h3>
           <p className="text-sm text-gray-500 truncate">{service.description}</p>
         </div>
       </div>
