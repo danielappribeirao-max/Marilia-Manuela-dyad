@@ -9,11 +9,11 @@ interface ServiceModalProps {
 }
 
 const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave, existingServices }) => {
+  // Determina se está editando com base na presença de um ID válido
   const isEditing = !!service?.id;
   
   const [formData, setFormData] = useState<Partial<Service>>({
-    // Se estiver editando, usa o ID. Se for novo, o ID deve ser undefined.
-    id: isEditing ? service?.id : undefined, 
+    id: service?.id, 
     name: service?.name || '',
     description: service?.description || '',
     price: service?.price || 0,
@@ -80,7 +80,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave, e
     if (validate()) {
       const finalFormData = { ...formData };
       
-      // 1. Garantir que o ID seja undefined para novos serviços (redundante, mas seguro)
+      // 1. Garantir que o ID seja undefined para novos serviços
       if (!isEditing) {
           delete finalFormData.id;
       }
@@ -91,6 +91,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave, e
         finalFormData.imageUrl = `https://picsum.photos/seed/${seed}/400/300`;
       }
       
+      // O onSave espera um objeto Service completo.
       onSave(finalFormData as Service);
     }
   };

@@ -9,14 +9,17 @@ export default function AdminManageServices() {
     const [isServiceModalOpen, setIsServiceModalOpen] = useState(false);
     const [selectedService, setSelectedService] = useState<Partial<Service> | null>(null);
     const [serviceToDelete, setServiceToDelete] = useState<Service | null>(null);
+    const [modalKey, setModalKey] = useState(0); // Novo estado para forçar a remontagem
 
     const handleAddNew = () => {
         setSelectedService(null);
+        setModalKey(prev => prev + 1); // Incrementa a chave para forçar o reset
         setIsServiceModalOpen(true);
     };
 
     const handleEdit = (service: Service) => {
         setSelectedService(service);
+        setModalKey(prev => prev + 1); // Também incrementa para edição, garantindo o reset
         setIsServiceModalOpen(true);
     };
 
@@ -93,10 +96,11 @@ export default function AdminManageServices() {
 
             {isServiceModalOpen && (
                 <ServiceModal 
+                    key={modalKey} // Adicionando a chave para forçar o reset
                     service={selectedService}
                     onClose={() => setIsServiceModalOpen(false)}
                     onSave={handleSave}
-                    existingServices={services} // Passando a lista de serviços
+                    existingServices={services}
                 />
             )}
             {serviceToDelete && (
