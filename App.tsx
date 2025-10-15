@@ -83,10 +83,11 @@ function AppContent() {
 
   const [showWhatsApp, setShowWhatsApp] = useState(false);
   
-  // Inicialização com URLs que forçam o cache a ser ignorado
-  const [logoUrl, setLogoUrl] = useState(api.getAssetUrl('logo-marilia-manuela.jpeg'));
-  const [heroImageUrl, setHeroImageUrl] = useState(api.getAssetUrl('hero-image.jpeg'));
-  const [aboutImageUrl, setAboutImageUrl] = useState(api.getAssetUrl('about-image.jpeg'));
+  // Inicialização com URLs de placeholder confiáveis.
+  // A URL real do Supabase será definida após o upload no AdminSettingsPage.
+  const [logoUrl, setLogoUrl] = useState('https://picsum.photos/seed/logo/100/100');
+  const [heroImageUrl, setHeroImageUrl] = useState('https://picsum.photos/seed/spa/1600/900');
+  const [aboutImageUrl, setAboutImageUrl] = useState('https://picsum.photos/seed/clinic/600/400');
   
   // Estado para forçar o recarregamento de dados administrativos (Agenda, Usuários)
   const [adminDataRefreshKey, setAdminDataRefreshKey] = useState(0);
@@ -119,6 +120,11 @@ function AppContent() {
         setProfessionals(professionalsData || []);
         setPackages(packagesData || []);
         setClinicSettings(settingsData);
+
+        // Tenta carregar as URLs reais dos assets com carimbo de data/hora
+        setLogoUrl(api.getAssetUrl('logo-marilia-manuela.jpeg'));
+        setHeroImageUrl(api.getAssetUrl('hero-image.jpeg'));
+        setAboutImageUrl(api.getAssetUrl('about-image.jpeg'));
 
         const { session } = await api.getCurrentUserSession();
         if (session?.user) {
