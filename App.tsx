@@ -276,17 +276,17 @@ function AppContent() {
       setBookingService(freeConsultationService);
   }, [services]);
 
-  const handleConfirmFinalBooking = useCallback(async (details: { date: Date, professionalId: string }): Promise<boolean> => {
-    if (!currentUser && !tempClientData) return false;
+  const handleConfirmFinalBooking = useCallback(async (details: { date: Date, professionalId: string }): Promise<{ success: boolean, error: string | null }> => {
+    if (!currentUser && !tempClientData) return { success: false, error: "Usuário não autenticado." };
     
     const serviceToBook = bookingService || creditBookingService;
-    if (!serviceToBook) return false;
+    if (!serviceToBook) return { success: false, error: "Serviço não selecionado." };
 
     if (reschedulingBooking) {
       const updatedBooking = { ...reschedulingBooking, ...details, status: 'confirmed' as const };
       const result = await api.addOrUpdateBooking(updatedBooking);
-      if(result) return true;
-      return false;
+      if(result) return { success: true, error: null };
+      return { success: false, error: "Falha ao reagendar." };
     } else {
       // Se for agendamento normal (logado ou crédito)
       if (currentUser) {
@@ -306,7 +306,7 @@ function AppContent() {
             const updatedUser = await api.deductCreditFromUser(currentUser.id, creditBookingService.id);
             if (updatedUser) setCurrentUser(updatedUser);
           }
-          return !!result;
+          return { success: !!result, error: result ? null : "Falha ao criar agendamento." };
           
       } else if (tempClientData && serviceToBook.id === FREE_CONSULTATION_SERVICE_ID) {
           // Fluxo de Consulta Gratuita para Novo Usuário
@@ -324,15 +324,14 @@ function AppContent() {
           if (result.success) {
               // Força o recarregamento dos dados administrativos para que o AdminAgenda veja o novo agendamento
               refreshAdminData();
-              return true;
+              return { success: true, error: null };
           } else {
-              // Se houver erro, exibe a mensagem específica
-              alert(`Erro ao agendar consulta: ${result.error}`);
-              return false;
+              // Retorna o erro específico da Edge Function
+              return { success: false, error: result.error };
           }
       }
     }
-    return false;
+    return { success: false, error: "Erro desconhecido no fluxo de agendamento." };
   }, [currentUser, bookingService, creditBookingService, reschedulingBooking, tempClientData, refreshAdminData]);
 
   const handleCloseModals = () => {

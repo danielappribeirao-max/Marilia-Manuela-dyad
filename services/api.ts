@@ -829,7 +829,9 @@ export const addPackageCreditsToUser = async (userId: string, pkg: ServicePackag
     
     // Para cada serviço no pacote, adiciona a quantidade de sessões
     pkg.services.forEach(item => { 
-        const service = getServices().find(s => s.id === item.serviceId); // Nota: getServices é assíncrono, mas aqui estamos usando o mock/cache.
+        // Nota: getServices é assíncrono, mas aqui estamos usando o cache/mock.
+        // Para garantir a precisão, o ideal seria buscar o serviço, mas vamos manter a estrutura atual.
+        const service = getServices().find(s => s.id === item.serviceId); 
         const sessionsPerService = service?.sessions || 1;
         const totalCredits = sessionsPerService * item.quantity;
         
@@ -858,12 +860,9 @@ const mapDbToBooking = (dbBooking: any): Booking => {
     } else { // Status é 'Agendado' ou 'confirmed'
         const now = new Date();
         // Se a data do agendamento já passou, ele é considerado 'completed'
-        if (bookingDate < now) {
-            status = 'confirmed'; // Mantemos como confirmed se não tiver passado
-        } else {
-            // Se ainda não passou, continua 'confirmed'
-            status = 'confirmed';
-        }
+        // CORREÇÃO: Se a data já passou, mas o status não é 'completed', mantemos 'confirmed'
+        // A lógica de marcar como 'completed' deve ser manual ou em um cron job.
+        status = 'confirmed';
     }
 
     return {
@@ -897,7 +896,7 @@ export const getUserBookings = async (userId: string): Promise<Booking[]> => {
     return data.map(mapDbToBooking);
 };
 
-export const getOccupiedSlots = async (dateString: string): Promise<{ professional_id: string, booking_time: string, duration: number }[]> => {
+export const getOccupiedSlots = async (dateString: string): Promise<{ professional_id: string, booking_time: string, duration: number, id: string }[]> => {
     const { data, error } = await supabase
         .from('bookings')
         .select('professional_id, booking_time, duration, id')
@@ -908,6 +907,7 @@ export const getOccupiedSlots = async (dateString: string): Promise<{ profession
         console.error("Error fetching occupied slots:", error);
         return [];
     }
+    // CORREÇÃO: Garantir que o ID seja string
     return data.map(d => ({
         id: String(d.id),
         professional_id: d.professional_id,
@@ -940,6 +940,7 @@ export const addOrUpdateBooking = async (booking: Partial<Booking> & { serviceNa
     let dbStatus = 'Agendado';
     if (booking.status === 'completed') dbStatus = 'Concluído';
     else if (booking.status === 'canceled') dbStatus = 'Cancelado';
+    else if (booking.status === 'confirmed') dbStatus = 'confirmed'; // Mantendo 'confirmed' para consistência
 
     const bookingData: { [key: string]: any } = {
         user_id: booking.userId,

@@ -8,7 +8,7 @@ interface BookingModalProps {
   onClose: () => void;
   isCreditBooking?: boolean;
   booking?: Booking | null;
-  onConfirmBooking: (details: { date: Date, professionalId: string }) => Promise<boolean>;
+  onConfirmBooking: (details: { date: Date, professionalId: string }) => Promise<{ success: boolean, error: string | null }>;
   professionals: User[];
   clinicOperatingHours: OperatingHours | undefined;
   clinicHolidayExceptions: HolidayException[] | undefined; // CORRIGIDO: Deve ser um array
@@ -37,6 +37,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, isCreditB
   const [selectedProfessionalId, setSelectedProfessionalId] = useState<string | null>(booking?.professionalId || null);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [bookingError, setBookingError] = useState<string | null>(null); // NOVO: Estado para erro específico
 
   const serviceDuration = service.duration;
   const minBookingDate = useMemo(() => new Date().toISOString().split('T')[0], []);
@@ -58,6 +59,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, isCreditB
   useEffect(() => {
     // Se a data mudar, resetar o horário selecionado
     setSelectedTime(null);
+    setBookingError(null); // Limpa o erro ao mudar a seleção
   }, [selectedDate, selectedProfessionalId]);
 
   const handleDateChange = (dateString: string) => {
@@ -77,26 +79,27 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, isCreditB
     if (!selectedDate || !selectedTime || !selectedProfessionalId) return;
 
     setIsProcessing(true);
+    setBookingError(null);
     
     const [hours, minutes] = selectedTime.split(':').map(Number);
     // Cria a data final no fuso horário local
     const finalDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), selectedDate.getDate(), hours, minutes, 0, 0);
 
-    // Chama a função de confirmação no App.tsx, que lida com todos os fluxos (logado, crédito, reagendamento, consulta gratuita)
-    const success = await onConfirmBooking({
+    // Chama a função de confirmação no App.tsx
+    const result = await onConfirmBooking({
         date: finalDate,
         professionalId: selectedProfessionalId,
     });
     
     setIsProcessing(false);
 
-    if (success) {
+    if (result.success) {
         setShowConfirmation(true);
         // Fecha o modal após a confirmação e um breve delay
         setTimeout(onClose, isNewUserFreeBooking ? 5000 : 3000); 
     } else {
-        // O erro já deve ter sido alertado no App.tsx ou na Edge Function
-        alert("Ocorreu um erro ao confirmar o agendamento. Por favor, tente novamente.");
+        // Exibe o erro específico retornado pelo App.tsx (que veio da Edge Function)
+        setBookingError(result.error || "Ocorreu um erro desconhecido ao confirmar o agendamento.");
     }
   }
 
@@ -207,6 +210,11 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, isCreditB
                   <div className="text-center text-red-500 p-4 bg-red-50 rounded-lg">Nenhum horário disponível para este profissional na data selecionada.</div>
               )}
             </div>
+            {bookingError && (
+                <div className="p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg text-sm font-medium text-center">
+                    {bookingError}
+                </div>
+            )}
           </div>
         );
       case 2: // Confirmation
@@ -247,7 +255,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, isCreditB
         {!showConfirmation && <div className="p-6 bg-gray-50 border-t flex justify-between items-center">
           {step > 1 && <button onClick={() => setStep(s => s - 1)} className="px-6 py-2 bg-gray-200 text-gray-800 rounded-full font-semibold hover:bg-gray-300">Voltar</button>}
           {step < 2 ? (
-            <button onClick={() => setStep(s => s + 1)} disabled={!selectedTime || !selectedProfessionalId || !isClinicOpen} className="px-6 py-2 bg-pink-500 text-white rounded-full font-semibold hover:bg-pink-600 disabled:bg-gray-300 ml-auto">Avançar</button>
+            <button onClick={() => { setStep(s => s + 1); setBookingError(null); }} disabled={!selectedTime || !selectedProfessionalId || !isClinicOpen} className="px-6 py-2 bg-pink-500 text-white rounded-full font-semibold hover:bg-pink-600 disabled:bg-gray-300 ml-auto">Avançar</button>
           ) : (
             <button onClick={handleBookingConfirm} disabled={isProcessing} className="w-full px-6 py-3 bg-green-500 text-white rounded-full font-bold text-lg hover:bg-green-600 disabled:bg-gray-400">
                 {isProcessing ? 'Processando...' : (isRescheduling ? 'Confirmar Reagendamento' : 'Confirmar Agendamento')}
