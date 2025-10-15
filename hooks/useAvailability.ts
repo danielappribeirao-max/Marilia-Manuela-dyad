@@ -105,7 +105,8 @@ export const useAvailability = ({
             const slotEndTime = minutes + serviceDuration;
             
             // 1. Verificar se o slot já passou (apenas para o dia atual)
-            if (isToday && slotStartTime < currentMinutes) continue;
+            // Adicionamos uma margem de 1 minuto para evitar agendamentos no exato minuto atual
+            if (isToday && slotStartTime < currentMinutes + 1) continue;
 
             // 2. Verificar se o serviço termina antes do fim do dia
             if (slotEndTime > endDayMinutes) continue;
