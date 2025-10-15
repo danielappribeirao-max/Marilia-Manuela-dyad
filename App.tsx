@@ -14,7 +14,7 @@ import PackagePurchaseConfirmationModal from './components/PackagePurchaseConfir
 import PostPurchaseModal from './components/PostPurchaseModal';
 import QuickRegistrationModal from './components/QuickRegistrationModal';
 import { supabase } from './supabase/client';
-import { FREE_CONSULTATION_SERVICE_ID, FREE_CONSULTATION_SERVICE } from './constants';
+import { FREE_CONSULTATION_SERVICE_ID } from './constants';
 
 interface AppContextType {
   currentUser: User | null;
@@ -98,15 +98,21 @@ function AppContent() {
     const initializeApp = async () => {
       setLoading(true);
       try {
-        const [servicesData, professionalsData, packagesData, settingsData] = await Promise.all([
+        const [servicesData, professionalsData, packagesData, settingsData, freeConsultationService] = await Promise.all([
           api.getServices(),
           api.getProfessionals(),
           api.getServicePackages(),
-          api.getClinicSettings(), // Agora retorna ClinicSettings, nunca null
+          api.getClinicSettings(),
+          api.ensureFreeConsultationServiceExists(), // Busca ou cria o serviço de consulta gratuita
         ]);
         
-        // Adiciona o serviço de consulta gratuita à lista de serviços
-        const allServices = [FREE_CONSULTATION_SERVICE, ...(servicesData || [])];
+        // Adiciona o serviço de consulta gratuita (se existir) à lista de serviços
+        let allServices = servicesData || [];
+        if (freeConsultationService) {
+            // Remove qualquer versão antiga e adiciona a versão atualizada do banco no início
+            allServices = allServices.filter(s => s.id !== FREE_CONSULTATION_SERVICE_ID);
+            allServices.unshift(freeConsultationService);
+        }
         
         setServices(allServices);
         setProfessionals(professionalsData || []);
@@ -236,21 +242,32 @@ function AppContent() {
   
   // NOVO: Inicia o fluxo de consulta gratuita
   const handleStartFreeConsultation = useCallback(() => {
+      const freeConsultationService = services.find(s => s.id === FREE_CONSULTATION_SERVICE_ID);
+      if (!freeConsultationService) {
+          alert("Serviço de consulta gratuita não encontrado.");
+          return;
+      }
+      
       if (currentUser) {
           // Se o usuário estiver logado, pula o cadastro rápido e vai direto para o agendamento
-          setBookingService(FREE_CONSULTATION_SERVICE);
+          setBookingService(freeConsultationService);
       } else {
           // Se não estiver logado, abre o modal de cadastro rápido
           setIsQuickRegisterModalOpen(true);
       }
-  }, [currentUser]);
+  }, [currentUser, services]);
   
   // NOVO: Lida com o cadastro rápido e abre o modal de agendamento
   const handleQuickRegisterAndBook = useCallback((data: { name: string; phone: string; description: string }) => {
+      const freeConsultationService = services.find(s => s.id === FREE_CONSULTATION_SERVICE_ID);
+      if (!freeConsultationService) {
+          alert("Serviço de consulta gratuita não encontrado.");
+          return;
+      }
       setTempClientData(data);
       setIsQuickRegisterModalOpen(false);
-      setBookingService(FREE_CONSULTATION_SERVICE);
-  }, []);
+      setBookingService(freeConsultationService);
+  }, [services]);
 
   const handleConfirmFinalBooking = useCallback(async (details: { date: Date, professionalId: string }): Promise<boolean> => {
     if (!currentUser && !tempClientData) return false;
@@ -334,16 +351,6 @@ function AppContent() {
   };
 
   const addOrUpdateService = useCallback(async (service: Service) => {
-    // Se for o serviço de consulta gratuita, atualiza apenas o estado local
-    if (service.id === FREE_CONSULTATION_SERVICE_ID) {
-        setServices(prevServices => {
-            return prevServices.map(s => s.id === FREE_CONSULTATION_SERVICE_ID ? service : s);
-        });
-        // Retorna o serviço atualizado para o modal saber que foi salvo
-        return service;
-    }
-    
-    // Para todos os outros serviços, chama a API
     const savedService = await api.addOrUpdateService(service);
     if (savedService) {
       setServices(prevServices => {
@@ -351,9 +358,8 @@ function AppContent() {
         if (isExisting) {
           return prevServices.map(s => s.id === savedService.id ? savedService : s);
         }
-        // Garante que o serviço de consulta gratuita permaneça no início da lista
-        const filtered = prevServices.filter(s => s.id !== FREE_CONSULTATION_SERVICE_ID);
-        return [FREE_CONSULTATION_SERVICE, ...filtered, savedService];
+        // Adiciona o novo serviço
+        return [...prevServices, savedService];
       });
     }
     return savedService;

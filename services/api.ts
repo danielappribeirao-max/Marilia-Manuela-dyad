@@ -1,6 +1,7 @@
 import { supabase } from '../supabase/client';
 import { User, Service, Booking, Role, Sale, ServicePackage, ClinicSettings, OperatingHours, HolidayException, ServiceInPackage } from '../types';
 import { User as SupabaseAuthUser } from '@supabase/supabase-js'; // Importar o tipo User do Supabase
+import { FREE_CONSULTATION_SERVICE_ID } from '../constants';
 
 // Helper to map Supabase user and profile to our app's User type
 const toAppUser = (supabaseUser: SupabaseAuthUser, profile: any | null): User => {
@@ -136,6 +137,58 @@ const mapDbToPackage = (dbPackage: any): ServicePackage => ({
         quantity: ps.quantity,
     })),
 });
+
+// Definição do serviço padrão de consulta gratuita (usado apenas para inicialização)
+const DEFAULT_FREE_CONSULTATION_SERVICE: Service = {
+    id: FREE_CONSULTATION_SERVICE_ID,
+    name: 'Consulta de Avaliação Gratuita',
+    description: 'Avaliação inicial sem custo com um de nossos especialistas.',
+    duration: 30,
+    price: 0.00,
+    imageUrl: 'https://picsum.photos/seed/freeconsult/400/300',
+    category: 'Avaliação',
+    sessions: 1,
+};
+
+export const ensureFreeConsultationServiceExists = async (): Promise<Service | null> => {
+    const { data, error } = await supabase
+        .from('services')
+        .select('*')
+        .eq('id', FREE_CONSULTATION_SERVICE_ID)
+        .single();
+
+    if (error && error.code !== 'PGRST116') { // PGRST116 = No rows found
+        console.error("Error fetching free consultation service:", error);
+        return null;
+    }
+
+    if (data) {
+        // Serviço já existe, retorna a versão atualizada do banco
+        return mapDbToService(data);
+    } else {
+        // Serviço não existe, insere o padrão
+        const { data: insertData, error: insertError } = await supabase
+            .from('services')
+            .insert({
+                id: DEFAULT_FREE_CONSULTATION_SERVICE.id,
+                name: DEFAULT_FREE_CONSULTATION_SERVICE.name,
+                description: DEFAULT_FREE_CONSULTATION_SERVICE.description,
+                price: DEFAULT_FREE_CONSULTATION_SERVICE.price.toFixed(2),
+                duration: DEFAULT_FREE_CONSULTATION_SERVICE.duration,
+                category: DEFAULT_FREE_CONSULTATION_SERVICE.category,
+                image: DEFAULT_FREE_CONSULTATION_SERVICE.imageUrl,
+                sessions: DEFAULT_FREE_CONSULTATION_SERVICE.sessions,
+            })
+            .select()
+            .single();
+
+        if (insertError) {
+            console.error("Error inserting default free consultation service:", insertError);
+            return null;
+        }
+        return mapDbToService(insertData);
+    }
+};
 
 export const getServices = async (): Promise<Service[]> => {
     const { data, error } = await supabase.from('services').select('*');
