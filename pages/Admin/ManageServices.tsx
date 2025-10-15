@@ -4,6 +4,7 @@ import ServiceModal from '../../components/ServiceModal';
 import ConfirmationModal from '../../components/ConfirmationModal';
 import AdminServiceCard from '../../components/AdminServiceCard';
 import { useApp } from '../../App';
+import { FREE_CONSULTATION_SERVICE_ID } from '../../constants';
 
 export default function AdminManageServices() {
     const { services, addOrUpdateService, deleteService } = useApp();
@@ -12,6 +13,9 @@ export default function AdminManageServices() {
     const [serviceToDelete, setServiceToDelete] = useState<Service | null>(null);
     const [modalKey, setModalKey] = useState(0); // Novo estado para forçar a remontagem
 
+    // Filtra o serviço de consulta gratuita para que não possa ser editado/excluído
+    const editableServices = services.filter(s => s.id !== FREE_CONSULTATION_SERVICE_ID);
+
     const handleAddNew = () => {
         setSelectedService(null);
         setModalKey(prev => prev + 1); // Incrementa a chave para forçar o reset
@@ -19,6 +23,10 @@ export default function AdminManageServices() {
     };
 
     const handleEdit = (service: Service) => {
+        if (service.id === FREE_CONSULTATION_SERVICE_ID) {
+            alert("O serviço de Consulta de Avaliação Gratuita não pode ser editado ou excluído.");
+            return;
+        }
         // Passa uma cópia do objeto para garantir que o modal não altere o objeto original
         setSelectedService({ ...service }); 
         setModalKey(prev => prev + 1); // Também incrementa para edição, garantindo o reset
@@ -26,6 +34,10 @@ export default function AdminManageServices() {
     };
 
     const handleDelete = (service: Service) => {
+        if (service.id === FREE_CONSULTATION_SERVICE_ID) {
+            alert("O serviço de Consulta de Avaliação Gratuita não pode ser editado ou excluído.");
+            return;
+        }
         setServiceToDelete(service);
     };
 
@@ -64,10 +76,10 @@ export default function AdminManageServices() {
                 </button>
             </div>
             
-            <h3 className="text-2xl font-bold mb-4">Serviços Atuais ({services.length})</h3>
+            <h3 className="text-2xl font-bold mb-4">Serviços Atuais ({editableServices.length})</h3>
             
             <div className="space-y-4">
-                {services.map(service => (
+                {editableServices.map(service => (
                     <AdminServiceCard 
                         key={service.id} 
                         service={service} 
