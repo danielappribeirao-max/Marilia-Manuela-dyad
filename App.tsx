@@ -84,11 +84,9 @@ function AppContent() {
   const [showWhatsApp, setShowWhatsApp] = useState(false);
   
   // Inicialização com URLs que forçam o cache a ser ignorado
-  // Usamos o getAssetUrl para o logo (que deve ser sempre o mesmo)
   const [logoUrl, setLogoUrl] = useState(api.getAssetUrl('logo-marilia-manuela.jpeg'));
-  // Usamos placeholders para as imagens principais, pois o getAssetUrl pode retornar um link quebrado se o arquivo não existir.
-  const [heroImageUrl, setHeroImageUrl] = useState(api.getAssetUrl('hero-image.jpeg').includes('t=') ? api.getAssetUrl('hero-image.jpeg') : 'https://picsum.photos/seed/spa/1600/900');
-  const [aboutImageUrl, setAboutImageUrl] = useState(api.getAssetUrl('about-image.jpeg').includes('t=') ? api.getAssetUrl('about-image.jpeg') : 'https://picsum.photos/seed/clinic/600/400');
+  const [heroImageUrl, setHeroImageUrl] = useState(api.getAssetUrl('hero-image.jpeg'));
+  const [aboutImageUrl, setAboutImageUrl] = useState(api.getAssetUrl('about-image.jpeg'));
   
   // Estado para forçar o recarregamento de dados administrativos (Agenda, Usuários)
   const [adminDataRefreshKey, setAdminDataRefreshKey] = useState(0);
