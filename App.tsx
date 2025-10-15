@@ -42,6 +42,7 @@ interface AppContextType {
   updateClinicSettings: (hours: OperatingHours) => Promise<void>;
   updateClinicHolidayExceptions: (exceptions: HolidayException[]) => Promise<void>;
   updateFeaturedServices: (serviceIds: string[]) => Promise<void>;
+  updateClinicTexts: (texts: { heroText: string; aboutText: string }) => Promise<void>; // Adicionado
   refreshAdminData: () => void;
 }
 
@@ -83,11 +84,10 @@ function AppContent() {
 
   const [showWhatsApp, setShowWhatsApp] = useState(false);
   
-  // Inicialização com URLs de placeholder confiáveis.
-  // A URL real do Supabase será definida após o upload no AdminSettingsPage.
-  const [logoUrl, setLogoUrl] = useState('https://picsum.photos/seed/logo/100/100');
-  const [heroImageUrl, setHeroImageUrl] = useState('https://picsum.photos/seed/spa/1600/900');
-  const [aboutImageUrl, setAboutImageUrl] = useState('https://picsum.photos/seed/clinic/600/400');
+  // Inicialização com URLs que forçam o cache a ser ignorado
+  const [logoUrl, setLogoUrl] = useState(api.getAssetUrl('logo-marilia-manuela.jpeg'));
+  const [heroImageUrl, setHeroImageUrl] = useState(api.getAssetUrl('hero-image.jpeg'));
+  const [aboutImageUrl, setAboutImageUrl] = useState(api.getAssetUrl('about-image.jpeg'));
   
   // Estado para forçar o recarregamento de dados administrativos (Agenda, Usuários)
   const [adminDataRefreshKey, setAdminDataRefreshKey] = useState(0);
@@ -120,11 +120,6 @@ function AppContent() {
         setProfessionals(professionalsData || []);
         setPackages(packagesData || []);
         setClinicSettings(settingsData);
-
-        // Tenta carregar as URLs reais dos assets com carimbo de data/hora
-        setLogoUrl(api.getAssetUrl('logo-marilia-manuela.jpeg'));
-        setHeroImageUrl(api.getAssetUrl('hero-image.jpeg'));
-        setAboutImageUrl(api.getAssetUrl('about-image.jpeg'));
 
         const { session } = await api.getCurrentUserSession();
         if (session?.user) {
@@ -428,8 +423,18 @@ function AppContent() {
         alert("Erro ao atualizar serviços em destaque.");
     }
   }, []);
+  
+  const updateClinicTexts = useCallback(async (texts: { heroText: string; aboutText: string }) => {
+    const updatedSettings = await api.updateClinicTexts(texts);
+    if (updatedSettings) {
+        setClinicSettings(updatedSettings);
+        alert("Textos da página inicial atualizados com sucesso!");
+    } else {
+        alert("Erro ao atualizar textos da página inicial.");
+    }
+  }, []);
 
-  const appContextValue = useMemo(() => ({ currentUser, setCurrentUser, currentPage, setCurrentPage, logout, services, setServices, packages, setPackages, professionals, addOrUpdateService, deleteService, addOrUpdatePackage, deletePackage, loading, logoUrl, setLogoUrl, heroImageUrl, setHeroImageUrl, aboutImageUrl, setAboutImageUrl, clinicSettings, updateClinicSettings, updateClinicHolidayExceptions, updateFeaturedServices, refreshAdminData }), [currentUser, currentPage, logout, services, setServices, packages, setPackages, professionals, addOrUpdateService, deleteService, addOrUpdatePackage, deletePackage, loading, logoUrl, heroImageUrl, aboutImageUrl, clinicSettings, updateClinicSettings, updateClinicHolidayExceptions, updateFeaturedServices, refreshAdminData]);
+  const appContextValue = useMemo(() => ({ currentUser, setCurrentUser, currentPage, setCurrentPage, logout, services, setServices, packages, setPackages, professionals, addOrUpdateService, deleteService, addOrUpdatePackage, deletePackage, loading, logoUrl, setLogoUrl, heroImageUrl, setHeroImageUrl, aboutImageUrl, setAboutImageUrl, clinicSettings, updateClinicSettings, updateClinicHolidayExceptions, updateFeaturedServices, updateClinicTexts, refreshAdminData }), [currentUser, currentPage, logout, services, setServices, packages, setPackages, professionals, addOrUpdateService, deleteService, addOrUpdatePackage, deletePackage, loading, logoUrl, heroImageUrl, aboutImageUrl, clinicSettings, updateClinicSettings, updateClinicHolidayExceptions, updateFeaturedServices, updateClinicTexts, refreshAdminData]);
 
   const renderPage = () => {
     if(loading) {

@@ -31,7 +31,7 @@ export default function HomePage({ onPurchaseOrBook, onPurchasePackage, onStartF
       <section className="relative bg-cover bg-center h-[60vh] text-white" style={{ backgroundImage: `url('${heroImageUrl}')` }}>
         <div className="absolute inset-0 bg-black bg-opacity-40"></div>
         <div className="relative container mx-auto px-6 h-full flex flex-col justify-center items-start">
-          <h1 className="text-5xl md:text-6xl font-bold leading-tight">Sua Beleza, Nosso Compromisso.</h1>
+          <h1 className="text-5xl md:text-6xl font-bold leading-tight">{clinicSettings.heroText}</h1>
           <p className="mt-4 text-xl max-w-lg">Descubra tratamentos estéticos de ponta e agende seu momento de cuidado em um ambiente de luxo e bem-estar.</p>
           <div className="flex flex-col sm:flex-row gap-4 mt-8">
             <button 
@@ -83,7 +83,7 @@ export default function HomePage({ onPurchaseOrBook, onPurchasePackage, onStartF
             <div className="md:w-1/2">
                 <h2 className="text-4xl font-bold text-gray-800 mb-4">Bem-vinda à Marília Manuela</h2>
                 <p className="text-gray-600 mb-4 leading-relaxed">
-                    Na Marília Manuela, acreditamos que a estética vai além da aparência. É sobre bem-estar, autoestima e o prazer de se cuidar. Nossa equipe de especialistas utiliza as tecnologias mais avançadas e produtos de alta qualidade para oferecer resultados excepcionais com segurança e conforto.
+                    {clinicSettings.aboutText}
                 </p>
                 <p className="text-gray-600 leading-relaxed">
                     Convidamos você a viver uma experiência única de transformação e relaxamento.

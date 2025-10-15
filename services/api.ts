@@ -671,6 +671,8 @@ const mapDbToClinicSettings = (dbSettings: any): ClinicSettings => ({
     operatingHours: dbSettings.operating_hours,
     holidayExceptions: dbSettings.holiday_exceptions || [],
     featuredServiceIds: dbSettings.featured_service_ids || [], // Mapeando o novo campo
+    heroText: dbSettings.hero_text || 'Sua Beleza, Nosso Compromisso.', // Mapeando e fornecendo fallback
+    aboutText: dbSettings.about_text || 'Descubra tratamentos estéticos de ponta e agende seu momento de cuidado em um ambiente de luxo e bem-estar.', // Mapeando e fornecendo fallback
 });
 
 // NOVOS HORÁRIOS PADRÃO
@@ -689,13 +691,15 @@ export const DEFAULT_CLINIC_SETTINGS: ClinicSettings = {
     operatingHours: DEFAULT_OPERATING_HOURS,
     holidayExceptions: [],
     featuredServiceIds: [], // Padrão vazio
+    heroText: 'Sua Beleza, Nosso Compromisso.',
+    aboutText: 'Descubra tratamentos estéticos de ponta e agende seu momento de cuidado em um ambiente de luxo e bem-estar.',
 };
 
 export const getClinicSettings = async (): Promise<ClinicSettings> => {
     try {
         const { data, error } = await supabase
             .from('clinic_settings')
-            .select('id, operating_hours, holiday_exceptions, featured_service_ids') // Incluindo o novo campo
+            .select('id, operating_hours, holiday_exceptions, featured_service_ids, hero_text, about_text') // Incluindo os novos campos
             .eq('id', SETTINGS_ID)
             .single();
 
@@ -713,9 +717,11 @@ export const getClinicSettings = async (): Promise<ClinicSettings> => {
                     id: SETTINGS_ID, 
                     operating_hours: DEFAULT_OPERATING_HOURS,
                     holiday_exceptions: [],
-                    featured_service_ids: [], // Inserindo o novo campo
+                    featured_service_ids: [],
+                    hero_text: DEFAULT_CLINIC_SETTINGS.heroText, // Inserindo o novo campo
+                    about_text: DEFAULT_CLINIC_SETTINGS.aboutText, // Inserindo o novo campo
                 })
-                .select('id, operating_hours, holiday_exceptions, featured_service_ids')
+                .select('id, operating_hours, holiday_exceptions, featured_service_ids, hero_text, about_text')
                 .single();
                 
             if (insertError) {
@@ -740,7 +746,7 @@ export const updateClinicOperatingHours = async (operatingHours: OperatingHours)
         .from('clinic_settings')
         .update({ operating_hours: operatingHours })
         .eq('id', SETTINGS_ID)
-        .select('id, operating_hours, holiday_exceptions, featured_service_ids')
+        .select('id, operating_hours, holiday_exceptions, featured_service_ids, hero_text, about_text')
         .single();
 
     if (error) {
@@ -757,7 +763,7 @@ export const updateClinicHolidayExceptions = async (holidayExceptions: HolidayEx
         .from('clinic_settings')
         .update({ holiday_exceptions: holidayExceptions })
         .eq('id', SETTINGS_ID)
-        .select('id, operating_hours, holiday_exceptions, featured_service_ids')
+        .select('id, operating_hours, holiday_exceptions, featured_service_ids, hero_text, about_text')
         .single();
 
     if (error) {
@@ -774,12 +780,32 @@ export const updateFeaturedServices = async (serviceIds: string[]): Promise<Clin
         .from('clinic_settings')
         .update({ featured_service_ids: serviceIds })
         .eq('id', SETTINGS_ID)
-        .select('id, operating_hours, holiday_exceptions, featured_service_ids')
+        .select('id, operating_hours, holiday_exceptions, featured_service_ids, hero_text, about_text')
         .single();
 
     if (error) {
         console.error("Error updating featured services:", error);
         alert(`Erro ao atualizar serviços em destaque: ${error.message}`);
+        return null;
+    }
+    
+    return mapDbToClinicSettings(data);
+};
+
+export const updateClinicTexts = async (texts: { heroText: string; aboutText: string }): Promise<ClinicSettings | null> => {
+    const { data, error } = await supabase
+        .from('clinic_settings')
+        .update({ 
+            hero_text: texts.heroText,
+            about_text: texts.aboutText,
+        })
+        .eq('id', SETTINGS_ID)
+        .select('id, operating_hours, holiday_exceptions, featured_service_ids, hero_text, about_text')
+        .single();
+
+    if (error) {
+        console.error("Error updating clinic texts:", error);
+        alert(`Erro ao atualizar textos da clínica: ${error.message}`);
         return null;
     }
     
