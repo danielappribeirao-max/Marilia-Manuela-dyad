@@ -24,7 +24,25 @@ serve(async (req) => {
         throw new Error("Todos os campos de agendamento são obrigatórios.");
     }
     
-    // 1. Criar um e-mail temporário e senha padrão para o novo usuário
+    // --- 1. VERIFICAÇÃO DE DISPONIBILIDADE NO BACKEND ---
+    const { data: isAvailable, error: availabilityError } = await supabaseAdmin.rpc('check_full_availability', {
+        p_professional_id: professionalId,
+        p_booking_date: date,
+        p_booking_time: time,
+        p_duration: duration,
+    });
+
+    if (availabilityError) {
+        console.error("RPC Availability Error:", availabilityError);
+        throw new Error("Erro ao verificar disponibilidade. Tente novamente.");
+    }
+
+    if (isAvailable === false) {
+        throw new Error("O horário selecionado não está mais disponível. Por favor, escolha outro horário.");
+    }
+    // ----------------------------------------------------
+    
+    // 2. Criar um e-mail temporário e senha padrão para o novo usuário
     const email = `${phone}@mariliamanuela.com`;
     const password = Math.random().toString(36).slice(-8); // Senha aleatória
 
@@ -51,7 +69,7 @@ serve(async (req) => {
 
     const userId = authData.user.id
     
-    // 2. Inserir o agendamento usando as strings de data e hora locais
+    // 3. Inserir o agendamento usando as strings de data e hora locais
     const { data: bookingData, error: bookingError } = await supabaseAdmin
       .from('bookings')
       .insert({
@@ -72,7 +90,7 @@ serve(async (req) => {
       throw bookingError
     }
     
-    // 3. Retornar sucesso
+    // 4. Retornar sucesso
     return new Response(JSON.stringify({ 
         success: true, 
         booking: bookingData, 
