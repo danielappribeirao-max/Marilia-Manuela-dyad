@@ -125,10 +125,9 @@ function AppContent() {
         setClinicSettings(settingsData);
 
         // Atualiza URLs de imagem com base nas configurações (se existirem)
-        if (settingsData.logoUrl) setLogoUrl(settingsData.logoUrl);
-        if (settingsData.heroImageUrl) setHeroImageUrl(settingsData.heroImageUrl);
-        if (settingsData.aboutImageUrl) setAboutImageUrl(settingsData.aboutImageUrl);
-
+        // Nota: As URLs de imagem são gerenciadas no AdminSettingsPage e salvas no storage.
+        // O getAssetUrl já busca a URL pública.
+        // Não precisamos de lógica de atualização de URL aqui, pois o estado é atualizado no AdminSettingsPage.
 
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
