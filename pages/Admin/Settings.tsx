@@ -122,6 +122,9 @@ export default function AdminSettingsPage() {
   const handleSaveTexts = async (texts: { heroText: string; heroSubtitle: string; aboutText: string }) => {
       await updateClinicTexts(texts);
   };
+  
+  // Cria uma chave única baseada nos textos para forçar a remontagem do formulário
+  const textFormKey = `${clinicSettings.heroText.length}-${clinicSettings.heroSubtitle.length}-${clinicSettings.aboutText.length}`;
 
   return (
     <div>
@@ -131,6 +134,7 @@ export default function AdminSettingsPage() {
         <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
             <h3 className="text-xl font-semibold text-gray-800 mb-4">Textos da Página Inicial</h3>
             <TextSettingsForm
+                key={textFormKey} // Adicionando a chave para forçar a remontagem
                 initialHeroText={clinicSettings.heroText}
                 initialHeroSubtitle={clinicSettings.heroSubtitle}
                 initialAboutText={clinicSettings.aboutText}
