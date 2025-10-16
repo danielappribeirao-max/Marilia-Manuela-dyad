@@ -45,10 +45,13 @@ export const getUserProfile = async (userId: string): Promise<User | null> => {
     }
 
     if (data) {
+        // O Supabase retorna o resultado do join em 'auth_user'
+        const authUser = Array.isArray(data.auth_user) ? data.auth_user[0] : data.auth_user;
+        
         return {
             id: data.id,
             name: data.full_name || 'Usuário',
-            email: data.auth_user?.email || '',
+            email: authUser?.email || '',
             phone: data.phone || '',
             cpf: data.cpf || '',
             role: data.role as User['role'],

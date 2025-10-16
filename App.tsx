@@ -96,6 +96,15 @@ function AppContent() {
       setAdminDataRefreshKey(prev => prev + 1);
   }, []);
 
+  // Função centralizada para buscar e definir o usuário
+  const fetchAndSetUser = useCallback(async (userId: string) => {
+      const userProfile = await api.getUserProfile(userId);
+      if (userProfile) {
+          setCurrentUser(userProfile);
+          return userProfile;
+      }
+      return null;
+  }, []);
 
   useEffect(() => {
     const initializeApp = async () => {
@@ -125,9 +134,8 @@ function AppContent() {
         // Verifica a sessão inicial
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
-          const userProfile = await api.getUserProfile(session.user.id);
+          const userProfile = await fetchAndSetUser(session.user.id);
           if (userProfile) {
-            setCurrentUser(userProfile);
             // Redireciona se a sessão inicial for válida
             setCurrentPage(userProfile.role === Role.ADMIN ? Page.ADMIN_DASHBOARD : Page.USER_DASHBOARD);
           }
@@ -144,18 +152,22 @@ function AppContent() {
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log(`Auth Event: ${event}`); // Log para debug
       if (session?.user) {
-        const userProfile = await api.getUserProfile(session.user.id);
+        // Tenta buscar o perfil. Se falhar, o usuário não está totalmente logado no app.
+        const userProfile = await fetchAndSetUser(session.user.id);
+        
         if (userProfile) {
-          setCurrentUser(userProfile);
           if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
             // Fecha modais e redireciona após login/cadastro
             handleCloseModals(); 
             setCurrentPage(userProfile.role === Role.ADMIN ? Page.ADMIN_DASHBOARD : Page.USER_DASHBOARD);
           }
         } else {
-            // Se o perfil não for encontrado, força o logout para limpar a sessão local
-            console.error("Profile not found after sign in. Forcing logout.");
-            await api.signOut();
+            // CRÍTICO: Se o perfil não for encontrado após SIGNED_IN, algo está errado (RLS ou gatilho).
+            // Força o logout para limpar a sessão local e evitar loops.
+            if (event === 'SIGNED_IN') {
+                console.error("Profile not found after sign in. Forcing logout.");
+                await api.signOut();
+            }
         }
       } else {
         setCurrentUser(null);
@@ -169,7 +181,7 @@ function AppContent() {
     return () => {
       authListener.subscription.unsubscribe();
     };
-  }, []); // Dependências removidas para evitar loops, exceto as necessárias
+  }, [fetchAndSetUser]); // Adicionando fetchAndSetUser como dependência
 
   useEffect(() => {
     const handleScroll = () => {
