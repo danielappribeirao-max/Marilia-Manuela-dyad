@@ -102,10 +102,17 @@ serve(async (req) => {
         userWasCreated = true;
     }
     
+    // VERIFICAÇÃO CRÍTICA: Garantir que o userId foi obtido
+    if (!userId) {
+        console.error("Critical Error: User ID not obtained after creation or lookup.");
+        return new Response(JSON.stringify({ error: "Erro interno: Não foi possível obter o ID do cliente." }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 500,
+        });
+    }
+    
     // 3. Inserir o agendamento
-    const { data: bookingData, error: bookingError } = await supabaseAdmin
-      .from('bookings')
-      .insert({
+    const bookingPayload = {
         user_id: userId,
         service_id: serviceId,
         professional_id: professionalId,
@@ -115,7 +122,13 @@ serve(async (req) => {
         duration: parsedDuration,
         service_name: serviceName, // Garantindo que service_name está sendo usado
         notes: `Consulta Gratuita. Interesse: ${description}`,
-      })
+    };
+    
+    console.log("Attempting to insert booking with payload:", bookingPayload);
+
+    const { data: bookingData, error: bookingError } = await supabaseAdmin
+      .from('bookings')
+      .insert(bookingPayload)
       .select()
       .single()
 
