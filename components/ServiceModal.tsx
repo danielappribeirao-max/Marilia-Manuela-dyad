@@ -4,7 +4,7 @@ import { Service } from '../types';
 interface ServiceModalProps {
   service: Partial<Service> | null;
   onClose: () => void;
-  onSave: (service: Service) => void;
+  onSave: (service: Partial<Service>) => void; // Alterado para Partial<Service>
   existingServices: Service[];
 }
 
@@ -20,16 +20,15 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave, e
     category: service?.category || '',
     imageUrl: service?.imageUrl || '',
     sessions: service?.sessions || 1,
+    order: service?.order, // Inclui a ordem existente
   });
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [isNewCategory, setIsNewCategory] = useState(false);
   
-  // Novo estado para controlar se o preço é fixo ou gratuito
   const [priceType, setPriceType] = useState<'fixed' | 'free'>(
       (service?.price === 0 || !service?.price) ? 'free' : 'fixed'
   );
 
-  // Efeito para garantir que o estado seja resetado se a prop 'service' mudar
   useEffect(() => {
     setFormData({
       id: service?.id, 
@@ -40,6 +39,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave, e
       category: service?.category || '',
       imageUrl: service?.imageUrl || '',
       sessions: service?.sessions || 1,
+      order: service?.order,
     });
     setPriceType((service?.price === 0 || !service?.price) ? 'free' : 'fixed');
     setIsNewCategory(false);
@@ -56,20 +56,16 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave, e
     if (!formData.name?.trim()) newErrors.name = 'O nome é obrigatório.';
     if (!formData.description?.trim()) newErrors.description = 'A descrição é obrigatória.';
     
-    // Validação de números
     const price = Number(formData.price);
     const duration = Number(formData.duration);
     const sessions = Number(formData.sessions);
     
-    // Validação de Preço
     if (priceType === 'fixed') {
         if (isNaN(price) || price <= 0) newErrors.price = 'O preço deve ser maior que zero para preço fixo.';
     } else {
-        // Se for 'free', o preço deve ser 0
         if (price !== 0) newErrors.price = 'Erro interno: Preço deve ser 0 para Grátis.';
     }
     
-    // Permite duração zero ou maior
     if (isNaN(duration) || duration < 0) newErrors.duration = 'A duração deve ser zero ou maior.';
     
     if (isNaN(sessions) || sessions < 1) newErrors.sessions = 'A quantidade de sessões deve ser de no mínimo 1.';
@@ -89,7 +85,6 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave, e
     } else {
         let finalValue: string | number = value;
         if (type === 'number') {
-            // Converte para número, mas permite string vazia para campos de input
             finalValue = value === '' ? 0 : parseFloat(value);
         }
         
@@ -109,7 +104,6 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave, e
       if (newType === 'free') {
           setFormData(prev => ({ ...prev, price: 0 }));
       } else {
-          // Define um valor padrão se for para fixo
           setFormData(prev => ({ ...prev, price: prev.price === 0 ? 50.00 : prev.price }));
       }
       if (errors.price) setErrors(prev => ({ ...prev, price: '' }));
@@ -134,20 +128,12 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave, e
     if (validate()) {
       const finalFormData = { ...formData };
       
-      // 1. Garantir que o ID seja undefined para novos serviços (para o Supabase gerar um novo UUID)
-      if (!isEditing) {
-          delete finalFormData.id;
-      }
-      
-      // 2. Garantir uma URL de imagem válida
       if (!finalFormData.imageUrl) {
         const seed = finalFormData.name?.replace(/\s/g, '') || 'service';
         finalFormData.imageUrl = `https://picsum.photos/seed/${seed}/400/300`;
       }
       
-      // 3. Garantir que os campos numéricos sejam números (final check)
-      const serviceToSave: Service = {
-          id: finalFormData.id || '', // O ID será ignorado na API se for novo
+      const serviceToSave: Partial<Service> = {
           name: finalFormData.name!,
           description: finalFormData.description!,
           price: Number(finalFormData.price),
@@ -156,6 +142,11 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave, e
           imageUrl: finalFormData.imageUrl!,
           sessions: Number(finalFormData.sessions),
       };
+      
+      if (isEditing) {
+        serviceToSave.id = finalFormData.id!;
+        serviceToSave.order = finalFormData.order; // Manter a ordem existente ao editar
+      }
       
       onSave(serviceToSave);
     }

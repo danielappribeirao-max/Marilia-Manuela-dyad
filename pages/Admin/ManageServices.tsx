@@ -16,26 +16,22 @@ export default function AdminManageServices() {
     const [modalKey, setModalKey] = useState(0);
     const [activeTab, setActiveTab] = useState<'manage' | 'reorder'>('manage');
     
-    // Estado local para a ordem dos serviços (usado apenas na aba 'reorder')
     const [reorderableServices, setReorderableServices] = useState<Service[]>([]);
 
-    // Inicializa e atualiza a lista de reordenação sempre que a lista principal de serviços mudar
     useEffect(() => {
-        // Filtra o serviço de consulta gratuita da lista de reordenação, pois ele deve ser sempre o primeiro (order: 0)
         const filteredServices = services.filter(s => s.id !== FREE_CONSULTATION_SERVICE_ID);
         setReorderableServices(filteredServices);
     }, [services]);
 
     const handleAddNew = () => {
         setSelectedService(null);
-        setModalKey(prev => prev + 1); // Incrementa a chave para forçar o reset
+        setModalKey(prev => prev + 1);
         setIsServiceModalOpen(true);
     };
 
     const handleEdit = (service: Service) => {
-        // Passa uma cópia do objeto para garantir que o modal não altere o objeto original
         setSelectedService({ ...service }); 
-        setModalKey(prev => prev + 1); // Também incrementa para edição, garantindo o reset
+        setModalKey(prev => prev + 1);
         setIsServiceModalOpen(true);
     };
 
@@ -54,12 +50,10 @@ export default function AdminManageServices() {
         }
     };
 
-    const handleSave = async (savedService: Service) => {
+    const handleSave = async (savedService: Partial<Service>) => {
         console.log("Attempting to save service:", savedService);
         
-        // Se for um novo serviço, define a ordem como o último item
         if (!savedService.id) {
-            // O serviço de consulta gratuita tem order 0. Novos serviços começam a partir de 1.
             const maxOrder = services.reduce((max, s) => Math.max(max, s.order || 0), 0);
             savedService.order = maxOrder + 1;
         }
@@ -68,11 +62,9 @@ export default function AdminManageServices() {
         
         if (result) {
             console.log("Service saved successfully:", result);
-            // Limpa o estado antes de fechar o modal
             setSelectedService(null); 
             setIsServiceModalOpen(false);
             
-            // Alerta específico para o serviço de consulta gratuita
             if (savedService.id === FREE_CONSULTATION_SERVICE_ID) {
                 alert(`Serviço "${result.name}" atualizado localmente com sucesso!`);
             } else {
@@ -85,21 +77,18 @@ export default function AdminManageServices() {
     };
     
     const handleSaveOrder = async (orderUpdates: { id: string; order: number }[]): Promise<boolean> => {
-        // Inclui o serviço de consulta gratuita na ordem 0, se ele existir
         const freeConsultationService = services.find(s => s.id === FREE_CONSULTATION_SERVICE_ID);
         const finalOrderUpdates = freeConsultationService ? [{ id: freeConsultationService.id, order: 0 }, ...orderUpdates] : orderUpdates;
         
         const success = await api.updateServiceOrder(finalOrderUpdates);
         
         if (success) {
-            // Atualiza o estado global com a nova ordem
             const updatedServicesMap = new Map(finalOrderUpdates.map(u => [u.id, u.order]));
             setServices(prev => {
                 const newServices = prev.map(s => ({
                     ...s,
                     order: updatedServicesMap.get(s.id) || s.order,
                 }));
-                // Reordena a lista localmente para refletir a ordem salva
                 return newServices.sort((a, b) => (a.order || 0) - (b.order || 0));
             });
         }
@@ -119,7 +108,6 @@ export default function AdminManageServices() {
         </button>
     );
     
-    // Filtra o serviço de consulta gratuita da lista de gerenciamento (manage) para que ele não possa ser excluído/editado facilmente
     const servicesForManagement = services.filter(s => s.id !== FREE_CONSULTATION_SERVICE_ID);
     const freeConsultationService = services.find(s => s.id === FREE_CONSULTATION_SERVICE_ID);
 
@@ -144,7 +132,6 @@ export default function AdminManageServices() {
                 <div className="space-y-4">
                     <h3 className="text-2xl font-bold mb-4">Serviços Atuais ({services.length})</h3>
                     
-                    {/* Exibe o serviço de consulta gratuita separadamente, se existir */}
                     {freeConsultationService && (
                         <div className="bg-yellow-50 border-yellow-300 border-l-4 p-4 rounded-lg mb-4 flex justify-between items-center">
                             <div>
@@ -181,7 +168,7 @@ export default function AdminManageServices() {
 
             {isServiceModalOpen && (
                 <ServiceModal 
-                    key={modalKey} // Adicionando a chave para forçar o reset
+                    key={modalKey}
                     service={selectedService}
                     onClose={() => setIsServiceModalOpen(false)}
                     onSave={handleSave}

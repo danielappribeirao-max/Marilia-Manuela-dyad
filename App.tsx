@@ -27,7 +27,7 @@ interface AppContextType {
   packages: ServicePackage[];
   setPackages: React.Dispatch<React.SetStateAction<ServicePackage[]>>;
   professionals: User[];
-  addOrUpdateService: (service: Service) => Promise<Service | null>;
+  addOrUpdateService: (service: Partial<Service>) => Promise<Service | null>;
   deleteService: (serviceId: string) => Promise<void>;
   addOrUpdatePackage: (pkg: ServicePackage) => Promise<ServicePackage | null>;
   deletePackage: (packageId: string) => Promise<void>;
@@ -42,7 +42,7 @@ interface AppContextType {
   updateClinicSettings: (hours: OperatingHours) => Promise<void>;
   updateClinicHolidayExceptions: (exceptions: HolidayException[]) => Promise<void>;
   updateFeaturedServices: (serviceIds: string[]) => Promise<void>;
-  updateClinicTexts: (texts: { heroText: string; heroSubtitle: string; aboutText: string }) => Promise<void>; // ATUALIZADO
+  updateClinicTexts: (texts: { heroText: string; heroSubtitle: string; aboutText: string }) => Promise<void>;
   refreshAdminData: () => void;
 }
 
@@ -68,7 +68,6 @@ function AppContent() {
   const [services, setServices] = useState<Service[]>([]);
   const [packages, setPackages] = useState<ServicePackage[]>([]);
   const [professionals, setProfessionals] = useState<User[]>([]);
-  // Inicializa com um objeto vazio para evitar null/undefined no contexto
   const [clinicSettings, setClinicSettings] = useState<ClinicSettings>(api.DEFAULT_CLINIC_SETTINGS); 
   
   const [bookingService, setBookingService] = useState<Service | null>(null);
@@ -78,25 +77,21 @@ function AppContent() {
   const [reschedulingBooking, setReschedulingBooking] = useState<Booking | null>(null);
   const [postPurchaseService, setPostPurchaseService] = useState<Service | null>(null);
   
-  // Novo estado para o fluxo de consulta gratuita
   const [isQuickRegisterModalOpen, setIsQuickRegisterModalOpen] = useState(false);
   const [tempClientData, setTempClientData] = useState<{ name: string; phone: string; description: string } | null>(null);
-  const [newlyCreatedUserEmail, setNewlyCreatedUserEmail] = useState<string | null>(null); // NOVO: Email do usuário recém-criado
+  const [newlyCreatedUserEmail, setNewlyCreatedUserEmail] = useState<string | null>(null);
 
   const [showWhatsApp, setShowWhatsApp] = useState(false);
   
-  // Inicialização com URLs que forçam o cache a ser ignorado
   const [logoUrl, setLogoUrl] = useState(api.getAssetUrl('logo-marilia-manuela.jpeg'));
   const [heroImageUrl, setHeroImageUrl] = useState(api.getAssetUrl('hero-image.jpeg'));
   const [aboutImageUrl, setAboutImageUrl] = useState(api.getAssetUrl('about-image.jpeg'));
   
-  // Estado para forçar o recarregamento de dados administrativos (Agenda, Usuários)
   const [adminDataRefreshKey, setAdminDataRefreshKey] = useState(0);
   const refreshAdminData = useCallback(() => {
       setAdminDataRefreshKey(prev => prev + 1);
   }, []);
 
-  // Função centralizada para buscar e definir o usuário
   const fetchAndSetUser = useCallback(async (userId: string) => {
       const userProfile = await api.getUserProfile(userId);
       if (userProfile) {
@@ -115,13 +110,11 @@ function AppContent() {
           api.getProfessionals(),
           api.getServicePackages(),
           api.getClinicSettings(),
-          api.ensureFreeConsultationServiceExists(), // Busca ou cria o serviço de consulta gratuita
+          api.ensureFreeConsultationServiceExists(),
         ]);
         
-        // Adiciona o serviço de consulta gratuita (se existir) à lista de serviços
         let allServices = servicesData || [];
         if (freeConsultationService) {
-            // Remove qualquer versão antiga e adiciona a versão atualizada do banco no início
             allServices = allServices.filter(s => s.id !== FREE_CONSULTATION_SERVICE_ID);
             allServices.unshift(freeConsultationService);
         }
@@ -131,12 +124,10 @@ function AppContent() {
         setPackages(packagesData || []);
         setClinicSettings(settingsData);
 
-        // Verifica a sessão inicial
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
           const userProfile = await fetchAndSetUser(session.user.id);
           if (userProfile) {
-            // Redireciona se a sessão inicial for válida
             setCurrentPage(userProfile.role === Role.ADMIN ? Page.ADMIN_DASHBOARD : Page.USER_DASHBOARD);
           }
         }
@@ -150,31 +141,24 @@ function AppContent() {
     initializeApp();
 
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log(`Auth Event: ${event}`); // Log para debug
+      console.log(`Auth Event: ${event}`);
       if (session?.user) {
-        // Tenta buscar o perfil.
         const userProfile = await fetchAndSetUser(session.user.id);
         
         if (userProfile) {
           if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
-            // Fecha modais e redireciona após login/cadastro
             handleCloseModals(); 
-            // *** LÓGICA DE REDIRECIONAMENTO CRÍTICA ***
             setCurrentPage(userProfile.role === Role.ADMIN ? Page.ADMIN_DASHBOARD : Page.USER_DASHBOARD);
           }
         } else {
-            // CRÍTICO: Se o perfil não for encontrado após SIGNED_IN, algo está errado (RLS ou gatilho).
             if (event === 'SIGNED_IN') {
                 console.error("Profile not found after sign in. Forcing redirect to login.");
-                // Força o logout para limpar a sessão local
                 await api.signOut();
-                // Redireciona para o login para que o usuário possa tentar novamente ou se cadastrar
                 setCurrentPage(Page.LOGIN); 
             }
         }
       } else {
         setCurrentUser(null);
-        // Se o usuário sair, volta para a home, a menos que já esteja na página de login
         if (currentPage !== Page.LOGIN) {
             setCurrentPage(Page.HOME);
         }
@@ -184,7 +168,7 @@ function AppContent() {
     return () => {
       authListener.subscription.unsubscribe();
     };
-  }, [fetchAndSetUser]); // Adicionando fetchAndSetUser como dependência
+  }, [fetchAndSetUser]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -218,8 +202,8 @@ function AppContent() {
     setReschedulingBooking(null);
     setPostPurchaseService(null);
     setIsQuickRegisterModalOpen(false);
-    setTempClientData(null); // Limpa dados temporários
-    setNewlyCreatedUserEmail(null); // Limpa o email do novo usuário
+    setTempClientData(null);
+    setNewlyCreatedUserEmail(null);
   };
 
   const handleStartFreeConsultation = useCallback(() => {
@@ -230,16 +214,13 @@ function AppContent() {
       }
       
       if (currentUser) {
-          // Se o usuário estiver logado, pula o cadastro rápido e vai direto para o agendamento
           setBookingService(freeConsultationService);
       } else {
-          // Se não estiver logado, abre o modal de cadastro rápido
           setIsQuickRegisterModalOpen(true);
       }
   }, [currentUser, services]);
 
   const handlePurchaseOrBook = useCallback((service: Service, quantity: number) => {
-    // NOVO: Se for o serviço de consulta gratuita, redireciona para o fluxo de agendamento rápido
     if (service.id === FREE_CONSULTATION_SERVICE_ID) {
         handleStartFreeConsultation();
         return;
@@ -264,18 +245,12 @@ function AppContent() {
     if (!purchaseConfirmation || !currentUser) return;
     const { service, quantity } = purchaseConfirmation;
     
-    // 1. Adiciona os créditos
     const updatedUser = await api.addCreditsToUser(currentUser.id, service.id, quantity, service.sessions);
     
     if (updatedUser) {
       setCurrentUser(updatedUser);
-      
-      // 2. Fecha o modal de confirmação de compra
       setPurchaseConfirmation(null);
-      
-      // 3. Abre o modal pós-compra
       setPostPurchaseService(service);
-      
     } else {
       alert("Ocorreu um erro ao processar sua compra.");
       setPurchaseConfirmation(null);
@@ -303,7 +278,6 @@ function AppContent() {
     setReschedulingBooking(booking);
   }, []);
   
-  // NOVO: Lida com o cadastro rápido e abre o modal de agendamento
   const handleQuickRegisterAndBook = useCallback((data: { name: string; phone: string; description: string }) => {
       const freeConsultationService = services.find(s => s.id === FREE_CONSULTATION_SERVICE_ID);
       if (!freeConsultationService) {
@@ -315,7 +289,6 @@ function AppContent() {
       setBookingService(freeConsultationService);
   }, [services]);
 
-  // CORREÇÃO: A função agora retorna o objeto completo, incluindo tempEmail
   const handleConfirmFinalBooking = useCallback(async (details: { date: Date, professionalId: string }): Promise<{ success: boolean, error: string | null }> => {
     if (!currentUser && !tempClientData) return { success: false, error: "Usuário não autenticado." };
     
@@ -328,7 +301,6 @@ function AppContent() {
       if(result) return { success: true, error: null };
       return { success: false, error: "Falha ao reagendar." };
     } else {
-      // Se for agendamento normal (logado ou crédito)
       if (currentUser) {
           const newBooking: Omit<Booking, 'id'> = { 
               userId: currentUser.id, 
@@ -341,7 +313,6 @@ function AppContent() {
           };
           const result = await api.addOrUpdateBooking(newBooking);
           
-          // Dedução de crédito
           if (result && creditBookingService) {
             const updatedUser = await api.deductCreditFromUser(currentUser.id, creditBookingService.id);
             if (updatedUser) setCurrentUser(updatedUser);
@@ -349,7 +320,6 @@ function AppContent() {
           return { success: !!result, error: result ? null : "Falha ao criar agendamento." };
           
       } else if (tempClientData && serviceToBook.id === FREE_CONSULTATION_SERVICE_ID) {
-          // Fluxo de Consulta Gratuita para Novo Usuário
           const result = await api.bookFreeConsultationForNewUser({
               name: tempClientData.name,
               phone: tempClientData.phone,
@@ -362,17 +332,12 @@ function AppContent() {
           });
           
           if (result.success) {
-              // Armazena o e-mail do novo usuário para exibir no modal de sucesso
               if (result.tempEmail) {
                   setNewlyCreatedUserEmail(result.tempEmail);
               }
-              // Força o recarregamento dos dados administrativos para que o AdminAgenda veja o novo agendamento
               refreshAdminData();
-              // Retorna o sucesso, mas o BookingModal não precisa do tempEmail no retorno da Promise,
-              // ele o lê do estado `newlyCreatedUserEmail`.
               return { success: true, error: null };
           } else {
-              // Retorna o erro específico da Edge Function
               return { success: false, error: result.error };
           }
       }
@@ -393,16 +358,18 @@ function AppContent() {
       setCurrentPage(Page.USER_DASHBOARD);
   };
 
-  const addOrUpdateService = useCallback(async (service: Service) => {
+  const addOrUpdateService = useCallback(async (service: Partial<Service>) => {
     const savedService = await api.addOrUpdateService(service);
     if (savedService) {
       setServices(prevServices => {
         const isExisting = prevServices.some(s => s.id === savedService.id);
+        let newServices;
         if (isExisting) {
-          return prevServices.map(s => s.id === savedService.id ? savedService : s);
+          newServices = prevServices.map(s => s.id === savedService.id ? savedService : s);
+        } else {
+          newServices = [...prevServices, savedService];
         }
-        // Adiciona o novo serviço
-        return [...prevServices, savedService];
+        return newServices.sort((a, b) => (a.order || 0) - (b.order || 0));
       });
     }
     return savedService;
@@ -437,7 +404,7 @@ function AppContent() {
     if (updatedSettings) {
         setClinicSettings(updatedSettings);
         alert("Horários de funcionamento atualizados com sucesso!");
-        refreshAdminData(); // Força o recarregamento da agenda
+        refreshAdminData();
     } else {
         console.error("Falha ao atualizar configurações da clínica. Verifique os logs da API para detalhes.");
         alert("Erro ao atualizar horários de funcionamento.");
@@ -449,7 +416,7 @@ function AppContent() {
     if (updatedSettings) {
         setClinicSettings(updatedSettings);
         alert("Exceções de feriados atualizadas com sucesso!");
-        refreshAdminData(); // Força o recarregamento da agenda
+        refreshAdminData();
     } else {
         alert("Erro ao atualizar exceções de feriados.");
     }
@@ -509,7 +476,7 @@ function AppContent() {
             clinicOperatingHours={clinicSettings.operatingHours} 
             clinicHolidayExceptions={clinicSettings.holidayExceptions}
             tempClientData={tempClientData} 
-            newlyCreatedUserEmail={newlyCreatedUserEmail} // Passa o email do novo usuário
+            newlyCreatedUserEmail={newlyCreatedUserEmail}
         />}
         {purchaseConfirmation && <PurchaseConfirmationModal service={purchaseConfirmation.service} quantity={purchaseConfirmation.quantity} onConfirm={handleConfirmPurchase} onClose={handleCloseModals} />}
         {purchasePackageConfirmation && <PackagePurchaseConfirmationModal servicePackage={purchasePackageConfirmation} services={services} onConfirm={handleConfirmPackagePurchase} onClose={handleCloseModals} />}
