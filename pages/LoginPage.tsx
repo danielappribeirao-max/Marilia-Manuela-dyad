@@ -12,6 +12,8 @@ export default function LoginPage() {
           appearance={{ theme: ThemeSupa }}
           providers={[]}
           theme="light"
+          // Adicionando redirectTo para garantir que o fluxo de e-mail funcione corretamente
+          redirectTo={window.location.origin} 
           localization={{
             variables: {
               sign_in: { email_label: 'Seu e-mail', password_label: 'Sua senha', email_input_placeholder: 'exemplo@email.com', password_input_placeholder: '••••••••', button_label: 'Entrar', social_provider_text: 'Ou entre com', link_text: 'Já tem uma conta? Entrar' },
