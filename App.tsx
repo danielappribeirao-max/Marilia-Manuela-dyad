@@ -152,13 +152,14 @@ function AppContent() {
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log(`Auth Event: ${event}`); // Log para debug
       if (session?.user) {
-        // Tenta buscar o perfil. Se falhar, o usuário não está totalmente logado no app.
+        // Tenta buscar o perfil.
         const userProfile = await fetchAndSetUser(session.user.id);
         
         if (userProfile) {
           if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
             // Fecha modais e redireciona após login/cadastro
             handleCloseModals(); 
+            // *** LÓGICA DE REDIRECIONAMENTO CRÍTICA ***
             setCurrentPage(userProfile.role === Role.ADMIN ? Page.ADMIN_DASHBOARD : Page.USER_DASHBOARD);
           }
         } else {
