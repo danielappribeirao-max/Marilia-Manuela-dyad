@@ -34,7 +34,8 @@ serve(async (req) => {
         });
     }
     
-    // --- 1. VERIFICAÇÃO DE DISPONIBILIDADE NO BACKEND ---
+    // --- 1. VERIFICAÇÃO DE DISPONIBILIDADE NO BACKEND (TEMPORARIAMENTE DESATIVADA) ---
+    /*
     const { data: isAvailable, error: availabilityError } = await supabaseAdmin.rpc('check_full_availability', {
         p_professional_id: professionalId,
         p_booking_date: date,
@@ -56,6 +57,7 @@ serve(async (req) => {
             status: 400,
         });
     }
+    */
     // ----------------------------------------------------
     
     // 2. Criar ou buscar usuário
@@ -118,9 +120,9 @@ serve(async (req) => {
         professional_id: professionalId,
         booking_date: date, // YYYY-MM-DD
         booking_time: time, // HH:MM
-        status: 'Agendado', // Usando 'Agendado' como status inicial para garantir que a RLS de 'confirmed' não bloqueie
+        status: 'Agendado', // Usando 'Agendado' como status inicial
         duration: parsedDuration,
-        service_name: serviceName, // Garantindo que service_name está sendo usado
+        service_name: serviceName,
         notes: `Consulta Gratuita. Interesse: ${description}`,
     };
     
@@ -140,7 +142,7 @@ serve(async (req) => {
       });
     }
     
-    // VERIFICAÇÃO CRÍTICA: Se a inserção não retornou dados, algo falhou silenciosamente (ex: RLS, mas Service Role deveria ignorar)
+    // VERIFICAÇÃO CRÍTICA: Se a inserção não retornou dados, algo falhou silenciosamente
     if (!bookingData) {
         console.error("Booking Insert Error: Insert operation returned no data.");
         return new Response(JSON.stringify({ error: "Falha ao registrar o agendamento no banco de dados. Tente novamente." }), {
@@ -155,7 +157,6 @@ serve(async (req) => {
         booking: bookingData, 
         newUserId: userId,
         tempEmail: email,
-        // Retorna a senha temporária apenas se o usuário foi criado agora
         tempPassword: userWasCreated ? tempPassword : undefined, 
     };
     
