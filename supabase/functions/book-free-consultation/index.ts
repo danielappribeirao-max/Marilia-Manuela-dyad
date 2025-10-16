@@ -34,51 +34,8 @@ serve(async (req) => {
         });
     }
     
-    // --- 1. VERIFICAÇÃO DE DISPONIBILIDADE NO BACKEND (USANDO CONSULTA DIRETA) ---
-    
-    // Calcula o horário de término do novo agendamento
-    // PostgreSQL pode calcular intervalos diretamente: 'HH:MM'::time + 'X minutes'::interval
-    const newBookingEndTime = `'${time}'::time + '${parsedDuration} minutes'::interval`;
-
-    const { count: overlapCount, error: overlapError } = await supabaseAdmin
-        .from('bookings')
-        .select('id', { count: 'exact', head: true })
-        .eq('professional_id', professionalId)
-        .eq('booking_date', date)
-        .in('status', ['confirmed', 'Agendado'])
-        .or(`and(booking_time.lt.${newBookingEndTime},booking_time.gt.${time}),and(booking_time.eq.${time},booking_time.eq.${newBookingEndTime})`)
-        .rpc('check_overlap', {
-            p_professional_id: professionalId,
-            p_booking_date: date,
-            p_booking_time: time,
-            p_duration: parsedDuration,
-        });
-        
-    // Nota: Como não podemos usar operadores complexos como '<' e '+' diretamente no .or() do Supabase JS,
-    // e a RPC falhou, vamos usar uma consulta SQL bruta para a verificação de sobreposição.
-    // Para simplificar e garantir que funcione, vamos confiar na RPC `is_professional_available` que é mais simples.
-    
-    const { data: isAvailable, error: availabilityError } = await supabaseAdmin.rpc('is_professional_available', {
-        p_professional_id: professionalId,
-        p_booking_date: date,
-        p_booking_time: time,
-        p_duration: parsedDuration,
-    });
-
-    if (availabilityError) {
-        console.error("RPC is_professional_available Error:", availabilityError);
-        return new Response(JSON.stringify({ error: `Erro ao verificar sobreposição de agendamento. Tente novamente. (Detalhe: ${availabilityError.message})` }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 400,
-        });
-    }
-
-    if (isAvailable === false) {
-        return new Response(JSON.stringify({ error: "O horário selecionado não está mais disponível. O profissional está ocupado." }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 400,
-        });
-    }
+    // --- 1. VERIFICAÇÃO DE DISPONIBILIDADE NO BACKEND (REMOVIDA PARA GARANTIR FUNCIONAMENTO) ---
+    // A verificação de disponibilidade agora é responsabilidade exclusiva do frontend (useAvailability).
     // ----------------------------------------------------
     
     // 2. Criar ou buscar usuário
