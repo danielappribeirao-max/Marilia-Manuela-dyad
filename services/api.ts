@@ -636,9 +636,36 @@ export const getClinicSettings = async (): Promise<ClinicSettings> => {
         .limit(1)
         .single();
 
-    if (error) {
-        console.error("Error fetching clinic settings, using default:", error);
-        return DEFAULT_CLINIC_SETTINGS;
+    if (error && error.code !== 'PGRST116') { // PGRST116 = No rows found (esperado se for a primeira vez)
+        console.error("Error fetching clinic settings:", error);
+    }
+    
+    if (!data) {
+        // Se não houver dados, insere o registro padrão (upsert)
+        const { data: upsertData, error: upsertError } = await supabase
+            .from('clinic_settings')
+            .upsert({
+                id: DEFAULT_CLINIC_SETTINGS.id,
+                operating_hours: DEFAULT_CLINIC_SETTINGS.operatingHours,
+                holiday_exceptions: DEFAULT_CLINIC_SETTINGS.holidayExceptions,
+                featured_service_ids: DEFAULT_CLINIC_SETTINGS.featuredServiceIds,
+                hero_text: DEFAULT_CLINIC_SETTINGS.heroText,
+                hero_subtitle: DEFAULT_CLINIC_SETTINGS.heroSubtitle,
+                about_text: DEFAULT_CLINIC_SETTINGS.aboutText,
+            }, { onConflict: 'id' })
+            .select('*')
+            .single();
+            
+        if (upsertError) {
+            console.error("Error upserting default clinic settings:", upsertError);
+            return DEFAULT_CLINIC_SETTINGS;
+        }
+        
+        if (upsertData) {
+            data = upsertData;
+        } else {
+            return DEFAULT_CLINIC_SETTINGS;
+        }
     }
 
     return {
