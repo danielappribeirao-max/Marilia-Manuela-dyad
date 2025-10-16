@@ -67,7 +67,7 @@ serve(async (req) => {
     // Tenta criar o usuário
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email: email,
-      password: Math.random().toString(36).slice(-8), // Senha aleatória
+      password: 'senhaPadrao123', // Usando senha padrão para facilitar o login temporário
       email_confirm: false,
       user_metadata: {
         full_name: name,
@@ -98,7 +98,7 @@ serve(async (req) => {
       }
     } else {
         userId = authData.user.id;
-        tempPassword = 'senhaPadrao123'; // Usamos uma senha padrão para o frontend informar
+        tempPassword = 'senhaPadrao123'; // Usamos a senha padrão
         userWasCreated = true;
     }
     
@@ -138,6 +138,15 @@ serve(async (req) => {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           status: 400,
       });
+    }
+    
+    // VERIFICAÇÃO CRÍTICA: Se a inserção não retornou dados, algo falhou silenciosamente (ex: RLS, mas Service Role deveria ignorar)
+    if (!bookingData) {
+        console.error("Booking Insert Error: Insert operation returned no data.");
+        return new Response(JSON.stringify({ error: "Falha ao registrar o agendamento no banco de dados. Tente novamente." }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 500,
+        });
     }
     
     // 4. Retornar sucesso
