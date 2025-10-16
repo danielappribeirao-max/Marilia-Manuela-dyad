@@ -122,17 +122,18 @@ function AppContent() {
         setPackages(packagesData || []);
         setClinicSettings(settingsData);
 
-        const { data: { session } } = await api.getCurrentUserSession(); // Corrigido: Acessar data.session
+        // Verifica a sessão inicial
+        const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
           const userProfile = await api.getUserProfile(session.user.id);
           if (userProfile) {
             setCurrentUser(userProfile);
-            // Não redireciona aqui, o listener de auth faz isso
+            // Redireciona se a sessão inicial for válida
+            setCurrentPage(userProfile.role === Role.ADMIN ? Page.ADMIN_DASHBOARD : Page.USER_DASHBOARD);
           }
         }
       } catch (error) {
         console.error("Error initializing app:", error);
-        // Em caso de falha total, ainda usamos os padrões
         setClinicSettings(api.DEFAULT_CLINIC_SETTINGS);
       } finally {
         setLoading(false);
@@ -141,13 +142,20 @@ function AppContent() {
     initializeApp();
 
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log(`Auth Event: ${event}`); // Log para debug
       if (session?.user) {
         const userProfile = await api.getUserProfile(session.user.id);
         if (userProfile) {
           setCurrentUser(userProfile);
-          if (event === 'SIGNED_IN') {
+          if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+            // Fecha modais e redireciona após login/cadastro
+            handleCloseModals(); 
             setCurrentPage(userProfile.role === Role.ADMIN ? Page.ADMIN_DASHBOARD : Page.USER_DASHBOARD);
           }
+        } else {
+            // Se o perfil não for encontrado, força o logout para limpar a sessão local
+            console.error("Profile not found after sign in. Forcing logout.");
+            await api.signOut();
         }
       } else {
         setCurrentUser(null);
@@ -161,8 +169,8 @@ function AppContent() {
     return () => {
       authListener.subscription.unsubscribe();
     };
-  }, []);
-  
+  }, []); // Dependências removidas para evitar loops, exceto as necessárias
+
   useEffect(() => {
     const handleScroll = () => {
       if (window.scrollY > 300) setShowWhatsApp(true);
@@ -186,6 +194,18 @@ function AppContent() {
       setCurrentPage(Page.HOME);
     }
   }, []);
+
+  const handleCloseModals = () => {
+    setBookingService(null);
+    setPurchaseConfirmation(null);
+    setPurchasePackageConfirmation(null);
+    setCreditBookingService(null);
+    setReschedulingBooking(null);
+    setPostPurchaseService(null);
+    setIsQuickRegisterModalOpen(false);
+    setTempClientData(null); // Limpa dados temporários
+    setNewlyCreatedUserEmail(null); // Limpa o email do novo usuário
+  };
 
   const handleStartFreeConsultation = useCallback(() => {
       const freeConsultationService = services.find(s => s.id === FREE_CONSULTATION_SERVICE_ID);
@@ -345,17 +365,6 @@ function AppContent() {
     return { success: false, error: "Erro desconhecido no fluxo de agendamento." };
   }, [currentUser, bookingService, creditBookingService, reschedulingBooking, tempClientData, refreshAdminData]);
 
-  const handleCloseModals = () => {
-    setBookingService(null);
-    setPurchaseConfirmation(null);
-    setPurchasePackageConfirmation(null);
-    setCreditBookingService(null);
-    setReschedulingBooking(null);
-    setPostPurchaseService(null);
-    setIsQuickRegisterModalOpen(false);
-    setTempClientData(null); // Limpa dados temporários
-    setNewlyCreatedUserEmail(null); // Limpa o email do novo usuário
-  };
   
   const handleScheduleNow = () => {
       if (postPurchaseService) {
