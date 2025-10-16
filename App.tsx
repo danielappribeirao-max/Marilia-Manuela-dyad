@@ -83,7 +83,7 @@ function AppContent() {
 
   const [showWhatsApp, setShowWhatsApp] = useState(false);
   
-  const [logoUrl, setLogoUrl] = useState(api.getAssetUrl('logo-marilia-manuela.jpeg'));
+  const [logoUrl, setLogoUrl] = useState(api.getAssetUrl('logo.jpeg'));
   const [heroImageUrl, setHeroImageUrl] = useState(api.getAssetUrl('hero-image.jpeg'));
   const [aboutImageUrl, setAboutImageUrl] = useState(api.getAssetUrl('about-image.jpeg'));
   
@@ -123,6 +123,12 @@ function AppContent() {
         setProfessionals(professionalsData || []);
         setPackages(packagesData || []);
         setClinicSettings(settingsData);
+
+        // Atualiza URLs de imagem com base nas configurações (se existirem)
+        if (settingsData.logoUrl) setLogoUrl(settingsData.logoUrl);
+        if (settingsData.heroImageUrl) setHeroImageUrl(settingsData.heroImageUrl);
+        if (settingsData.aboutImageUrl) setAboutImageUrl(settingsData.aboutImageUrl);
+
 
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
@@ -292,7 +298,7 @@ function AppContent() {
   const handleConfirmFinalBooking = useCallback(async (details: { date: Date, professionalId: string }): Promise<{ success: boolean, error: string | null }> => {
     if (!currentUser && !tempClientData) return { success: false, error: "Usuário não autenticado." };
     
-    const serviceToBook = bookingService || creditBookingService;
+    const serviceToBook = bookingService || creditBookingService || (reschedulingBooking ? services.find(s => s.id === reschedulingBooking.serviceId) : null);
     if (!serviceToBook) return { success: false, error: "Serviço não selecionado." };
 
     if (reschedulingBooking) {
@@ -332,10 +338,12 @@ function AppContent() {
           });
           
           if (result.success) {
+              // --- CORREÇÃO: Atualiza o estado do email temporário e força o refresh da agenda ---
               if (result.tempEmail) {
                   setNewlyCreatedUserEmail(result.tempEmail);
               }
               refreshAdminData();
+              // ----------------------------------------------------------------------------------
               return { success: true, error: null };
           } else {
               return { success: false, error: result.error };
@@ -343,7 +351,7 @@ function AppContent() {
       }
     }
     return { success: false, error: "Erro desconhecido no fluxo de agendamento." };
-  }, [currentUser, bookingService, creditBookingService, reschedulingBooking, tempClientData, refreshAdminData]);
+  }, [currentUser, bookingService, creditBookingService, reschedulingBooking, tempClientData, services, refreshAdminData]);
 
   
   const handleScheduleNow = () => {

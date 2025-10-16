@@ -166,6 +166,7 @@ export default function AdminManageUsers() {
                                 <td className="px-5 py-4 align-top">
                                     <div className="flex items-start">
                                         <img 
+                                            // Usando avatarUrl do objeto user, que é preenchido no getUserProfile
                                             src={user.avatarUrl || `https://ui-avatars.com/api/?name=${user.name.replace(/\s/g, '+')}&background=e9d5ff&color=7c3aed`} 
                                             alt={user.name} 
                                             className="w-10 h-10 rounded-full object-cover mr-3 bg-gray-200 flex-shrink-0"

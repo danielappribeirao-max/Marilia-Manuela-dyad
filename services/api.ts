@@ -69,6 +69,7 @@ export const getUserProfile = async (userId: string): Promise<User | null> => {
 };
 
 export const getUsersWithRoles = async (): Promise<User[] | null> => {
+    // Usamos a RPC para obter dados de auth.users e public.profiles
     const { data, error } = await supabase.rpc('get_all_users_for_admin');
 
     if (error) {
@@ -84,7 +85,8 @@ export const getUsersWithRoles = async (): Promise<User[] | null> => {
         cpf: d.cpf || 'N/A',
         role: d.role as User['role'],
         credits: d.credits || {},
-        avatarUrl: '', // Não buscamos avatarUrl aqui para simplificar
+        // Buscamos o avatarUrl diretamente da tabela profiles
+        avatarUrl: d.avatar_url || '', 
     }));
 };
 
