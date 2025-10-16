@@ -447,10 +447,11 @@ function AppContent() {
     if (updatedSettings) {
         setClinicSettings(updatedSettings);
         alert("Textos da página inicial atualizados com sucesso!");
+        refreshAdminData(); // Adicionado para forçar re-renderização de componentes administrativos
     } else {
         alert("Erro ao atualizar textos da página inicial.");
     }
-  }, []);
+  }, [refreshAdminData]);
 
   const appContextValue = useMemo(() => ({ currentUser, setCurrentUser, currentPage, setCurrentPage, logout, services, setServices, packages, setPackages, professionals, addOrUpdateService, deleteService, addOrUpdatePackage, deletePackage, loading, logoUrl, setLogoUrl, heroImageUrl, setHeroImageUrl, aboutImageUrl, setAboutImageUrl, clinicSettings, updateClinicSettings, updateClinicHolidayExceptions, updateFeaturedServices, updateClinicTexts, refreshAdminData }), [currentUser, currentPage, logout, services, setServices, packages, setPackages, professionals, addOrUpdateService, deleteService, addOrUpdatePackage, deletePackage, loading, logoUrl, heroImageUrl, aboutImageUrl, clinicSettings, updateClinicSettings, updateClinicHolidayExceptions, updateFeaturedServices, updateClinicTexts, refreshAdminData]);
 
