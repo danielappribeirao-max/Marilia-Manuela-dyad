@@ -53,7 +53,7 @@ const SortableItem: React.FC<SortableItemProps> = ({ service }) => {
             </span>
             <div className="flex items-center space-x-4 flex-grow ml-4">
                 <img 
-                    src={service.imageUrl} 
+                    src={service.image} 
                     alt={service.name} 
                     className="w-10 h-10 object-cover rounded-md flex-shrink-0"
                 />

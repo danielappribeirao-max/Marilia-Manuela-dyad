@@ -36,7 +36,7 @@ export interface Service {
   description: string;
   duration: number; // in minutes
   price: number;
-  imageUrl: string;
+  image: string;
   category: string;
   sessions?: number;
   order?: number; // NOVO: Posição de ordenação
@@ -53,7 +53,7 @@ export interface ServicePackage {
   description: string;
   services: ServiceInPackage[];
   price: number;
-  imageUrl: string;
+  image: string;
 }
 
 export interface Booking {

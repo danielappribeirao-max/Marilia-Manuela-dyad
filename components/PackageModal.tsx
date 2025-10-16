@@ -17,7 +17,7 @@ const PackageModal: React.FC<PackageModalProps> = ({ pkg, onClose, onSave, avail
     name: pkg?.name || '',
     description: pkg?.description || '',
     price: pkg?.price || 0,
-    imageUrl: pkg?.imageUrl || '',
+    image: pkg?.image || '',
     services: pkg?.services || [],
   });
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
@@ -29,7 +29,7 @@ const PackageModal: React.FC<PackageModalProps> = ({ pkg, onClose, onSave, avail
       name: pkg?.name || '',
       description: pkg?.description || '',
       price: pkg?.price || 0,
-      imageUrl: pkg?.imageUrl || '',
+      image: pkg?.image || '',
       services: pkg?.services || [],
     });
     setErrors({});
@@ -77,7 +77,7 @@ const PackageModal: React.FC<PackageModalProps> = ({ pkg, onClose, onSave, avail
       reader.onloadend = () => {
         setFormData(prev => ({
           ...prev,
-          imageUrl: reader.result as string,
+          image: reader.result as string,
         }));
       };
       reader.readAsDataURL(file);
@@ -139,9 +139,9 @@ const PackageModal: React.FC<PackageModalProps> = ({ pkg, onClose, onSave, avail
           delete finalFormData.id;
       }
       
-      if (!finalFormData.imageUrl) {
+      if (!finalFormData.image) {
         const seed = finalFormData.name?.replace(/\s/g, '') || 'package';
-        finalFormData.imageUrl = `https://picsum.photos/seed/${seed}/400/300`;
+        finalFormData.image = `https://picsum.photos/seed/${seed}/400/300`;
       }
       
       const packageToSave: ServicePackage = {
@@ -149,7 +149,7 @@ const PackageModal: React.FC<PackageModalProps> = ({ pkg, onClose, onSave, avail
           name: finalFormData.name!,
           description: finalFormData.description!,
           price: Number(finalFormData.price),
-          imageUrl: finalFormData.imageUrl!,
+          image: finalFormData.image!,
           services: finalFormData.services!,
       };
       
@@ -202,8 +202,8 @@ const PackageModal: React.FC<PackageModalProps> = ({ pkg, onClose, onSave, avail
                   <label className="block text-sm font-medium text-gray-700 mb-1">Imagem do Pacote</label>
                   <div className="mt-1 flex items-center gap-4">
                     <span className="inline-block h-20 w-20 rounded-lg overflow-hidden bg-gray-100">
-                      {formData.imageUrl ? (
-                        <img src={formData.imageUrl} alt="Pré-visualização" className="h-full w-full object-cover" />
+                      {formData.image ? (
+                        <img src={formData.image} alt="Pré-visualização" className="h-full w-full object-cover" />
                       ) : (
                         <svg className="h-full w-full text-gray-300" fill="currentColor" viewBox="0 0 24 24">
                            <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H5V5h9v12zm-2-6l-2.5 3.5L8.5 13l-1.5 2h6l-3.5-4.5z" />

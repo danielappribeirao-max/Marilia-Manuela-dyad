@@ -15,7 +15,7 @@ const AdminServiceCard: React.FC<AdminServiceCardProps> = ({ service, onEdit, on
       {/* Service Info */}
       <div className="flex items-center space-x-4 flex-grow min-w-0">
         <img 
-          src={service.imageUrl} 
+          src={service.image} 
           alt={service.name} 
           className="w-16 h-16 object-cover rounded-lg flex-shrink-0"
         />

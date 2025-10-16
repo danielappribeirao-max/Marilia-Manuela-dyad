@@ -16,7 +16,7 @@ const AdminPackageCard: React.FC<AdminPackageCardProps> = ({ servicePackage, ser
       {/* Package Info */}
       <div className="flex items-center space-x-4 flex-grow min-w-0">
         <img 
-          src={servicePackage.imageUrl} 
+          src={servicePackage.image} 
           alt={servicePackage.name} 
           className="w-16 h-16 object-cover rounded-lg flex-shrink-0"
         />

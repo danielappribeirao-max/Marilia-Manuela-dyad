@@ -58,7 +58,7 @@ const UserBookingCard: React.FC<UserBookingCardProps> = ({ booking, onCancel, on
     return (
         <div className="bg-white p-5 rounded-xl shadow-lg border border-gray-100 transition-shadow hover:shadow-xl">
             <div className="flex flex-col sm:flex-row gap-4">
-                <img src={service.imageUrl} alt={service.name} className="w-full sm:w-32 h-32 object-cover rounded-lg" />
+                <img src={service.image} alt={service.name} className="w-full sm:w-32 h-32 object-cover rounded-lg" />
                 <div className="flex-grow">
                     <div className="flex justify-between items-start">
                         <div>

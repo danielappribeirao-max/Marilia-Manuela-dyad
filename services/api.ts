@@ -223,7 +223,7 @@ export const ensureFreeConsultationServiceExists = async (): Promise<Service | n
         description: 'Avaliação inicial sem custo para definir o melhor plano de tratamento para você.',
         duration: 30,
         price: 0,
-        imageUrl: 'https://picsum.photos/seed/consulta/400/300',
+        image: 'https://picsum.photos/seed/consulta/400/300',
         category: 'Avaliação',
         sessions: 1,
         order: 0, // Sempre o primeiro
@@ -317,7 +317,7 @@ export const getServicePackages = async (): Promise<ServicePackage[] | null> => 
         name: pkg.name,
         description: pkg.description,
         price: pkg.price,
-        imageUrl: pkg.image,
+        image: pkg.image,
         services: pkg.package_services.map((ps: any) => ({
             serviceId: ps.service_id,
             quantity: ps.quantity,
@@ -335,7 +335,7 @@ export const addOrUpdatePackage = async (pkg: Partial<ServicePackage>): Promise<
         name: pkg.name,
         description: pkg.description,
         price: pkg.price,
-        image: pkg.imageUrl,
+        image: pkg.image,
     };
 
     const { data: packageData, error: packageError } = await supabase

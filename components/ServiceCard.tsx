@@ -27,7 +27,7 @@ const ServiceCard: React.FC<ServiceCardProps> = ({ service, onPurchaseOrBook }) 
 
   return (
     <div className="bg-white rounded-lg shadow-lg overflow-hidden transform hover:-translate-y-2 transition-transform duration-300 flex flex-col">
-      <img src={service.imageUrl} alt={service.name} className="w-full h-48 object-cover" />
+      <img src={service.image} alt={service.name} className="w-full h-48 object-cover" />
       <div className="p-6 flex flex-col flex-grow">
         <h3 className="text-xl font-bold text-gray-800 mb-2">{service.name}</h3>
         <p className="text-gray-600 text-sm flex-grow">{service.description}</p>
