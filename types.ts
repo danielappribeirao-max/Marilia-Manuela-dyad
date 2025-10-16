@@ -1,7 +1,7 @@
 export enum Role {
-  CLIENT = 'CLIENT',
-  ADMIN = 'ADMIN',
-  STAFF = 'STAFF',
+  CLIENT = 'user',
+  ADMIN = 'admin',
+  STAFF = 'staff',
 }
 
 export enum Page {
