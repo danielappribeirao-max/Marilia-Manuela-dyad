@@ -122,13 +122,12 @@ function AppContent() {
         setPackages(packagesData || []);
         setClinicSettings(settingsData);
 
-        const { data: { session } } = await api.getCurrentUserSession();
+        const { session } = await api.getCurrentUserSession();
         if (session?.user) {
           const userProfile = await api.getUserProfile(session.user.id);
           if (userProfile) {
             setCurrentUser(userProfile);
-            // Redireciona para o dashboard apropriado na inicialização se estiver logado
-            setCurrentPage(userProfile.role === Role.ADMIN ? Page.ADMIN_DASHBOARD : Page.USER_DASHBOARD);
+            // Não redireciona aqui, o listener de auth faz isso
           }
         }
       } catch (error) {
@@ -143,18 +142,14 @@ function AppContent() {
 
     const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
-        // Se o evento for SIGNED_IN ou INITIAL_SESSION e o usuário não estiver carregado, carregue-o
-        if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
-            const userProfile = await api.getUserProfile(session.user.id);
-            if (userProfile) {
-                setCurrentUser(userProfile);
-                // Redireciona apenas se o usuário não estiver em uma página de admin/user dashboard
-                if (currentPage !== Page.ADMIN_DASHBOARD && currentPage !== Page.USER_DASHBOARD) {
-                    setCurrentPage(userProfile.role === Role.ADMIN ? Page.ADMIN_DASHBOARD : Page.USER_DASHBOARD);
-                }
-            }
+        const userProfile = await api.getUserProfile(session.user.id);
+        if (userProfile) {
+          setCurrentUser(userProfile);
+          if (event === 'SIGNED_IN') {
+            setCurrentPage(userProfile.role === Role.ADMIN ? Page.ADMIN_DASHBOARD : Page.USER_DASHBOARD);
+          }
         }
-      } else if (event === 'SIGNED_OUT') {
+      } else {
         setCurrentUser(null);
         setCurrentPage(Page.HOME);
       }
@@ -163,7 +158,7 @@ function AppContent() {
     return () => {
       authListener.subscription.unsubscribe();
     };
-  }, []); // Removendo currentPage das dependências para evitar loops, mas mantendo a lógica de redirecionamento dentro do listener.
+  }, []);
   
   useEffect(() => {
     const handleScroll = () => {
