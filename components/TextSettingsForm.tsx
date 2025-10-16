@@ -27,7 +27,6 @@ const TextSettingsForm: React.FC<TextSettingsFormProps> = ({ initialHeroText, in
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
-    // Chamando onSave com o objeto formData completo
     await onSave(formData);
     setIsSaving(false);
   };
