@@ -243,17 +243,35 @@ export const ensureFreeConsultationServiceExists = async (): Promise<Service | n
 };
 
 export const addOrUpdateService = async (service: Partial<Service>): Promise<Service | null> => {
-    const { data, error } = await supabase
-        .from('services')
-        .upsert(service as Service, { onConflict: 'id' })
-        .select('*')
-        .single();
+    if (service.id) {
+        // Atualiza um serviço existente
+        const { data, error } = await supabase
+            .from('services')
+            .update(service)
+            .eq('id', service.id)
+            .select('*')
+            .single();
+        
+        if (error) {
+            console.error("Error updating service:", error);
+            return null;
+        }
+        return data as Service;
+    } else {
+        // Insere um novo serviço (removendo o campo 'id' se ele for nulo/undefined)
+        const { id, ...newServiceData } = service;
+        const { data, error } = await supabase
+            .from('services')
+            .insert(newServiceData)
+            .select('*')
+            .single();
 
-    if (error) {
-        console.error("Error saving service:", error);
-        return null;
+        if (error) {
+            console.error("Error inserting service:", error);
+            return null;
+        }
+        return data as Service;
     }
-    return data as Service;
 };
 
 export const deleteService = async (serviceId: string): Promise<void> => {
