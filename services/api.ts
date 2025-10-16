@@ -638,14 +638,17 @@ export const getClinicSettings = async (): Promise<ClinicSettings> => {
 
     if (error) {
         console.error("Error fetching clinic settings, using default:", error);
+        // Se houver erro, retorna o padrão
         return DEFAULT_CLINIC_SETTINGS;
     }
 
+    // Se os dados existirem, usa-os, mas garante que os campos de texto não sejam nulos
     return {
         id: data.id,
         operatingHours: data.operating_hours || DEFAULT_CLINIC_SETTINGS.operatingHours,
         holidayExceptions: data.holiday_exceptions || DEFAULT_CLINIC_SETTINGS.holidayExceptions,
         featuredServiceIds: data.featured_service_ids || DEFAULT_CLINIC_SETTINGS.featuredServiceIds,
+        // Garantindo que os campos de texto usem o valor do banco ou o padrão se for nulo
         heroText: data.hero_text || DEFAULT_CLINIC_SETTINGS.heroText,
         heroSubtitle: data.hero_subtitle || DEFAULT_CLINIC_SETTINGS.heroSubtitle,
         aboutText: data.about_text || DEFAULT_CLINIC_SETTINGS.aboutText,
@@ -692,6 +695,7 @@ export const updateFeaturedServices = async (serviceIds: string[]): Promise<Clin
 };
 
 export const updateClinicTexts = async (texts: { heroText: string; heroSubtitle: string; aboutText: string }): Promise<ClinicSettings | null> => {
+    // 1. Atualiza o banco de dados
     const { error } = await supabase
         .from('clinic_settings')
         .update({ 
@@ -706,6 +710,7 @@ export const updateClinicTexts = async (texts: { heroText: string; heroSubtitle:
         console.error("Error updating clinic texts:", error);
         return null;
     }
+    // 2. Busca e retorna o objeto completo e atualizado
     return getClinicSettings();
 };
 

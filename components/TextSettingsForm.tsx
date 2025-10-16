@@ -15,6 +15,7 @@ const TextSettingsForm: React.FC<TextSettingsFormProps> = ({ initialHeroText, in
   });
   const [isSaving, setIsSaving] = useState(false);
 
+  // Garante que o estado interno do formulário seja sincronizado com as props externas
   useEffect(() => {
     setFormData({ heroText: initialHeroText, heroSubtitle: initialHeroSubtitle, aboutText: initialAboutText });
   }, [initialHeroText, initialHeroSubtitle, initialAboutText]);
