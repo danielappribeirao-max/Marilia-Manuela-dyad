@@ -34,8 +34,7 @@ serve(async (req) => {
         });
     }
     
-    // --- 1. VERIFICAÇÃO DE DISPONIBILIDADE NO BACKEND (TEMPORARIAMENTE DESATIVADA) ---
-    /*
+    // --- 1. VERIFICAÇÃO DE DISPONIBILIDADE NO BACKEND (REATIVADA) ---
     const { data: isAvailable, error: availabilityError } = await supabaseAdmin.rpc('check_full_availability', {
         p_professional_id: professionalId,
         p_booking_date: date,
@@ -45,7 +44,8 @@ serve(async (req) => {
 
     if (availabilityError) {
         console.error("RPC Availability Error:", availabilityError);
-        return new Response(JSON.stringify({ error: `Erro ao verificar disponibilidade: ${availabilityError.message}` }), {
+        // Se houver um erro na RPC, tratamos como indisponibilidade para segurança
+        return new Response(JSON.stringify({ error: `Erro ao verificar disponibilidade. Tente novamente. (Detalhe: ${availabilityError.message})` }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 400,
         });
@@ -57,7 +57,6 @@ serve(async (req) => {
             status: 400,
         });
     }
-    */
     // ----------------------------------------------------
     
     // 2. Criar ou buscar usuário
@@ -90,7 +89,6 @@ serve(async (req) => {
               });
           }
           userId = existingUser.user.id;
-          // Não precisamos de senha temporária se o usuário já existia
       } else {
           console.error("Auth Error:", authError);
           return new Response(JSON.stringify({ error: `Erro ao criar usuário: ${authError.message}` }), {
@@ -100,11 +98,10 @@ serve(async (req) => {
       }
     } else {
         userId = authData.user.id;
-        tempPassword = 'senhaPadrao123'; // Usamos a senha padrão
+        tempPassword = 'senhaPadrao123';
         userWasCreated = true;
     }
     
-    // VERIFICAÇÃO CRÍTICA: Garantir que o userId foi obtido
     if (!userId) {
         console.error("Critical Error: User ID not obtained after creation or lookup.");
         return new Response(JSON.stringify({ error: "Erro interno: Não foi possível obter o ID do cliente." }), {
@@ -120,14 +117,12 @@ serve(async (req) => {
         professional_id: professionalId,
         booking_date: date, // YYYY-MM-DD
         booking_time: time, // HH:MM
-        status: 'Agendado', // Usando 'Agendado' como status inicial
+        status: 'Agendado',
         duration: parsedDuration,
         service_name: serviceName,
         notes: `Consulta Gratuita. Interesse: ${description}`,
     };
     
-    console.log("Attempting to insert booking with payload:", bookingPayload);
-
     const { data: bookingData, error: bookingError } = await supabaseAdmin
       .from('bookings')
       .insert(bookingPayload)
@@ -142,7 +137,6 @@ serve(async (req) => {
       });
     }
     
-    // VERIFICAÇÃO CRÍTICA: Se a inserção não retornou dados, algo falhou silenciosamente
     if (!bookingData) {
         console.error("Booking Insert Error: Insert operation returned no data.");
         return new Response(JSON.stringify({ error: "Falha ao registrar o agendamento no banco de dados. Tente novamente." }), {
@@ -160,8 +154,6 @@ serve(async (req) => {
         tempPassword: userWasCreated ? tempPassword : undefined, 
     };
     
-    console.log("Booking successful. Payload:", responsePayload);
-
     return new Response(JSON.stringify(responsePayload), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 200,
