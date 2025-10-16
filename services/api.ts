@@ -762,8 +762,8 @@ export const uploadAvatar = (userId: string, file: File) => uploadFile('avatars'
 
 export const getAssetUrl = (path: string): string => {
     const { data } = supabase.storage.from('assets').getPublicUrl(path);
-    // Adiciona um timestamp para evitar cache agressivo
-    return `${data.publicUrl}?t=${Date.now()}`;
+    // Removendo o timestamp para garantir URLs estáveis
+    return data.publicUrl;
 };
 
 // --- Funções de Notificações ---

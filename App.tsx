@@ -104,8 +104,14 @@ function AppContent() {
   useEffect(() => {
     const initializeApp = async () => {
       setLoading(true);
+      let servicesData: Service[] | null = null;
+      let professionalsData: User[] | null = null;
+      let packagesData: ServicePackage[] | null = null;
+      let settingsData: ClinicSettings = api.DEFAULT_CLINIC_SETTINGS;
+      let freeConsultationService: Service | null = null;
+
       try {
-        const [servicesData, professionalsData, packagesData, settingsData, freeConsultationService] = await Promise.all([
+        [servicesData, professionalsData, packagesData, settingsData, freeConsultationService] = await Promise.all([
           api.getServices(),
           api.getProfessionals(),
           api.getServicePackages(),
@@ -124,10 +130,10 @@ function AppContent() {
         setPackages(packagesData || []);
         setClinicSettings(settingsData);
 
-        // Atualiza URLs de imagem com base nas configurações (se existirem)
-        // Nota: As URLs de imagem são gerenciadas no AdminSettingsPage e salvas no storage.
-        // O getAssetUrl já busca a URL pública.
-        // Não precisamos de lógica de atualização de URL aqui, pois o estado é atualizado no AdminSettingsPage.
+        // Atualiza URLs de imagem (sem timestamp)
+        setLogoUrl(api.getAssetUrl('logo.jpeg'));
+        setHeroImageUrl(api.getAssetUrl('hero-image.jpeg'));
+        setAboutImageUrl(api.getAssetUrl('about-image.jpeg'));
 
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
@@ -138,7 +144,12 @@ function AppContent() {
         }
       } catch (error) {
         console.error("Error initializing app:", error);
-        setClinicSettings(api.DEFAULT_CLINIC_SETTINGS);
+        // Se houver um erro crítico na inicialização, use os defaults e tente continuar
+        setClinicSettings(settingsData); 
+        setServices(servicesData || []);
+        setProfessionals(professionalsData || []);
+        setPackages(packagesData || []);
+        alert("Erro ao carregar dados iniciais. Verifique a conexão com o Supabase.");
       } finally {
         setLoading(false);
       }
