@@ -32,6 +32,7 @@ export const signOut = async () => {
 };
 
 export const getUserProfile = async (userId: string): Promise<User | null> => {
+    // Garante que o email seja buscado da tabela auth.users
     const { data, error } = await supabase
         .from('profiles')
         .select('*, auth_user:auth.users(email)')
