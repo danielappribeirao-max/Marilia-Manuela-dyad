@@ -44,6 +44,7 @@ serve(async (req) => {
     const userId = authData.user.id
 
     // 2. Esperar um breve momento para o gatilho handle_new_user criar o perfil
+    // O gatilho deve criar o perfil, mas vamos garantir que os dados de CPF e Role sejam atualizados/inseridos
     await delay(500); 
 
     // 3. Atualizar/Upsert o perfil com os dados completos (incluindo CPF e Role)
