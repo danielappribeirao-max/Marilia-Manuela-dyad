@@ -245,10 +245,11 @@ export const ensureFreeConsultationServiceExists = async (): Promise<Service | n
 export const addOrUpdateService = async (service: Partial<Service>): Promise<Service | null> => {
     if (service.id) {
         // Atualiza um serviço existente
+        const { id, ...updateData } = service;
         const { data, error } = await supabase
             .from('services')
-            .update(service)
-            .eq('id', service.id)
+            .update(updateData)
+            .eq('id', id)
             .select('*')
             .single();
         
