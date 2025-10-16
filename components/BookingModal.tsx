@@ -127,7 +127,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, isCreditB
                 </p>
                 {isNewUserFreeBooking && newlyCreatedUserEmail && (
                     <p className="text-sm text-pink-600 mt-4 font-semibold">
-                        Você pode fazer login usando o e-mail temporário ({newlyCreatedUserEmail}) e a senha padrão (senhaPadrao123) para gerenciar seu agendamento.
+                        Você pode fazer login usando o e-mail temporário (<span className="font-mono">{newlyCreatedUserEmail}</span>) e a senha padrão (senhaPadrao123) para gerenciar seu agendamento.
                     </p>
                 )}
             </div>

@@ -85,7 +85,7 @@ export const getUsersWithRoles = async (): Promise<User[] | null> => {
         cpf: d.cpf || 'N/A',
         role: d.role as User['role'],
         credits: d.credits || {},
-        // Buscamos o avatarUrl diretamente da tabela profiles
+        // Agora a RPC retorna avatar_url
         avatarUrl: d.avatar_url || '', 
     }));
 };
