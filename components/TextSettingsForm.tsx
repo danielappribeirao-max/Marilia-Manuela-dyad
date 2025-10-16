@@ -17,7 +17,7 @@ const TextSettingsForm: React.FC<TextSettingsFormProps> = ({ initialHeroText, in
 
   useEffect(() => {
     setFormData({ heroText: initialHeroText, heroSubtitle: initialHeroSubtitle, aboutText: initialAboutText });
-  }, [initialHeroText, initialHeroSubtitle, initialAboutText]);
+  }, [initialHeroText, initialHeroSubtitle, initialAboutText]); // Dependências atualizadas
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const { name, value } = e.target;
