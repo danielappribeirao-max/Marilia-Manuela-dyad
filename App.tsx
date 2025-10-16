@@ -208,7 +208,8 @@ function AppContent() {
     setReschedulingBooking(null);
     setPostPurchaseService(null);
     setIsQuickRegisterModalOpen(false);
-    setTempClientData(null);
+    // Não limpamos tempClientData aqui, ele é limpo apenas no sucesso do agendamento
+    // setTempClientData(null); 
     setNewlyCreatedUserEmail(null);
   };
 
@@ -326,6 +327,7 @@ function AppContent() {
           return { success: !!result, error: result ? null : "Falha ao criar agendamento." };
           
       } else if (tempClientData && serviceToBook.id === FREE_CONSULTATION_SERVICE_ID) {
+          // Fluxo de agendamento de consulta gratuita para novo usuário
           const result = await api.bookFreeConsultationForNewUser({
               name: tempClientData.name,
               phone: tempClientData.phone,
@@ -338,15 +340,15 @@ function AppContent() {
           });
           
           if (result.success) {
-              // --- CORREÇÃO: Limpa tempClientData e define newlyCreatedUserEmail ---
+              // Limpa tempClientData e define newlyCreatedUserEmail
               setTempClientData(null);
               if (result.tempEmail) {
                   setNewlyCreatedUserEmail(result.tempEmail);
               }
               refreshAdminData();
-              // --------------------------------------------------------------------
               return { success: true, error: null };
           } else {
+              // Se falhar, mantemos tempClientData para que o usuário possa tentar novamente
               return { success: false, error: result.error };
           }
       }
