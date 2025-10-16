@@ -122,7 +122,7 @@ function AppContent() {
         setPackages(packagesData || []);
         setClinicSettings(settingsData);
 
-        const { session } = await api.getCurrentUserSession();
+        const { data: { session } } = await api.getCurrentUserSession(); // Corrigido: Acessar data.session
         if (session?.user) {
           const userProfile = await api.getUserProfile(session.user.id);
           if (userProfile) {
@@ -151,7 +151,10 @@ function AppContent() {
         }
       } else {
         setCurrentUser(null);
-        setCurrentPage(Page.HOME);
+        // Se o usuário sair, volta para a home, a menos que já esteja na página de login
+        if (currentPage !== Page.LOGIN) {
+            setCurrentPage(Page.HOME);
+        }
       }
     });
 
