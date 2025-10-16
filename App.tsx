@@ -445,9 +445,9 @@ function AppContent() {
   const updateClinicTexts = useCallback(async (texts: { heroText: string; heroSubtitle: string; aboutText: string }) => {
     const updatedSettings = await api.updateClinicTexts(texts);
     if (updatedSettings) {
-        setClinicSettings(updatedSettings);
+        setClinicSettings(updatedSettings); // ATUALIZA O ESTADO LOCAL IMEDIATAMENTE
         alert("Textos da página inicial atualizados com sucesso!");
-        refreshAdminData(); // Adicionado para forçar re-renderização de componentes administrativos
+        refreshAdminData(); 
     } else {
         alert("Erro ao atualizar textos da página inicial.");
     }
