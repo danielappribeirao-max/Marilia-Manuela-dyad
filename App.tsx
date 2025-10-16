@@ -163,10 +163,12 @@ function AppContent() {
           }
         } else {
             // CRÍTICO: Se o perfil não for encontrado após SIGNED_IN, algo está errado (RLS ou gatilho).
-            // Força o logout para limpar a sessão local e evitar loops.
             if (event === 'SIGNED_IN') {
-                console.error("Profile not found after sign in. Forcing logout.");
+                console.error("Profile not found after sign in. Forcing redirect to login.");
+                // Força o logout para limpar a sessão local
                 await api.signOut();
+                // Redireciona para o login para que o usuário possa tentar novamente ou se cadastrar
+                setCurrentPage(Page.LOGIN); 
             }
         }
       } else {
