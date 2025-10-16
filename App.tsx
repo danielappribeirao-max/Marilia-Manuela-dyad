@@ -186,17 +186,6 @@ function AppContent() {
     };
   }, [fetchAndSetUser]); // Adicionando fetchAndSetUser como dependência
 
-  // NOVO: Efeito para garantir que o usuário seja redirecionado se o perfil for carregado
-  useEffect(() => {
-      if (currentUser && (currentPage === Page.LOGIN || currentPage === Page.HOME)) {
-          if (currentUser.role === Role.ADMIN) {
-              setCurrentPage(Page.ADMIN_DASHBOARD);
-          } else {
-              setCurrentPage(Page.USER_DASHBOARD);
-          }
-      }
-  }, [currentUser, currentPage]);
-
   useEffect(() => {
     const handleScroll = () => {
       if (window.scrollY > 300) setShowWhatsApp(true);
