@@ -338,12 +338,13 @@ function AppContent() {
           });
           
           if (result.success) {
-              // --- CORREÇÃO: Atualiza o estado do email temporário e força o refresh da agenda ---
+              // --- CORREÇÃO: Limpa tempClientData e define newlyCreatedUserEmail ---
+              setTempClientData(null);
               if (result.tempEmail) {
                   setNewlyCreatedUserEmail(result.tempEmail);
               }
               refreshAdminData();
-              // ----------------------------------------------------------------------------------
+              // --------------------------------------------------------------------
               return { success: true, error: null };
           } else {
               return { success: false, error: result.error };

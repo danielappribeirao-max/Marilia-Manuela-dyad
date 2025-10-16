@@ -118,7 +118,7 @@ serve(async (req) => {
         professional_id: professionalId,
         booking_date: date, // YYYY-MM-DD
         booking_time: time, // HH:MM
-        status: 'confirmed', 
+        status: 'Agendado', // Usando 'Agendado' como status inicial para garantir que a RLS de 'confirmed' não bloqueie
         duration: parsedDuration,
         service_name: serviceName, // Garantindo que service_name está sendo usado
         notes: `Consulta Gratuita. Interesse: ${description}`,
