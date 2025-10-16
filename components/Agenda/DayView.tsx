@@ -1,5 +1,6 @@
 import React from 'react';
 import { Booking, Service, User } from '../../types';
+import { formatPhone } from '../../utils/formatters';
 
 interface AgendaDayViewProps {
   currentDate: Date;
@@ -88,6 +89,7 @@ const AgendaDayView: React.FC<AgendaDayViewProps> = ({ currentDate, bookings, on
                                 >
                                     <p className="font-bold truncate">{service.name}</p>
                                     <p className="truncate">{user?.name || 'Cliente não encontrado'}</p>
+                                    {user?.phone && <p className="text-gray-600 text-xs font-medium">{formatPhone(user.phone)}</p>}
                                     <p className="text-gray-600 text-xs">{bookingDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} - {new Date(bookingDate.getTime() + bookingDuration * 60000).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>
                                 </div>
                             );

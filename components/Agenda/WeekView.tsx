@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { Booking, Service, User } from '../../types';
+import { formatPhone } from '../../utils/formatters';
 
 interface AgendaWeekViewProps {
   currentDate: Date;
@@ -112,6 +113,7 @@ const AgendaWeekView: React.FC<AgendaWeekViewProps> = ({ currentDate, bookings, 
                                         >
                                             <p className="font-bold truncate">{service.name}</p>
                                             <p className="truncate">{user?.name || 'Cliente'}</p>
+                                            {user?.phone && <p className="text-gray-600 font-medium">{formatPhone(user.phone)}</p>}
                                             <p className="text-gray-600">{bookingDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>
                                         </div>
                                     );
