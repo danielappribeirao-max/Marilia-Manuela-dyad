@@ -1,5 +1,5 @@
 import { supabase } from '../supabase/client';
-import { User, Service, ServicePackage, Booking, Sale, OperatingHours, HolidayException, ClinicSettings } from '../types';
+import { User, Service, ServicePackage, Booking, Sale, OperatingHours, HolidayException, ClinicSettings, Role } from '../types';
 import { FREE_CONSULTATION_SERVICE_ID } from '../constants';
 
 // --- Configurações Padrão da Clínica ---
@@ -32,31 +32,37 @@ export const signOut = async () => {
 };
 
 export const getUserProfile = async (userId: string): Promise<User | null> => {
-    // Garante que o email seja buscado da tabela auth.users
-    const { data, error } = await supabase
+    // 1. Fetch the profile data
+    const { data: profileData, error: profileError } = await supabase
         .from('profiles')
-        .select('*, auth_user:auth.users(email)')
+        .select('*') // Only select from profiles
         .eq('id', userId)
         .single();
 
-    if (error) {
-        console.error("Error fetching user profile:", error);
+    if (profileError) {
+        console.error("Error fetching user profile:", profileError);
         return null;
     }
 
-    if (data) {
-        // O Supabase retorna o resultado do join em 'auth_user'
-        const authUser = Array.isArray(data.auth_user) ? data.auth_user[0] : data.auth_user;
+    if (profileData) {
+        // 2. Get the authenticated user's email from the client session
+        // Isso evita problemas de RLS ao tentar fazer JOIN com auth.users
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (!user || user.id !== userId) {
+            console.error("Authenticated user mismatch or session expired during profile fetch.");
+            return null;
+        }
         
         return {
-            id: data.id,
-            name: data.full_name || 'Usuário',
-            email: authUser?.email || '',
-            phone: data.phone || '',
-            cpf: data.cpf || '',
-            role: data.role as User['role'],
-            credits: data.procedure_credits || {},
-            avatarUrl: data.avatar_url || '',
+            id: profileData.id,
+            name: profileData.full_name || 'Usuário',
+            email: user.email || '', // Use email from auth session
+            phone: profileData.phone || '',
+            cpf: profileData.cpf || '',
+            role: profileData.role as User['role'],
+            credits: profileData.procedure_credits || {},
+            avatarUrl: profileData.avatar_url || '',
         };
     }
     return null;
@@ -114,12 +120,10 @@ export const updateUserProfile = async (userId: string, updates: Partial<User>):
         updated_at: new Date().toISOString(),
     };
 
-    const { data, error } = await supabase
+    const { error } = await supabase
         .from('profiles')
         .update(payload)
-        .eq('id', userId)
-        .select('*, auth_user:auth.users(email)')
-        .single();
+        .eq('id', userId);
 
     if (error) {
         console.error("Error updating user profile:", error);
