@@ -456,10 +456,12 @@ function AppContent() {
   const updateClinicTexts = useCallback(async (texts: { heroText: string; heroSubtitle: string; aboutText: string }) => {
     const updatedSettings = await api.updateClinicTexts(texts);
     if (updatedSettings) {
+        console.log("Textos da clínica atualizados com sucesso. Novo estado:", updatedSettings); // LOG DE CONFIRMAÇÃO
         setClinicSettings(updatedSettings); // ATUALIZA O ESTADO LOCAL IMEDIATAMENTE
         alert("Textos da página inicial atualizados com sucesso!");
         refreshAdminData(); 
     } else {
+        console.error("Falha ao atualizar textos da clínica. O valor retornado pela API foi nulo.");
         alert("Erro ao atualizar textos da página inicial.");
     }
   }, [refreshAdminData]);
