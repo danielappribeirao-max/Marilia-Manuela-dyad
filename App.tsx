@@ -68,8 +68,7 @@ function AppContent() {
   const [services, setServices] = useState<Service[]>([]);
   const [packages, setPackages] = useState<ServicePackage[]>([]);
   const [professionals, setProfessionals] = useState<User[]>([]);
-  // Inicializa com null para forçar o carregamento
-  const [clinicSettings, setClinicSettings] = useState<ClinicSettings | null>(null); 
+  const [clinicSettings, setClinicSettings] = useState<ClinicSettings>(api.DEFAULT_CLINIC_SETTINGS); 
   
   const [bookingService, setBookingService] = useState<Service | null>(null);
   const [purchaseConfirmation, setPurchaseConfirmation] = useState<{ service: Service, quantity: number } | null>(null);
@@ -123,13 +122,13 @@ function AppContent() {
         setServices(allServices);
         setProfessionals(professionalsData || []);
         setPackages(packagesData || []);
-        setClinicSettings(settingsData); // Define as configurações carregadas
+        setClinicSettings(settingsData);
 
         // Atualiza URLs de imagem com base nas configurações (se existirem)
-        // Nota: As URLs de imagem são gerenciadas separadamente do objeto clinicSettings
-        // para forçar a atualização do cache no componente AdminSettingsPage.
-        // Se a API retornar URLs específicas, elas devem ser usadas aqui.
-        // Por enquanto, mantemos a lógica de getAssetUrl que usa timestamp para cache busting.
+        if (settingsData.logoUrl) setLogoUrl(settingsData.logoUrl);
+        if (settingsData.heroImageUrl) setHeroImageUrl(settingsData.heroImageUrl);
+        if (settingsData.aboutImageUrl) setAboutImageUrl(settingsData.aboutImageUrl);
+
 
         const { data: { session } } = await supabase.auth.getSession();
         if (session?.user) {
@@ -140,7 +139,7 @@ function AppContent() {
         }
       } catch (error) {
         console.error("Error initializing app:", error);
-        setClinicSettings(api.DEFAULT_CLINIC_SETTINGS); // Fallback em caso de erro
+        setClinicSettings(api.DEFAULT_CLINIC_SETTINGS);
       } finally {
         setLoading(false);
       }
@@ -454,14 +453,10 @@ function AppContent() {
     }
   }, []);
 
-  // Usamos o fallback DEFAULT_CLINIC_SETTINGS se clinicSettings ainda for null
-  const finalClinicSettings = clinicSettings || api.DEFAULT_CLINIC_SETTINGS;
-
-  const appContextValue = useMemo(() => ({ currentUser, setCurrentUser, currentPage, setCurrentPage, logout, services, setServices, packages, setPackages, professionals, addOrUpdateService, deleteService, addOrUpdatePackage, deletePackage, loading, logoUrl, setLogoUrl, heroImageUrl, setHeroImageUrl, aboutImageUrl, setAboutImageUrl, clinicSettings: finalClinicSettings, updateClinicSettings, updateClinicHolidayExceptions, updateFeaturedServices, updateClinicTexts, refreshAdminData }), [currentUser, currentPage, logout, services, setServices, packages, setPackages, professionals, addOrUpdateService, deleteService, addOrUpdatePackage, deletePackage, loading, logoUrl, heroImageUrl, aboutImageUrl, clinicSettings, updateClinicSettings, updateClinicHolidayExceptions, updateFeaturedServices, updateClinicTexts, refreshAdminData, finalClinicSettings]);
+  const appContextValue = useMemo(() => ({ currentUser, setCurrentUser, currentPage, setCurrentPage, logout, services, setServices, packages, setPackages, professionals, addOrUpdateService, deleteService, addOrUpdatePackage, deletePackage, loading, logoUrl, setLogoUrl, heroImageUrl, setHeroImageUrl, aboutImageUrl, setAboutImageUrl, clinicSettings, updateClinicSettings, updateClinicHolidayExceptions, updateFeaturedServices, updateClinicTexts, refreshAdminData }), [currentUser, currentPage, logout, services, setServices, packages, setPackages, professionals, addOrUpdateService, deleteService, addOrUpdatePackage, deletePackage, loading, logoUrl, heroImageUrl, aboutImageUrl, clinicSettings, updateClinicSettings, updateClinicHolidayExceptions, updateFeaturedServices, updateClinicTexts, refreshAdminData]);
 
   const renderPage = () => {
-    // Verifica se o carregamento inicial (incluindo settings) foi concluído
-    if(loading || !clinicSettings) {
+    if(loading) {
         return <div className="flex justify-center items-center h-screen"><div className="animate-spin rounded-full h-32 w-32 border-b-2 border-pink-500"></div></div>
     }
     switch (currentPage) {
@@ -489,8 +484,8 @@ function AppContent() {
             isCreditBooking={!!creditBookingService} 
             onConfirmBooking={handleConfirmFinalBooking} 
             professionals={professionals} 
-            clinicOperatingHours={finalClinicSettings.operatingHours} 
-            clinicHolidayExceptions={finalClinicSettings.holidayExceptions}
+            clinicOperatingHours={clinicSettings.operatingHours} 
+            clinicHolidayExceptions={clinicSettings.holidayExceptions}
             tempClientData={tempClientData} 
             newlyCreatedUserEmail={newlyCreatedUserEmail}
         />}
