@@ -719,8 +719,7 @@ export const updateFeaturedServices = async (serviceIds: string[]): Promise<Clin
 };
 
 export const updateClinicTexts = async (texts: { heroText: string; heroSubtitle: string; aboutText: string }): Promise<ClinicSettings | null> => {
-    console.log("[API] Attempting to update clinic texts:", texts);
-    const { data, error } = await supabase
+    const { error } = await supabase
         .from('clinic_settings')
         .update({ 
             hero_text: texts.heroText, 
@@ -728,25 +727,13 @@ export const updateClinicTexts = async (texts: { heroText: string; heroSubtitle:
             about_text: texts.aboutText, 
             updated_at: new Date().toISOString() 
         })
-        .eq('id', DEFAULT_CLINIC_SETTINGS.id)
-        .select('*') // Adicionando select para garantir que os dados retornados sejam usados
-        .single();
+        .eq('id', DEFAULT_CLINIC_SETTINGS.id);
 
     if (error) {
         console.error("Error updating clinic texts:", error);
         return null;
     }
-    
-    // Retorna os dados atualizados para que o App.tsx possa atualizar o estado
-    return {
-        id: data.id,
-        operatingHours: data.operating_hours || DEFAULT_CLINIC_SETTINGS.operatingHours,
-        holidayExceptions: data.holiday_exceptions || DEFAULT_CLINIC_SETTINGS.holidayExceptions,
-        featuredServiceIds: data.featured_service_ids || DEFAULT_CLINIC_SETTINGS.featuredServiceIds,
-        heroText: data.hero_text || DEFAULT_CLINIC_SETTINGS.heroText,
-        heroSubtitle: data.hero_subtitle || DEFAULT_CLINIC_SETTINGS.heroSubtitle,
-        aboutText: data.about_text || DEFAULT_CLINIC_SETTINGS.aboutText,
-    };
+    return getClinicSettings();
 };
 
 // --- Funções de Upload de Arquivos ---
