@@ -32,28 +32,48 @@ export const signOut = async () => {
 };
 
 export const getUserProfile = async (userId: string): Promise<User | null> => {
-    // 1. Fetch the profile data
-    const { data: profileData, error: profileError } = await supabase
+    // 1. Get the authenticated user's email from the client session
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    if (!user || user.id !== userId) {
+        console.error("Authenticated user mismatch or session expired during profile fetch.");
+        return null;
+    }
+    
+    // 2. Fetch the profile data
+    let { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*') // Only select from profiles
         .eq('id', userId)
         .single();
 
-    if (profileError) {
+    if (profileError && profileError.code === 'PGRST116') { // No rows found
+        console.warn(`Profile not found for user ${userId}. Attempting to create a basic profile.`);
+        
+        // Tenta criar um perfil básico (confiando na política RLS de INSERT)
+        const { data: newProfileData, error: insertError } = await supabase
+            .from('profiles')
+            .insert({
+                id: userId,
+                full_name: user.user_metadata.full_name || user.email?.split('@')[0] || 'Novo Usuário',
+                email: user.email, // Não salva email no profiles, mas é útil para debug
+                phone: user.user_metadata.phone || '',
+                role: 'user',
+            })
+            .select('*')
+            .single();
+            
+        if (insertError) {
+            console.error("Error creating basic profile:", insertError);
+            return null;
+        }
+        profileData = newProfileData;
+    } else if (profileError) {
         console.error("Error fetching user profile:", profileError);
         return null;
     }
 
     if (profileData) {
-        // 2. Get the authenticated user's email from the client session
-        // Isso evita problemas de RLS ao tentar fazer JOIN com auth.users
-        const { data: { user } } = await supabase.auth.getUser();
-        
-        if (!user || user.id !== userId) {
-            console.error("Authenticated user mismatch or session expired during profile fetch.");
-            return null;
-        }
-        
         return {
             id: profileData.id,
             name: profileData.full_name || 'Usuário',
@@ -122,8 +142,10 @@ export const updateUserProfile = async (userId: string, updates: Partial<User>):
         updated_at: new Date().toISOString(),
     };
     
-    // Nota: A atualização de 'role' só é permitida para admins via RLS, mas o payload deve ser limpo.
-    // Se o usuário for um cliente, ele só pode atualizar seu próprio perfil.
+    // Inclui a função apenas se estiver sendo atualizada (geralmente pelo Admin)
+    if (updates.role) {
+        payload.role = updates.role;
+    }
     
     const { error } = await supabase
         .from('profiles')
@@ -695,7 +717,7 @@ export const getClinicSettings = async (): Promise<ClinicSettings> => {
                 id: DEFAULT_CLINIC_SETTINGS.id,
                 operating_hours: DEFAULT_CLINIC_SETTINGS.operatingHours,
                 holiday_exceptions: DEFAULT_CLINIC_SETTINGS.holidayExceptions,
-                featured_service_ids: DEFAULT_CLINIC_SETTINGS.featuredServiceIds,
+                featured_service_ids: DEFAULT_CLIC_SETTINGS.featuredServiceIds,
                 hero_text: DEFAULT_CLINIC_SETTINGS.heroText,
                 hero_subtitle: DEFAULT_CLINIC_SETTINGS.heroSubtitle,
                 about_text: DEFAULT_CLINIC_SETTINGS.aboutText,
