@@ -57,7 +57,7 @@ export const getUserProfile = async (userId: string): Promise<User | null> => {
                 .insert({
                     id: userId,
                     full_name: user.user_metadata.full_name || user.email?.split('@')[0] || 'Novo Usuário',
-                    email: user.email, // Não salva email no profiles, mas é útil para debug
+                    // O email não é salvo no profiles, mas é útil para debug
                     phone: user.user_metadata.phone || '',
                     role: 'user',
                 })
