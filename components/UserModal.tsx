@@ -6,7 +6,7 @@ import * as api from '../services/api';
 interface UserModalProps {
   user: Partial<User> | null;
   onClose: () => void;
-  onSave: (userData: Partial<User> & { password?: string, avatarUrl?: string }) => void;
+  onSave: (updatedUser: Partial<User> & { password?: string, avatarUrl?: string }) => void;
   services: Service[];
 }
 

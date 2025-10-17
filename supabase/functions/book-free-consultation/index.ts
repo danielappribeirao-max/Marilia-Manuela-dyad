@@ -34,11 +34,6 @@ serve(async (req) => {
         });
     }
     
-    // --- 1. VERIFICAÇÃO DE DISPONIBILIDADE NO BACKEND (REMOVIDA COMPLETAMENTE) ---
-    // A disponibilidade agora é garantida apenas pelo frontend (useAvailability).
-    // Se o agendamento falhar aqui, o problema é na criação do usuário ou na inserção do booking.
-    // ----------------------------------------------------
-    
     // 2. Criar ou buscar usuário
     const email = `${phone}@mariliamanuela.com`;
     let userId: string;
