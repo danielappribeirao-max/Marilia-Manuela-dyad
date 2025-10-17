@@ -179,7 +179,7 @@ function AppContent() {
         }
       } catch (error) {
         console.error("Error initializing app:", error);
-        // Se houver um erro crítico na inicialização, use os defaults e tente continuar
+        // Garante que o estado de carregamento seja falso e use defaults
         setClinicSettings(settingsData); 
         setServices(servicesData || []);
         setProfessionals(professionalsData || []);

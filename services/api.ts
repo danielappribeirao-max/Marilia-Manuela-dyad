@@ -32,60 +32,65 @@ export const signOut = async () => {
 };
 
 export const getUserProfile = async (userId: string): Promise<User | null> => {
-    // 1. Get the authenticated user's email from the client session
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user || user.id !== userId) {
-        console.error("Authenticated user mismatch or session expired during profile fetch.");
-        return null;
-    }
-    
-    // 2. Fetch the profile data
-    let { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('*') // Only select from profiles
-        .eq('id', userId)
-        .single();
-
-    if (profileError && profileError.code === 'PGRST116') { // No rows found
-        console.warn(`Profile not found for user ${userId}. Attempting to create a basic profile.`);
+    try {
+        // 1. Get the authenticated user's email from the client session
+        const { data: { user } } = await supabase.auth.getUser();
         
-        // Tenta criar um perfil básico (confiando na política RLS de INSERT)
-        const { data: newProfileData, error: insertError } = await supabase
-            .from('profiles')
-            .insert({
-                id: userId,
-                full_name: user.user_metadata.full_name || user.email?.split('@')[0] || 'Novo Usuário',
-                email: user.email, // Não salva email no profiles, mas é útil para debug
-                phone: user.user_metadata.phone || '',
-                role: 'user',
-            })
-            .select('*')
-            .single();
-            
-        if (insertError) {
-            console.error("Error creating basic profile:", insertError);
+        if (!user || user.id !== userId) {
+            console.error("Authenticated user mismatch or session expired during profile fetch.");
             return null;
         }
-        profileData = newProfileData;
-    } else if (profileError) {
-        console.error("Error fetching user profile:", profileError);
+        
+        // 2. Fetch the profile data
+        let { data: profileData, error: profileError } = await supabase
+            .from('profiles')
+            .select('*') // Only select from profiles
+            .eq('id', userId)
+            .single();
+
+        if (profileError && profileError.code === 'PGRST116') { // No rows found
+            console.warn(`Profile not found for user ${userId}. Attempting to create a basic profile.`);
+            
+            // Tenta criar um perfil básico (confiando na política RLS de INSERT)
+            const { data: newProfileData, error: insertError } = await supabase
+                .from('profiles')
+                .insert({
+                    id: userId,
+                    full_name: user.user_metadata.full_name || user.email?.split('@')[0] || 'Novo Usuário',
+                    email: user.email, // Não salva email no profiles, mas é útil para debug
+                    phone: user.user_metadata.phone || '',
+                    role: 'user',
+                })
+                .select('*')
+                .single();
+                
+            if (insertError) {
+                console.error("Error creating basic profile:", insertError);
+                return null;
+            }
+            profileData = newProfileData;
+        } else if (profileError) {
+            console.error("Error fetching user profile:", profileError);
+            return null;
+        }
+
+        if (profileData) {
+            return {
+                id: profileData.id,
+                name: profileData.full_name || 'Usuário',
+                email: user.email || '', // Use email from auth session
+                phone: profileData.phone || '',
+                cpf: profileData.cpf || '',
+                role: profileData.role as User['role'],
+                credits: profileData.procedure_credits || {},
+                avatarUrl: profileData.avatar_url || '',
+            };
+        }
+        return null;
+    } catch (e) {
+        console.error("Critical error in getUserProfile:", e);
         return null;
     }
-
-    if (profileData) {
-        return {
-            id: profileData.id,
-            name: profileData.full_name || 'Usuário',
-            email: user.email || '', // Use email from auth session
-            phone: profileData.phone || '',
-            cpf: profileData.cpf || '',
-            role: profileData.role as User['role'],
-            credits: profileData.procedure_credits || {},
-            avatarUrl: profileData.avatar_url || '',
-        };
-    }
-    return null;
 };
 
 export const getUsersWithRoles = async (): Promise<User[] | null> => {
@@ -699,53 +704,58 @@ export const getOccupiedSlots = async (date: string): Promise<{ id: number, prof
 // --- Funções de Configurações da Clínica ---
 
 export const getClinicSettings = async (): Promise<ClinicSettings> => {
-    const { data, error } = await supabase
-        .from('clinic_settings')
-        .select('*')
-        .limit(1)
-        .single();
-
-    if (error && error.code !== 'PGRST116') { // PGRST116 = No rows found (esperado se for a primeira vez)
-        console.error("Error fetching clinic settings:", error);
-    }
-    
-    if (!data) {
-        // Se não houver dados, insere o registro padrão (upsert)
-        const { data: upsertData, error: upsertError } = await supabase
+    try {
+        const { data, error } = await supabase
             .from('clinic_settings')
-            .upsert({
-                id: DEFAULT_CLINIC_SETTINGS.id,
-                operating_hours: DEFAULT_CLINIC_SETTINGS.operatingHours,
-                holiday_exceptions: DEFAULT_CLINIC_SETTINGS.holidayExceptions,
-                featured_service_ids: DEFAULT_CLIC_SETTINGS.featuredServiceIds,
-                hero_text: DEFAULT_CLINIC_SETTINGS.heroText,
-                hero_subtitle: DEFAULT_CLINIC_SETTINGS.heroSubtitle,
-                about_text: DEFAULT_CLINIC_SETTINGS.aboutText,
-            }, { onConflict: 'id' })
             .select('*')
+            .limit(1)
             .single();
-            
-        if (upsertError) {
-            console.error("Error upserting default clinic settings:", upsertError);
-            return DEFAULT_CLINIC_SETTINGS;
+
+        if (error && error.code !== 'PGRST116') { // PGRST116 = No rows found (esperado se for a primeira vez)
+            console.error("Error fetching clinic settings:", error);
         }
         
-        if (upsertData) {
-            data = upsertData;
-        } else {
-            return DEFAULT_CLINIC_SETTINGS;
+        if (!data) {
+            // Se não houver dados, insere o registro padrão (upsert)
+            const { data: upsertData, error: upsertError } = await supabase
+                .from('clinic_settings')
+                .upsert({
+                    id: DEFAULT_CLINIC_SETTINGS.id,
+                    operating_hours: DEFAULT_CLINIC_SETTINGS.operatingHours,
+                    holiday_exceptions: DEFAULT_CLINIC_SETTINGS.holidayExceptions,
+                    featured_service_ids: DEFAULT_CLINIC_SETTINGS.featuredServiceIds,
+                    hero_text: DEFAULT_CLINIC_SETTINGS.heroText,
+                    hero_subtitle: DEFAULT_CLINIC_SETTINGS.heroSubtitle,
+                    about_text: DEFAULT_CLINIC_SETTINGS.aboutText,
+                }, { onConflict: 'id' })
+                .select('*')
+                .single();
+                
+            if (upsertError) {
+                console.error("Error upserting default clinic settings:", upsertError);
+                return DEFAULT_CLINIC_SETTINGS;
+            }
+            
+            if (upsertData) {
+                data = upsertData;
+            } else {
+                return DEFAULT_CLINIC_SETTINGS;
+            }
         }
-    }
 
-    return {
-        id: data.id,
-        operatingHours: data.operating_hours || DEFAULT_CLINIC_SETTINGS.operatingHours,
-        holidayExceptions: data.holiday_exceptions || DEFAULT_CLINIC_SETTINGS.holidayExceptions,
-        featuredServiceIds: data.featured_service_ids || DEFAULT_CLINIC_SETTINGS.featuredServiceIds,
-        heroText: data.hero_text || DEFAULT_CLINIC_SETTINGS.heroText,
-        heroSubtitle: data.hero_subtitle || DEFAULT_CLINIC_SETTINGS.heroSubtitle,
-        aboutText: data.about_text || DEFAULT_CLINIC_SETTINGS.aboutText,
-    };
+        return {
+            id: data.id,
+            operatingHours: data.operating_hours || DEFAULT_CLINIC_SETTINGS.operatingHours,
+            holidayExceptions: data.holiday_exceptions || DEFAULT_CLINIC_SETTINGS.holidayExceptions,
+            featuredServiceIds: data.featured_service_ids || DEFAULT_CLINIC_SETTINGS.featuredServiceIds,
+            heroText: data.hero_text || DEFAULT_CLINIC_SETTINGS.heroText,
+            heroSubtitle: data.hero_subtitle || DEFAULT_CLINIC_SETTINGS.heroSubtitle,
+            aboutText: data.about_text || DEFAULT_CLINIC_SETTINGS.aboutText,
+        };
+    } catch (e) {
+        console.error("Critical error fetching clinic settings:", e);
+        return DEFAULT_CLINIC_SETTINGS; // Retorna o default em caso de falha crítica
+    }
 };
 
 export const updateClinicOperatingHours = async (hours: OperatingHours): Promise<ClinicSettings | null> => {
