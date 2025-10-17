@@ -42,7 +42,8 @@ export default function AdminManageUsers() {
     const handleSaveUser = async (userData: Partial<User> & { password?: string }) => {
         let result: User | null = null;
         if (userData.id) { // Se tem ID, é uma atualização
-            result = await api.updateUserProfile(userData.id, userData);
+            // Usamos a função de admin para garantir que a atualização de nome e função funcione
+            result = await api.adminUpdateUser(userData);
         } else { // Senão, é uma criação
             result = await api.adminCreateUser(userData);
         }

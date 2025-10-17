@@ -111,7 +111,7 @@ export const getProfessionals = async (): Promise<User[] | null> => {
 };
 
 export const updateUserProfile = async (userId: string, updates: Partial<User>): Promise<User | null> => {
-    const { name, phone, cpf, avatarUrl, role } = updates;
+    const { name, phone, cpf, avatarUrl } = updates;
 
     const payload: any = {
         full_name: name,
@@ -122,23 +122,9 @@ export const updateUserProfile = async (userId: string, updates: Partial<User>):
         updated_at: new Date().toISOString(),
     };
     
-    // Inclui a função apenas se estiver sendo atualizada (geralmente pelo Admin)
-    if (role) {
-        payload.role = role;
-    }
+    // Nota: A atualização de 'role' só é permitida para admins via RLS, mas o payload deve ser limpo.
+    // Se o usuário for um cliente, ele só pode atualizar seu próprio perfil.
     
-    // Se o nome for fornecido, atualiza o metadata do auth.users também (para consistência)
-    /*
-    if (name) {
-        const { error: authError } = await supabase.auth.admin.updateUserById(userId, {
-            user_metadata: { full_name: name },
-        });
-        if (authError) {
-            console.warn("Warning: Could not update auth user metadata (full_name):", authError);
-        }
-    }
-    */
-
     const { error } = await supabase
         .from('profiles')
         .update(payload)
@@ -192,6 +178,50 @@ export const adminCreateUser = async (userData: Partial<User> & { password?: str
     } catch (e) {
         console.error("Unexpected error during admin user creation:", e);
         alert("Erro inesperado ao criar usuário.");
+        return null;
+    }
+};
+
+export const adminUpdateUser = async (userData: Partial<User>): Promise<User | null> => {
+    try {
+        const { data, error } = await supabase.functions.invoke('admin-update-user', {
+            body: {
+                userId: userData.id,
+                name: userData.name,
+                phone: userData.phone?.replace(/\D/g, ''),
+                cpf: userData.cpf?.replace(/\D/g, ''),
+                role: userData.role,
+                avatarUrl: userData.avatarUrl,
+            },
+        });
+
+        if (error) {
+            console.error("Error invoking admin-update-user function:", error);
+            alert(`Erro ao atualizar usuário: ${error.message}`);
+            return null;
+        }
+
+        if (data.error) {
+            console.error("Edge Function returned error:", data.error);
+            alert(`Erro ao atualizar usuário: ${data.error}`);
+            return null;
+        }
+
+        const updatedUser = data.user;
+        return {
+            id: updatedUser.id,
+            name: updatedUser.full_name || updatedUser.name,
+            email: updatedUser.email,
+            phone: updatedUser.phone || '',
+            cpf: updatedUser.cpf || '',
+            role: updatedUser.role as Role,
+            credits: updatedUser.procedure_credits || {},
+            avatarUrl: updatedUser.avatar_url || '',
+        };
+
+    } catch (e) {
+        console.error("Unexpected error during admin user update:", e);
+        alert("Erro inesperado ao atualizar usuário.");
         return null;
     }
 };
@@ -454,7 +484,7 @@ export const addPackageCreditsToUser = async (userId: string, pkg: ServicePackag
         const sessionsPerService = service?.sessions || 1;
         const totalCreditsToAdd = item.quantity * sessionsPerService;
         
-        newCredits[item.serviceId] = (newCredits[item.id] || 0) + totalCreditsToAdd; // CORREÇÃO: Usar item.serviceId
+        newCredits[item.serviceId] = (newCredits[item.serviceId] || 0) + totalCreditsToAdd;
     }
 
     const { error } = await supabase
