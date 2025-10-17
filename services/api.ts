@@ -128,18 +128,15 @@ export const updateUserProfile = async (userId: string, updates: Partial<User>):
     }
     
     // Se o nome for fornecido, atualiza o metadata do auth.users também (para consistência)
-    // NOTA: Esta chamada requer permissão de ADMIN, o que falhará se for um usuário comum.
-    // Vamos removê-la para evitar o erro de permissão no cliente.
-    /*
     if (name) {
         const { error: authError } = await supabase.auth.admin.updateUserById(userId, {
             user_metadata: { full_name: name },
         });
         if (authError) {
             console.warn("Warning: Could not update auth user metadata (full_name):", authError);
+            // Não interrompe a operação, pois o perfil é mais importante
         }
     }
-    */
 
     const { error } = await supabase
         .from('profiles')
