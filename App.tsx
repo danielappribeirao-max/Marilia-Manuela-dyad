@@ -15,6 +15,7 @@ import PostPurchaseModal from './components/PostPurchaseModal';
 import QuickRegistrationModal from './components/QuickRegistrationModal';
 import { supabase } from './supabase/client';
 import { FREE_CONSULTATION_SERVICE_ID } from './constants';
+import { loadStripe, Stripe } from '@stripe/stripe-js'; // Importando Stripe
 
 interface AppContextType {
   currentUser: User | null;
@@ -60,6 +61,11 @@ const WhatsAppIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-10 w-10 text-white"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
 );
 
+// Carrega o Stripe fora do componente para evitar recargas
+const stripePromise = process.env.STRIPE_PUBLISHABLE_KEY 
+    ? loadStripe(process.env.STRIPE_PUBLISHABLE_KEY) 
+    : Promise.resolve(null);
+
 function AppContent() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [currentPage, setCurrentPage] = useState<Page>(Page.HOME);
@@ -101,7 +107,36 @@ function AppContent() {
       return null;
   }, []);
 
+  // --- Efeito de Inicialização e Tratamento de Pagamento ---
   useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const paymentStatus = urlParams.get('payment');
+    const sessionId = urlParams.get('session_id');
+    
+    if (paymentStatus === 'success') {
+        // O Stripe Webhook deve lidar com a adição de créditos.
+        // Aqui, apenas damos feedback e limpamos a URL.
+        alert("Pagamento realizado com sucesso! Seus créditos serão adicionados à sua conta em breve.");
+        
+        // Limpa os parâmetros da URL
+        const newUrl = window.location.pathname;
+        window.history.replaceState(null, '', newUrl);
+        
+        // Força o recarregamento do usuário para atualizar créditos
+        if (currentUser) {
+            fetchAndSetUser(currentUser.id);
+        }
+        
+        // Redireciona para o dashboard do usuário
+        setCurrentPage(Page.USER_DASHBOARD);
+        
+    } else if (paymentStatus === 'cancel') {
+        alert("Pagamento cancelado. Você pode tentar novamente.");
+        const newUrl = window.location.pathname;
+        window.history.replaceState(null, '', newUrl);
+        setCurrentPage(Page.SERVICES);
+    }
+
     const initializeApp = async () => {
       setLoading(true);
       let servicesData: Service[] | null = null;
@@ -184,7 +219,7 @@ function AppContent() {
     return () => {
       authListener.subscription.unsubscribe();
     };
-  }, [fetchAndSetUser]);
+  }, [fetchAndSetUser, currentUser]); // Adicionando currentUser para re-executar o efeito de pagamento
 
   useEffect(() => {
     const handleScroll = () => {
@@ -262,29 +297,72 @@ function AppContent() {
     if (!purchaseConfirmation || !currentUser) return;
     const { service, quantity } = purchaseConfirmation;
     
-    const updatedUser = await api.addCreditsToUser(currentUser.id, service.id, quantity, service.sessions);
+    setPurchaseConfirmation(null); // Fecha o modal imediatamente
+
+    const items = [{
+        id: service.id,
+        name: service.name,
+        description: service.description,
+        price: service.price,
+        image: service.image,
+        quantity: quantity,
+        sessions: service.sessions,
+        isPackage: false,
+    }];
     
-    if (updatedUser) {
-      setCurrentUser(updatedUser);
-      setPurchaseConfirmation(null);
-      setPostPurchaseService(service);
+    const { sessionId, error } = await api.createStripeCheckoutSession(currentUser.id, items);
+
+    if (error) {
+        alert(`Erro ao iniciar o pagamento: ${error}`);
+        return;
+    }
+    
+    const stripe = await stripePromise;
+    if (stripe && sessionId) {
+        const { error: stripeError } = await stripe.redirectToCheckout({ sessionId });
+        if (stripeError) {
+            alert(`Erro ao redirecionar para o Stripe: ${stripeError.message}`);
+        }
     } else {
-      alert("Ocorreu um erro ao processar sua compra.");
-      setPurchaseConfirmation(null);
+        alert("Erro: O Stripe não foi carregado corretamente.");
     }
   }, [purchaseConfirmation, currentUser]);
 
   const handleConfirmPackagePurchase = useCallback(async () => {
     if (!purchasePackageConfirmation || !currentUser) return;
     const pkg = purchasePackageConfirmation;
-    const updatedUser = await api.addPackageCreditsToUser(currentUser.id, pkg);
-    if (updatedUser) {
-      setCurrentUser(updatedUser);
-      alert(`Compra do pacote "${pkg.name}" confirmada! Os créditos foram adicionados à sua conta.`);
-    } else {
-      alert("Ocorreu um erro ao processar sua compra.");
+    
+    setPurchasePackageConfirmation(null); // Fecha o modal imediatamente
+
+    // Mapeia os serviços do pacote para o formato de checkout
+    const items = [{
+        id: pkg.id,
+        name: pkg.name,
+        description: pkg.description,
+        price: pkg.price,
+        image: pkg.image,
+        quantity: 1, // Sempre 1 pacote
+        isPackage: true,
+        // Incluímos os detalhes dos serviços no metadata do Stripe (tratado na Edge Function)
+        // Aqui, apenas passamos os dados do pacote principal
+    }];
+    
+    const { sessionId, error } = await api.createStripeCheckoutSession(currentUser.id, items);
+
+    if (error) {
+        alert(`Erro ao iniciar o pagamento do pacote: ${error}`);
+        return;
     }
-    setPurchasePackageConfirmation(null);
+    
+    const stripe = await stripePromise;
+    if (stripe && sessionId) {
+        const { error: stripeError } = await stripe.redirectToCheckout({ sessionId });
+        if (stripeError) {
+            alert(`Erro ao redirecionar para o Stripe: ${stripeError.message}`);
+        }
+    } else {
+        alert("Erro: O Stripe não foi carregado corretamente.");
+    }
   }, [purchasePackageConfirmation, currentUser]);
 
   const handleStartCreditBooking = useCallback((service: Service) => {
