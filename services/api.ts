@@ -115,12 +115,28 @@ export const updateUserProfile = async (userId: string, updates: Partial<User>):
 
     const payload: any = {
         full_name: name,
-        phone: phone?.replace(/\D/g, ''), // Remove formatação para salvar
-        cpf: cpf?.replace(/\D/g, ''), // Remove formatação para salvar
+        // Remove formatação e garante que strings vazias sejam salvas como NULL
+        phone: phone?.replace(/\D/g, '') || null, 
+        cpf: cpf?.replace(/\D/g, '') || null, 
         avatar_url: avatarUrl,
-        role: role,
         updated_at: new Date().toISOString(),
     };
+    
+    // Inclui a função apenas se estiver sendo atualizada (geralmente pelo Admin)
+    if (role) {
+        payload.role = role;
+    }
+    
+    // Se o nome for fornecido, atualiza o metadata do auth.users também (para consistência)
+    if (name) {
+        const { error: authError } = await supabase.auth.admin.updateUserById(userId, {
+            user_metadata: { full_name: name },
+        });
+        if (authError) {
+            console.warn("Warning: Could not update auth user metadata (full_name):", authError);
+            // Não interrompe a operação, pois o perfil é mais importante
+        }
+    }
 
     const { error } = await supabase
         .from('profiles')
@@ -733,6 +749,7 @@ export const updateClinicTexts = async (texts: { heroText: string; heroSubtitle:
         console.error("Error updating clinic texts:", error);
         return null;
     }
+    // CORREÇÃO: Retorna o objeto de configurações completo e atualizado
     return getClinicSettings();
 };
 
