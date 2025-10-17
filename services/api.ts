@@ -723,7 +723,7 @@ export const getClinicSettings = async (): Promise<ClinicSettings> => {
                     id: DEFAULT_CLINIC_SETTINGS.id,
                     operating_hours: DEFAULT_CLINIC_SETTINGS.operatingHours,
                     holiday_exceptions: DEFAULT_CLINIC_SETTINGS.holidayExceptions,
-                    featured_service_ids: DEFAULT_CLINIC_SETTINGS.featuredServiceIds, // CORRIGIDO
+                    featured_service_ids: DEFAULT_CLINIC_SETTINGS.featuredServiceIds,
                     hero_text: DEFAULT_CLINIC_SETTINGS.heroText,
                     hero_subtitle: DEFAULT_CLINIC_SETTINGS.heroSubtitle,
                     about_text: DEFAULT_CLINIC_SETTINGS.aboutText,
