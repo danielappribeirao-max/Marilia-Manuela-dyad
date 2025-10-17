@@ -941,50 +941,6 @@ export const bookFreeConsultationForNewUser = async (details: { name: string; ph
     }
 };
 
-// --- Funções de Pagamento Stripe ---
-
-interface CheckoutItem {
-    id: string;
-    name: string;
-    description: string;
-    price: number;
-    image: string;
-    quantity: number;
-    sessions?: number;
-    isPackage?: boolean;
-}
-
-export const createStripeCheckoutSession = async (userId: string, items: CheckoutItem[]): Promise<{ sessionId: string | null, error: string | null }> => {
-    const successUrl = `${window.location.origin}/?payment=success`;
-    const cancelUrl = `${window.location.origin}/?payment=cancel`;
-
-    try {
-        const { data, error } = await supabase.functions.invoke('create-checkout-session', {
-            body: {
-                items,
-                userId,
-                successUrl,
-                cancelUrl,
-            },
-        });
-
-        if (error) {
-            console.error("Error invoking create-checkout-session function:", error);
-            return { sessionId: null, error: error.message };
-        }
-        
-        if (data.error) {
-            console.error("Edge Function returned error:", data.error);
-            return { sessionId: null, error: data.error };
-        }
-
-        return { sessionId: data.sessionId, error: null };
-    } catch (e) {
-        console.error("Unexpected error during Stripe checkout session creation:", e);
-        return { sessionId: null, error: "Erro inesperado ao iniciar o pagamento." };
-    }
-};
-
 // --- Funções de Relatórios ---
 
 export const getSalesData = async (): Promise<Sale[]> => {
