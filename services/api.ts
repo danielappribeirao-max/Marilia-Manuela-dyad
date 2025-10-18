@@ -159,6 +159,19 @@ export const updateUserProfile = async (userId: string, updates: Partial<User>):
         payload.role = updates.role;
     }
     
+    // Se o nome for atualizado, também atualiza o user_metadata para consistência
+    if (updates.name !== undefined || updates.phone !== undefined || updates.avatarUrl !== undefined) {
+        const authUpdatePayload: any = {
+            data: {
+                full_name: updates.name,
+                phone: updates.phone?.replace(/\D/g, '') || null,
+                avatar_url: updates.avatarUrl,
+            }
+        };
+        // Nota: O RLS do storage depende do user_metadata, então é bom mantê-lo atualizado.
+        await supabase.auth.updateUser(authUpdatePayload);
+    }
+    
     const { error } = await supabase
         .from('profiles')
         .update(payload)
@@ -169,6 +182,9 @@ export const updateUserProfile = async (userId: string, updates: Partial<User>):
         return null;
     }
 
+    // Força o refresh da sessão para garantir que o user_metadata seja atualizado no cliente
+    await supabase.auth.refreshSession();
+    
     return getUserProfile(userId); // Busca o perfil completo e atualizado
 };
 
@@ -805,7 +821,7 @@ export const updateFeaturedServices = async (serviceIds: string[]): Promise<Clin
 };
 
 export const updateClinicTexts = async (texts: { heroText: string; heroSubtitle: string; aboutText: string }): Promise<ClinicSettings | null> => {
-    const { error } = await supabase
+    const { data, error } = await supabase
         .from('clinic_settings')
         .update({ 
             hero_text: texts.heroText, 
@@ -813,7 +829,9 @@ export const updateClinicTexts = async (texts: { heroText: string; heroSubtitle:
             about_text: texts.aboutText, 
             updated_at: new Date().toISOString() 
         })
-        .eq('id', DEFAULT_CLINIC_SETTINGS.id);
+        .eq('id', DEFAULT_CLINIC_SETTINGS.id)
+        .select('*') // Adiciona select para garantir que o retorno seja válido
+        .single();
 
     if (error) {
         console.error("Error updating clinic texts:", error);
