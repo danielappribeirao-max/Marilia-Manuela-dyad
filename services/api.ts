@@ -136,19 +136,26 @@ export const getProfessionals = async (): Promise<User[] | null> => {
 };
 
 export const updateUserProfile = async (userId: string, updates: Partial<User>): Promise<User | null> => {
-    const { name, phone, cpf, avatarUrl } = updates;
-
     const payload: any = {
-        full_name: name,
-        // Remove formatação e garante que strings vazias sejam salvas como NULL
-        phone: phone?.replace(/\D/g, '') || null, 
-        cpf: cpf?.replace(/\D/g, '') || null, 
-        avatar_url: avatarUrl,
         updated_at: new Date().toISOString(),
     };
     
+    // Inclui apenas campos que foram fornecidos na atualização
+    if (updates.name !== undefined) {
+        payload.full_name = updates.name;
+    }
+    if (updates.phone !== undefined) {
+        // Remove formatação e garante que strings vazias sejam salvas como NULL
+        payload.phone = updates.phone?.replace(/\D/g, '') || null; 
+    }
+    if (updates.cpf !== undefined) {
+        payload.cpf = updates.cpf?.replace(/\D/g, '') || null; 
+    }
+    if (updates.avatarUrl !== undefined) {
+        payload.avatar_url = updates.avatarUrl;
+    }
     // Inclui a função apenas se estiver sendo atualizada (geralmente pelo Admin)
-    if (updates.role) {
+    if (updates.role !== undefined) {
         payload.role = updates.role;
     }
     
