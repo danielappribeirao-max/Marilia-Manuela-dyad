@@ -82,15 +82,16 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ user, onClose, onSa
             }
         }
         
-        // 3. Salva os dados
-        onSave(updatedData);
-        // Nota: onSave no UserDashboardPage é assíncrono e atualiza o estado do App.
-        // O modal será fechado pelo UserDashboardPage após o sucesso.
+        // 3. Salva os dados e AGUARDA a conclusão
+        // A função onSave no UserDashboardPage é assíncrona e precisamos esperar por ela.
+        await onSave(updatedData);
+        
+        // Se onSave for bem-sucedido, o UserDashboardPage fecha o modal.
         
     } catch (error) {
         console.error("Erro ao salvar perfil:", error);
         alert("Ocorreu um erro inesperado ao salvar o perfil.");
-        setIsSaving(false);
+        setIsSaving(false); // Libera o botão em caso de erro
     }
   };
 
