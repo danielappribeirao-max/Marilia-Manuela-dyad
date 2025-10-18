@@ -59,6 +59,13 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ user, onClose, onSa
     e.preventDefault();
     if (validate()) {
       let updatedData: Partial<User> = { ...formData };
+      
+      // 1. Se não houver novo arquivo, mantém a URL existente
+      if (!avatarFile) {
+          updatedData.avatarUrl = user.avatarUrl;
+      }
+      
+      // 2. Se houver novo arquivo, faz o upload e atualiza a URL
       if (avatarFile) {
         const uploadedUrl = await api.uploadAvatar(user.id, avatarFile);
         if (uploadedUrl) {
@@ -68,6 +75,8 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ user, onClose, onSa
           return;
         }
       }
+      
+      // 3. Salva os dados (incluindo a URL do avatar, seja ela nova ou a antiga)
       onSave(updatedData);
     }
   };
