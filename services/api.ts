@@ -320,17 +320,13 @@ export const getServices = async (): Promise<Service[] | null> => {
 };
 
 export const ensureFreeConsultationServiceExists = async (): Promise<Service | null> => {
-    // 1. Tenta obter a URL da imagem de consulta (que será atualizada abaixo)
-    const { data: publicUrlData } = supabase.storage.from('assets').getPublicUrl('consulta.jpeg');
-    const consultationImageUrl = publicUrlData.publicUrl;
-    
     const freeConsultation: Partial<Service> = {
         id: FREE_CONSULTATION_SERVICE_ID,
         name: 'Consulta de Avaliação Gratuita',
         description: 'Avaliação inicial sem custo para definir o melhor plano de tratamento para você.',
         duration: 30,
         price: 0,
-        image: consultationImageUrl, // Usando a URL da imagem anexada
+        image: 'https://picsum.photos/seed/consulta/400/300',
         category: 'Avaliação',
         sessions: 1,
         order: 0, // Sempre o primeiro
@@ -828,7 +824,6 @@ const uploadFile = async (bucket: string, file: File, path: string): Promise<str
 export const uploadLogo = (file: File) => uploadFile('assets', file, 'logo.jpeg');
 export const uploadHeroImage = (file: File) => uploadFile('assets', file, 'hero-image.jpeg');
 export const uploadAboutImage = (file: File) => uploadFile('assets', file, 'about-image.jpeg');
-export const uploadConsultationImage = (file: File) => uploadFile('assets', file, 'consulta.jpeg'); // NOVO
 export const uploadAvatar = (userId: string, file: File) => uploadFile('avatars', file, `${userId}/avatar.jpeg`);
 
 export const getAssetUrl = (path: string): string => {
