@@ -6,7 +6,7 @@ import * as api from '../services/api';
 interface EditProfileModalProps {
   user: User;
   onClose: () => void;
-  onSave: (updatedUser: Partial<User>) => void;
+  onSave: (updatedUser: Partial<User>) => Promise<boolean>; // Alterado para retornar Promise<boolean>
 }
 
 const EditProfileModal: React.FC<EditProfileModalProps> = ({ user, onClose, onSave }) => {
@@ -18,7 +18,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ user, onClose, onSa
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(user.avatarUrl || null);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
-  const [isSaving, setIsSaving] = useState(false); // NOVO: Estado de salvamento
+  const [isSaving, setIsSaving] = useState(false);
 
   const validate = () => {
     const newErrors: { [key: string]: string } = {};
@@ -60,9 +60,10 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ user, onClose, onSa
     e.preventDefault();
     if (!validate()) return;
     
-    setIsSaving(true); // Inicia o salvamento
+    setIsSaving(true);
 
     let updatedData: Partial<User> = { ...formData };
+    let success = false;
     
     try {
         // 1. Se não houver novo arquivo, mantém a URL existente
@@ -77,20 +78,25 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ user, onClose, onSa
                 updatedData.avatarUrl = uploadedUrl;
             } else {
                 alert("Ocorreu um erro ao enviar a foto.");
-                setIsSaving(false);
-                return; 
+                return; // Sai se o upload falhar
             }
         }
         
-        // 3. Salva os dados
-        onSave(updatedData);
-        // Nota: onSave no UserDashboardPage é assíncrono e atualiza o estado do App.
-        // O modal será fechado pelo UserDashboardPage após o sucesso.
+        // 3. Salva os dados e verifica o sucesso
+        success = await onSave(updatedData);
+        
+        if (success) {
+            onClose(); // Fecha o modal apenas se o salvamento for bem-sucedido
+            alert('Perfil atualizado com sucesso!');
+        } else {
+            alert('Ocorreu um erro ao atualizar o perfil. Verifique os dados e tente novamente.');
+        }
         
     } catch (error) {
         console.error("Erro ao salvar perfil:", error);
         alert("Ocorreu um erro inesperado ao salvar o perfil.");
-        setIsSaving(false);
+    } finally {
+        setIsSaving(false); // Garante que o estado de salvamento seja resetado
     }
   };
 
