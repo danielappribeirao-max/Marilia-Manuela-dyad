@@ -76,9 +76,8 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ user, onClose, onSa
             if (uploadedUrl) {
                 updatedData.avatarUrl = uploadedUrl;
             } else {
-                alert("Ocorreu um erro ao enviar a foto.");
-                setIsSaving(false);
-                return; 
+                alert("Ocorreu um erro ao enviar a foto. O perfil não foi salvo.");
+                return; // Sai do try, mas o finally será executado
             }
         }
         
@@ -86,7 +85,6 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ user, onClose, onSa
         const success = await onSave(updatedData);
         
         if (success) {
-            // O UserDashboardPage já atualizou o currentUser
             onClose(); // Fecha o modal
             alert('Perfil atualizado com sucesso!');
         } else {
@@ -98,7 +96,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ user, onClose, onSa
         console.error("Erro ao salvar perfil:", error);
         alert("Ocorreu um erro inesperado ao salvar o perfil.");
     } finally {
-        setIsSaving(false); // Garante que o estado de salvamento seja resetado
+        setIsSaving(false); // GARANTE que o estado de salvamento seja resetado
     }
   };
 
