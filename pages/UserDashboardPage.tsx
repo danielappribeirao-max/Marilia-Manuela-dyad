@@ -90,13 +90,16 @@ export default function UserDashboardPage({ onBookWithCredit, onReschedule }: Us
         return <div className="p-8 text-center">Faça login para ver seu painel.</div>;
     }
 
-    const handleProfileSave = async (updatedUserData: Partial<User>): Promise<boolean> => {
+    const handleProfileSave = async (updatedUserData: Partial<User>) => {
+        // O modal já lida com o estado de 'Salvando...'
         const updatedUser = await api.updateUserProfile(currentUser.id, updatedUserData);
         if (updatedUser) {
             setCurrentUser(updatedUser);
-            return true;
+            setIsEditModalOpen(false); // Fecha o modal após o sucesso
+            alert('Perfil atualizado com sucesso!');
         } else {
-            return false;
+            // Se falhar, o modal permanece aberto e o usuário recebe o alerta
+            alert('Ocorreu um erro ao atualizar o perfil. Verifique os dados e tente novamente.');
         }
     };
 
