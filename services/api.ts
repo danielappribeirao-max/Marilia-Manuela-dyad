@@ -810,9 +810,10 @@ export const updateClinicTexts = async (texts: { heroText: string; heroSubtitle:
 
     if (error) {
         console.error("Error updating clinic texts:", error);
-        return null;
+        // Lança o erro para que o chamador saiba que falhou
+        throw new Error(`Falha ao salvar textos da clínica: ${error.message}`);
     }
-    // CORREÇÃO: Retorna o objeto de configurações completo e atualizado
+    // Retorna o objeto de configurações completo e atualizado
     return getClinicSettings();
 };
 

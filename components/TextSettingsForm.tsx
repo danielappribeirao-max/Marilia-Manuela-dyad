@@ -16,6 +16,7 @@ const TextSettingsForm: React.FC<TextSettingsFormProps> = ({ initialHeroText, in
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
+    // Garante que o estado interno reflita as props iniciais quando elas mudam (ex: após um save bem-sucedido no App.tsx)
     setFormData({ heroText: initialHeroText, heroSubtitle: initialHeroSubtitle, aboutText: initialAboutText });
   }, [initialHeroText, initialHeroSubtitle, initialAboutText]); // Dependências atualizadas
 
@@ -27,6 +28,7 @@ const TextSettingsForm: React.FC<TextSettingsFormProps> = ({ initialHeroText, in
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
+    // Garante que os dados enviados sejam os do estado atual
     await onSave(formData);
     setIsSaving(false);
   };
