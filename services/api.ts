@@ -183,6 +183,7 @@ export const updateUserProfile = async (userId: string, updates: Partial<User>):
 
     if (error) {
         console.error("Error updating user profile:", error);
+        // Se a atualização do perfil falhar, retornamos null para que o modal saiba que falhou.
         return null;
     }
 
@@ -326,7 +327,7 @@ export const ensureFreeConsultationServiceExists = async (): Promise<Service | n
         description: 'Avaliação inicial sem custo para definir o melhor plano de tratamento para você.',
         duration: 30,
         price: 0,
-        image: 'https://picsum.photos/seed/consulta/400/300',
+        image: getAssetUrl('consulta.jpeg'), // IMAGEM ATUALIZADA
         category: 'Avaliação',
         sessions: 1,
         order: 0, // Sempre o primeiro
