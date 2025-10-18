@@ -91,13 +91,15 @@ export default function UserDashboardPage({ onBookWithCredit, onReschedule }: Us
     }
 
     const handleProfileSave = async (updatedUserData: Partial<User>) => {
+        // O modal já lida com o estado de 'Salvando...'
         const updatedUser = await api.updateUserProfile(currentUser.id, updatedUserData);
         if (updatedUser) {
             setCurrentUser(updatedUser);
-            setIsEditModalOpen(false);
+            setIsEditModalOpen(false); // Fecha o modal após o sucesso
             alert('Perfil atualizado com sucesso!');
         } else {
-            alert('Ocorreu um erro ao atualizar o perfil.');
+            // Se falhar, o modal permanece aberto e o usuário recebe o alerta
+            alert('Ocorreu um erro ao atualizar o perfil. Verifique os dados e tente novamente.');
         }
     };
 

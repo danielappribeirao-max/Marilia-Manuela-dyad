@@ -18,6 +18,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ user, onClose, onSa
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(user.avatarUrl || null);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [isSaving, setIsSaving] = useState(false); // NOVO: Estado de salvamento
 
   const validate = () => {
     const newErrors: { [key: string]: string } = {};
@@ -57,27 +58,39 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ user, onClose, onSa
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (validate()) {
-      let updatedData: Partial<User> = { ...formData };
-      
-      // 1. Se não houver novo arquivo, mantém a URL existente
-      if (!avatarFile) {
-          updatedData.avatarUrl = user.avatarUrl;
-      }
-      
-      // 2. Se houver novo arquivo, faz o upload e atualiza a URL
-      if (avatarFile) {
-        const uploadedUrl = await api.uploadAvatar(user.id, avatarFile);
-        if (uploadedUrl) {
-          updatedData.avatarUrl = uploadedUrl;
-        } else {
-          alert("Ocorreu um erro ao enviar a foto.");
-          return;
+    if (!validate()) return;
+    
+    setIsSaving(true); // Inicia o salvamento
+
+    let updatedData: Partial<User> = { ...formData };
+    
+    try {
+        // 1. Se não houver novo arquivo, mantém a URL existente
+        if (!avatarFile) {
+            updatedData.avatarUrl = user.avatarUrl;
         }
-      }
-      
-      // 3. Salva os dados (incluindo a URL do avatar, seja ela nova ou a antiga)
-      onSave(updatedData);
+        
+        // 2. Se houver novo arquivo, faz o upload e atualiza a URL
+        if (avatarFile) {
+            const uploadedUrl = await api.uploadAvatar(user.id, avatarFile);
+            if (uploadedUrl) {
+                updatedData.avatarUrl = uploadedUrl;
+            } else {
+                alert("Ocorreu um erro ao enviar a foto.");
+                setIsSaving(false);
+                return; 
+            }
+        }
+        
+        // 3. Salva os dados
+        onSave(updatedData);
+        // Nota: onSave no UserDashboardPage é assíncrono e atualiza o estado do App.
+        // O modal será fechado pelo UserDashboardPage após o sucesso.
+        
+    } catch (error) {
+        console.error("Erro ao salvar perfil:", error);
+        alert("Ocorreu um erro inesperado ao salvar o perfil.");
+        setIsSaving(false);
     }
   };
 
@@ -118,8 +131,10 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({ user, onClose, onSa
             </div>
           </div>
           <div className="p-6 bg-gray-50 border-t flex justify-end gap-3">
-            <button type="button" onClick={onClose} className="px-5 py-2 bg-gray-200 text-gray-800 rounded-full font-semibold hover:bg-gray-300">Cancelar</button>
-            <button type="submit" className="px-5 py-2 bg-pink-500 text-white rounded-full font-semibold hover:bg-pink-600">Salvar Alterações</button>
+            <button type="button" onClick={onClose} disabled={isSaving} className="px-5 py-2 bg-gray-200 text-gray-800 rounded-full font-semibold hover:bg-gray-300 disabled:opacity-50">Cancelar</button>
+            <button type="submit" disabled={isSaving} className="px-5 py-2 bg-pink-500 text-white rounded-full font-semibold hover:bg-pink-600 disabled:bg-gray-400 disabled:cursor-not-allowed">
+                {isSaving ? 'Salvando...' : 'Salvar Alterações'}
+            </button>
           </div>
         </form>
       </div>
