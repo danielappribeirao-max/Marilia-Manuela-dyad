@@ -686,8 +686,11 @@ export const getOccupiedSlots = async (date: string): Promise<{ id: number, prof
 };
 
 export const addOrUpdateBooking = async (booking: Partial<Booking> & { serviceName?: string }): Promise<Booking | null> => {
-    const bookingDate = booking.date ? booking.date.toISOString().split('T')[0] : undefined;
-    const bookingTime = booking.date ? booking.date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }).slice(0, 5) : undefined;
+    // --- CORREÇÃO: Formatação de Data e Hora ---
+    const dateObj = booking.date;
+    const bookingDate = dateObj ? `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}` : undefined;
+    const bookingTime = dateObj ? `${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}` : undefined;
+    // ------------------------------------------
     
     const payload = {
         user_id: booking.userId,
