@@ -35,7 +35,9 @@ serve(async (req) => {
     }
     
     // 2. Criar ou buscar usuário
-    const email = `${phone}@mariliamanuela.com`;
+    // Usamos o telefone como parte do email temporário para identificação única
+    const phoneDigits = phone.replace(/\D/g, '');
+    const email = `${phoneDigits}@mariliamanuela.com`;
     let userId: string;
     let tempPassword = '';
     let userWasCreated = false;
@@ -58,7 +60,7 @@ serve(async (req) => {
           
           if (fetchError || !existingUser?.user) {
               console.error("Existing User Fetch Error:", fetchError);
-              return new Response(JSON.stringify({ error: "Já existe um usuário cadastrado com este telefone, mas não foi possível recuperá-lo. Por favor, faça login primeiro." }), {
+              return new Response(JSON.stringify({ error: "Já existe um agendamento em andamento com este telefone. Por favor, faça login ou use outro telefone." }), {
                   headers: { ...corsHeaders, 'Content-Type': 'application/json' },
                   status: 400,
               });
@@ -95,7 +97,7 @@ serve(async (req) => {
         status: 'Agendado',
         duration: parsedDuration,
         service_name: serviceName,
-        notes: `Consulta Gratuita. Interesse: ${description}`,
+        notes: `Agendamento Rápido. Interesse: ${description}`,
     };
     
     const { data: bookingData, error: bookingError } = await supabaseAdmin
