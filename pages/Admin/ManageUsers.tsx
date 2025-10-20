@@ -77,8 +77,6 @@ export default function AdminManageUsers() {
     };
     
     const filteredUsers = useMemo(() => {
-        console.log(`[Filter] Recalculating users. Query: "${searchQuery}", Role: ${filterRole}`);
-        
         // Cria uma cópia do array antes de filtrar/ordenar
         let filtered = [...users];
 
@@ -105,7 +103,6 @@ export default function AdminManageUsers() {
         // Ordenação alfabética por nome
         filtered.sort((a, b) => a.name.localeCompare(b.name));
         
-        console.log(`[Filter] Found ${filtered.length} users.`);
         return filtered;
     }, [users, filterRole, searchQuery]);
 
@@ -147,10 +144,7 @@ export default function AdminManageUsers() {
                         type="text"
                         placeholder="Buscar por nome, email, telefone ou CPF..."
                         value={searchQuery}
-                        onChange={(e) => {
-                            setSearchQuery(e.target.value);
-                            console.log(`[Input] Search query updated to: ${e.target.value}`);
-                        }}
+                        onChange={(e) => setSearchQuery(e.target.value)}
                         className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-300 transition-shadow"
                     />
                 </div>
