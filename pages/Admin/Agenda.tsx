@@ -106,7 +106,12 @@ export default function AdminAgenda() {
                     const allUsers = await api.getUsersWithRoles();
                     setUsers(allUsers || []);
                 }
+            } else {
+                // Feedback de sucesso para novo agendamento ou edição
+                alert(`Agendamento ${isEditing ? 'atualizado' : 'criado'} com sucesso!`);
             }
+        } else {
+            alert(`Falha ao salvar o agendamento. Verifique se todos os campos estão preenchidos e se o horário está disponível.`);
         }
         setIsModalOpen(false);
         fetchData(); // Garante que a lista seja recarregada após salvar/cancelar
