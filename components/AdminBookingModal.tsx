@@ -23,11 +23,6 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
   const { services, clinicSettings } = useApp();
   const isEditing = !!booking;
   
-  // Calcula o horário original do agendamento (se estiver editando)
-  const originalBookingTime = useMemo(() => 
-      booking ? new Date(booking.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }).slice(0, 5) : null, 
-  [booking]);
-
   const getInitialFormData = () => {
     const service = booking?.serviceId ? services.find(s => s.id === booking.serviceId) : null;
     
@@ -44,7 +39,7 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
     }
     
     // 2. Determinar a hora inicial
-    const initialTime = originalBookingTime || (defaultDate ? defaultDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }).slice(0, 5) : '');
+    const initialTime = booking ? new Date(booking.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }).slice(0, 5) : (defaultDate ? defaultDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }).slice(0, 5) : '');
     
     return {
       userId: booking?.userId || '',
@@ -99,12 +94,13 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
         if (formData.date && formData.time && formData.professionalId) {
             if (!isClinicOpen) {
                 newErrors.date = 'A clínica está fechada neste dia.';
-            } else {
-                // Verifica se o horário selecionado é o horário original (em caso de edição)
-                const isOriginalTime = isEditing && formData.time === originalBookingTime && new Date(formData.date).toDateString() === new Date(booking!.date).toDateString();
+            } else if (!availableTimes.includes(formData.time) && !isEditing) {
+                // Se estiver editando, o horário pode ser o original, que não está na lista de disponíveis
+                // porque o slot original foi ignorado no useAvailability.
+                // Se o horário selecionado não for o horário original E não estiver na lista de disponíveis, é um erro.
+                const originalTime = booking ? new Date(booking.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }).slice(0, 5) : null;
                 
-                // Se não for o horário original E não estiver na lista de disponíveis, é um erro.
-                if (!isOriginalTime && !availableTimes.includes(formData.time)) {
+                if (formData.time !== originalTime && !availableTimes.includes(formData.time)) {
                     newErrors.time = 'Horário indisponível. O profissional está ocupado ou o horário está fora do expediente/almoço.';
                 }
             }
@@ -159,7 +155,7 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
       userId: formData.userId,
       serviceId: formData.serviceId,
       professionalId: formData.professionalId,
-      date: bookingDate, // Passa o objeto Date completo
+      date: bookingDate,
       status: formData.status as Booking['status'],
       duration: Number(formData.duration),
       comment: formData.notes, // Salvando as notas
@@ -247,7 +243,7 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
                             <option disabled>Carregando...</option>
                         ) : availableTimes.length > 0 ? (
                             // Se estiver editando, adiciona o horário original se ele não estiver na lista (para permitir salvar sem mudar o horário)
-                            [...new Set([...availableTimes, (isEditing ? originalBookingTime : '')])].filter(t => t).sort().map(time => <option key={time} value={time}>{time}</option>)
+                            [...new Set([...availableTimes, (isEditing ? formData.time : '')])].filter(t => t).sort().map(time => <option key={time} value={time}>{time}</option>)
                         ) : (
                             <option disabled>Indisponível</option>
                         )}
@@ -265,7 +261,6 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
                     <option value="confirmed">Confirmado</option>
                     <option value="completed">Concluído</option>
                     <option value="canceled">Cancelado</option>
-                    <option value="Agendado">Agendado (Pendente)</option>
                   </select>
                 </div>
               </>
