@@ -29,14 +29,11 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
     // 1. Determinar a data inicial
     let initialDate: Date;
     if (booking) {
-        // Usa a data do agendamento existente
         const d = new Date(booking.date);
         initialDate = new Date(d.getFullYear(), d.getMonth(), d.getDate());
     } else if (defaultDate) {
-        // Usa a data padrão (clique na agenda)
         initialDate = new Date(defaultDate.getFullYear(), defaultDate.getMonth(), defaultDate.getDate());
     } else {
-        // Usa a data de hoje
         const today = new Date();
         initialDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
     }
@@ -50,7 +47,7 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
       professionalId: booking?.professionalId || '',
       date: initialDate.toISOString().split('T')[0],
       time: initialTime,
-      status: booking?.status || 'Agendado', // Usando 'Agendado' como padrão para novos agendamentos
+      status: booking?.status || 'confirmed',
       duration: booking?.duration || service?.duration || 30,
       quantity: 1,
       notes: booking?.comment || '', // Adicionando notas/comentários
@@ -62,10 +59,7 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
   
   const selectedService = useMemo(() => services.find(s => s.id === formData.serviceId), [formData.serviceId, services]);
   const sessionsPerPackage = selectedService?.sessions || 1;
-  
-  // Determina se o modal está no modo de Venda de Pacote/Crédito
-  // Isso só acontece se NÃO estiver editando E o serviço tiver mais de 1 sessão (indicando pacote)
-  const isPackageSaleMode = !isEditing && (sessionsPerPackage > 1 || Number(formData.quantity) > 1);
+  const isPackageSale = !isEditing && (sessionsPerPackage > 1 || Number(formData.quantity) > 1);
   
   const selectedDate = useMemo(() => {
       if (!formData.date) return null;
@@ -82,38 +76,31 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
       clinicHolidayExceptions: clinicSettings?.holidayExceptions,
       bookingToIgnoreId: booking?.id,
   });
-  
-  // Obtém o horário original do agendamento (se estiver editando)
-  const originalBookingTime = useMemo(() => {
-      if (isEditing && booking?.date) {
-          return new Date(booking.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }).slice(0, 5);
-      }
-      return null;
-  }, [isEditing, booking?.date]);
 
   const validate = () => {
     const newErrors: { [key: string]: string } = {};
     if (!formData.userId) newErrors.userId = 'Selecione um cliente.';
     if (!formData.serviceId) newErrors.serviceId = 'Selecione um serviço.';
 
-    if (isPackageSaleMode) {
-        if (!formData.quantity || Number(formData.quantity) < 1) newErrors.quantity = 'A quantidade deve ser de pelo menos 1.';
+    if (isPackageSale) {
+        if (!formData.quantity || formData.quantity < 1) newErrors.quantity = 'A quantidade deve ser de pelo menos 1.';
     } else {
-        // Validação para Agendamento
         if (!formData.professionalId) newErrors.professionalId = 'Selecione um profissional.';
         if (!formData.date) newErrors.date = 'Selecione uma data.';
         if (!formData.time) newErrors.time = 'Selecione um horário.';
-        if (!formData.duration || Number(formData.duration) <= 0) newErrors.duration = 'A duração deve ser maior que zero.';
+        if (!formData.duration || formData.duration <= 0) newErrors.duration = 'A duração deve ser maior que zero.';
         
-        // Validação de disponibilidade
+        // Validação de disponibilidade (apenas para agendamentos)
         if (formData.date && formData.time && formData.professionalId) {
             if (!isClinicOpen) {
                 newErrors.date = 'A clínica está fechada neste dia.';
-            } else {
-                // Verifica se o horário selecionado é o original (permitido) ou se está na lista de disponíveis
-                const isOriginalTime = isEditing && formData.time === originalBookingTime;
+            } else if (!availableTimes.includes(formData.time) && !isEditing) {
+                // Se estiver editando, o horário pode ser o original, que não está na lista de disponíveis
+                // porque o slot original foi ignorado no useAvailability.
+                // Se o horário selecionado não for o horário original E não estiver na lista de disponíveis, é um erro.
+                const originalTime = booking ? new Date(booking.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }).slice(0, 5) : null;
                 
-                if (!isOriginalTime && !availableTimes.includes(formData.time)) {
+                if (formData.time !== originalTime && !availableTimes.includes(formData.time)) {
                     newErrors.time = 'Horário indisponível. O profissional está ocupado ou o horário está fora do expediente/almoço.';
                 }
             }
@@ -128,7 +115,7 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
     const { name, value } = e.target;
     setFormData(prev => {
       const newFormData = { ...prev, [name]: value };
-      if (name === 'serviceId' && !isPackageSaleMode) {
+      if (name === 'serviceId' && !isPackageSale) {
         newFormData.duration = services.find(s => s.id === value)?.duration || 30;
       }
       
@@ -147,7 +134,7 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
     e.preventDefault();
     if (!validate()) return;
 
-    if (isPackageSaleMode) {
+    if (isPackageSale) {
         const user = users.find(u => u.id === formData.userId);
         if (!user || !selectedService) return;
         
@@ -158,11 +145,9 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
         return;
     } 
     
-    // --- Lógica de Agendamento ---
     const [hours, minutes] = formData.time.split(':').map(Number);
     
     // Cria a data final no fuso horário local
-    // É crucial que a data seja criada corretamente para que a API a salve no formato UTC
     const bookingDate = new Date(selectedDate!.getFullYear(), selectedDate!.getMonth(), selectedDate!.getDate(), hours, minutes, 0, 0);
 
     const newBooking: Partial<Booking> = {
@@ -179,8 +164,8 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
     await onSave(newBooking);
   };
 
-  const modalTitle = isPackageSaleMode ? 'Vender Pacote de Serviços' : (isEditing ? 'Editar Agendamento' : 'Novo Agendamento');
-  const submitButtonText = isPackageSaleMode ? 'Adicionar Créditos' : 'Salvar Agendamento';
+  const modalTitle = isPackageSale ? 'Vender Pacote de Serviços' : (isEditing ? 'Editar Agendamento' : 'Novo Agendamento');
+  const submitButtonText = isPackageSale ? 'Adicionar Créditos' : 'Salvar Agendamento';
 
   const clientUsers = useMemo(() => users.filter(u => u.role === Role.CLIENT), [users]);
   
@@ -210,7 +195,7 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
               {errors.userId && <p className="text-red-500 text-xs mt-1">{errors.userId}</p>}
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className={isPackageSaleMode ? "sm:col-span-2" : "sm:col-span-3"}>
+              <div className="sm:col-span-2">
                 <label htmlFor="serviceId" className="block text-sm font-medium text-gray-700 mb-1">Serviço</label>
                 <select id="serviceId" name="serviceId" value={formData.serviceId} onChange={handleChange} className={`w-full p-2 border bg-white text-gray-900 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500 ${errors.serviceId ? 'border-red-500' : 'border-gray-300'}`}>
                   <option value="" disabled>Selecione um serviço</option>
@@ -218,15 +203,13 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
                 </select>
                 {errors.serviceId && <p className="text-red-500 text-xs mt-1">{errors.serviceId}</p>}
               </div>
-              {isPackageSaleMode && (
-                <div>
-                  <label htmlFor="quantity" className="block text-sm font-medium text-gray-700 mb-1">Quantidade</label>
-                  <input type="number" id="quantity" name="quantity" value={formData.quantity} onChange={handleChange} min="1" disabled={isEditing} title={isEditing ? 'Não é possível alterar a quantidade ao editar.' : ''} className={`w-full p-2 border bg-white text-gray-900 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500 ${errors.quantity ? 'border-red-500' : 'border-gray-300'} ${isEditing ? 'bg-gray-100 cursor-not-allowed' : ''}`} />
-                  {errors.quantity && <p className="text-red-500 text-xs mt-1">{errors.quantity}</p>}
-                </div>
-              )}
+              <div>
+                <label htmlFor="quantity" className="block text-sm font-medium text-gray-700 mb-1">Quantidade</label>
+                <input type="number" id="quantity" name="quantity" value={formData.quantity} onChange={handleChange} min="1" disabled={isEditing} title={isEditing ? 'Não é possível alterar a quantidade ao editar.' : ''} className={`w-full p-2 border bg-white text-gray-900 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500 ${errors.quantity ? 'border-red-500' : 'border-gray-300'} ${isEditing ? 'bg-gray-100 cursor-not-allowed' : ''}`} />
+                {errors.quantity && <p className="text-red-500 text-xs mt-1">{errors.quantity}</p>}
+              </div>
             </div>
-            {isPackageSaleMode ? (
+            {isPackageSale ? (
                 <div className="bg-pink-50 text-pink-800 p-3 rounded-md text-sm">
                     <p>Você está vendendo um pacote. Ao confirmar, <strong>{sessionsPerPackage * Number(formData.quantity)} créditos</strong> serão adicionados à conta do cliente.</p>
                 </div>
@@ -259,8 +242,8 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
                         {loadingAvailability ? (
                             <option disabled>Carregando...</option>
                         ) : availableTimes.length > 0 ? (
-                            // Inclui o horário original se estiver editando e não estiver na lista (para permitir salvar sem mudar o horário)
-                            [...new Set([...availableTimes, (isEditing ? originalBookingTime : '')])].filter(t => t).sort().map(time => <option key={time} value={time}>{time}</option>)
+                            // Se estiver editando, adiciona o horário original se ele não estiver na lista (para permitir salvar sem mudar o horário)
+                            [...new Set([...availableTimes, (isEditing ? formData.time : '')])].filter(t => t).sort().map(time => <option key={time} value={time}>{time}</option>)
                         ) : (
                             <option disabled>Indisponível</option>
                         )}
@@ -275,7 +258,6 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
                 <div>
                   <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">Status</label>
                   <select id="status" name="status" value={formData.status} onChange={handleChange} className="w-full p-2 border bg-white text-gray-900 border-gray-300 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500">
-                    <option value="Agendado">Agendado</option>
                     <option value="confirmed">Confirmado</option>
                     <option value="completed">Concluído</option>
                     <option value="canceled">Cancelado</option>
