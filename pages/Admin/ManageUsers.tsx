@@ -42,13 +42,14 @@ export default function AdminManageUsers() {
     const handleSaveUser = async (userData: Partial<User> & { password?: string }) => {
         let result: User | null = null;
         if (userData.id) { // Se tem ID, é uma atualização
+            // Usamos a função de admin para garantir que a atualização de nome e função funcione
             result = await api.adminUpdateUser(userData);
         } else { // Senão, é uma criação
             result = await api.adminCreateUser(userData);
         }
 
         if (result) {
-           await fetchUsers(); 
+           await fetchUsers(); // Recarrega a lista para mostrar as alterações
            alert(`Usuário ${result.name} salvo com sucesso!`);
         } else {
             // A mensagem de erro específica já é mostrada pela função da API
@@ -76,6 +77,9 @@ export default function AdminManageUsers() {
     };
     
     const filteredUsers = useMemo(() => {
+        console.log(`[Filter] Recalculating users. Query: "${searchQuery}", Role: ${filterRole}`);
+        
+        // Cria uma cópia do array antes de filtrar/ordenar
         let filtered = [...users];
 
         if (filterRole !== 'all') {
@@ -92,15 +96,16 @@ export default function AdminManageUsers() {
                 u.name.toLowerCase().includes(lowercasedQuery) || 
                 u.email.toLowerCase().includes(lowercasedQuery) ||
                 // Busca por telefone (apenas dígitos)
-                (u.phone && u.phone.replace(/\D/g, '').includes(unformattedQuery)) ||
+                u.phone.replace(/\D/g, '').includes(unformattedQuery) ||
                 // Busca por CPF (apenas dígitos)
-                (u.cpf && u.cpf.replace(/\D/g, '').includes(unformattedQuery))
+                u.cpf.replace(/\D/g, '').includes(unformattedQuery)
             );
         }
         
         // Ordenação alfabética por nome
         filtered.sort((a, b) => a.name.localeCompare(b.name));
         
+        console.log(`[Filter] Found ${filtered.length} users.`);
         return filtered;
     }, [users, filterRole, searchQuery]);
 
@@ -142,7 +147,10 @@ export default function AdminManageUsers() {
                         type="text"
                         placeholder="Buscar por nome, email, telefone ou CPF..."
                         value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
+                        onChange={(e) => {
+                            setSearchQuery(e.target.value);
+                            console.log(`[Input] Search query updated to: ${e.target.value}`);
+                        }}
                         className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-300 transition-shadow"
                     />
                 </div>
@@ -181,11 +189,13 @@ export default function AdminManageUsers() {
                                             className="w-10 h-10 rounded-full object-cover mr-3 bg-gray-200 flex-shrink-0"
                                         />
                                         <div className="min-w-0">
+                                            {/* Removendo break-words para evitar quebras excessivas, mas garantindo que o contêiner se ajuste */}
                                             <p className="font-semibold text-gray-800 truncate">{user.name}</p>
                                             <p className="text-xs text-gray-500 flex items-center gap-1 truncate"><Mail size={12} /> {user.email}</p>
                                         </div>
                                     </div>
                                 </td>
+                                {/* Ocultando em telas pequenas, mostrando em telas médias */}
                                 <td className="px-5 py-4 hidden md:table-cell align-top">
                                     <p className="text-sm flex items-center gap-1.5"><Phone size={14} className="text-pink-500" /> {formatPhone(user.phone)}</p>
                                     <p className="text-xs text-gray-500 mt-1">CPF: {formatCPF(user.cpf)}</p>
