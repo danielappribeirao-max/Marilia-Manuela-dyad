@@ -5,17 +5,14 @@ import { Page } from '../types';
 
 interface PackageCardProps {
   servicePackage: ServicePackage;
-  // Removendo onPurchase
   services: Service[]; // To look up service names
 }
 
 const PackageCard: React.FC<PackageCardProps> = ({ servicePackage, services }) => {
   const { setCurrentPage } = useApp();
   
-  // Se o pacote não pode ser comprado, o botão deve levar para a página de contato/agendamento geral
+  // Redireciona para a página de serviços para que o usuário possa agendar um serviço individual ou entrar em contato
   const handleBook = () => {
-      alert(`Para agendar um pacote, por favor, entre em contato conosco. Preço: R$ ${servicePackage.price.toFixed(2).replace('.', ',')}`);
-      // Redireciona para a página de serviços para que o usuário possa agendar um serviço individual ou entrar em contato
       setCurrentPage(Page.SERVICES);
   };
 
@@ -48,7 +45,7 @@ const PackageCard: React.FC<PackageCardProps> = ({ servicePackage, services }) =
             onClick={handleBook}
             className="w-full bg-gray-800 text-white py-2 rounded-full font-semibold hover:bg-pink-500 transition-colors duration-300"
           >
-            Agendar/Consultar Pacote
+            Ver Serviços e Agendar
           </button>
         </div>
       </div>

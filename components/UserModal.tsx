@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { User, Role, Service, Booking } from '../types';
 import { formatCPF, formatPhone } from '../utils/formatters';
 import * as api from '../services/api';
+import { Calendar, Clock, User as UserIcon, CheckCircle, XCircle } from 'lucide-react';
 
 interface UserModalProps {
   user: Partial<User> | null;
@@ -25,57 +26,30 @@ const UserModal: React.FC<UserModalProps> = ({ user, onClose, onSave, services }
   const [avatarPreview, setAvatarPreview] = useState<string | null>(user?.avatarUrl || null);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [bookings, setBookings] = useState<Booking[]>([]);
-  const [loadingCredits, setLoadingCredits] = useState(false);
+  const [loadingBookings, setLoadingBookings] = useState(false);
 
   const isEditing = !!user;
 
   useEffect(() => {
     if (isEditing && user?.id) {
       const fetchBookings = async () => {
-        setLoadingCredits(true);
-        // Busca todos os agendamentos do usuário para calcular os créditos utilizados
+        setLoadingBookings(true);
+        // Busca todos os agendamentos do usuário
         const userBookings = await api.getUserBookings(user.id);
         setBookings(userBookings || []);
-        setLoadingCredits(false);
+        setLoadingBookings(false);
       };
       fetchBookings();
     }
   }, [isEditing, user?.id]);
 
-  const creditDetails = useMemo(() => {
-    if (!isEditing || !user) return [];
-    
-    // 1. Calcular créditos utilizados (agendamentos concluídos que usaram crédito)
-    const usedCreditsMap = bookings
-      .filter(b => b.status === 'completed')
-      .reduce((acc, booking) => {
-        // Assumimos que um agendamento concluído consome 1 crédito do serviço
-        acc[booking.serviceId] = (acc[booking.serviceId] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
-      
-    // 2. Créditos restantes (do perfil do usuário)
-    const remainingCreditsMap = user.credits || {};
-    
-    // 3. Combinar todos os IDs de serviço que têm créditos (restantes ou utilizados)
-    const allServiceIds = new Set([
-        ...Object.keys(remainingCreditsMap), 
-        ...Object.keys(usedCreditsMap)
-    ]);
-    
-    return Array.from(allServiceIds).map(serviceId => {
-      const service = services.find(s => s.id === serviceId);
-      if (!service) return null;
-      
-      const remaining = (remainingCreditsMap[serviceId] as number) || 0;
-      const used = usedCreditsMap[serviceId] || 0;
-      const total = remaining + used;
-      
-      if (total === 0) return null; // Não mostrar serviços sem histórico de créditos
-      
-      return { serviceName: service.name, total, used, remaining };
-    }).filter(Boolean) as { serviceName: string; total: number; used: number; remaining: number }[];
-  }, [isEditing, user, bookings, services]);
+  // Mapeamento de status para exibição
+  const statusMap = {
+    confirmed: { text: 'Confirmado', classes: 'bg-blue-100 text-blue-800', icon: <CheckCircle size={14} /> },
+    completed: { text: 'Concluído', classes: 'bg-green-100 text-green-800', icon: <CheckCircle size={14} /> },
+    canceled: { text: 'Cancelado', classes: 'bg-red-100 text-red-800', icon: <XCircle size={14} /> },
+    Agendado: { text: 'Agendado', classes: 'bg-yellow-100 text-yellow-800', icon: <Calendar size={14} /> },
+  };
 
   const validate = () => {
     const newErrors: { [key: string]: string } = {};
@@ -180,21 +154,30 @@ const UserModal: React.FC<UserModalProps> = ({ user, onClose, onSave, services }
             </div>
             {isEditing && user && (
               <div className="pt-4 mt-4 border-t border-gray-200">
-                <h3 className="text-lg font-semibold text-gray-800 mb-3">Histórico de Créditos</h3>
-                {loadingCredits ? (<p className="text-gray-500">Carregando histórico...</p>) : creditDetails.length > 0 ? (
-                  <div className="space-y-4">
-                    {creditDetails.map((detail, index) => (
-                      <div key={index} className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                        <p className="font-bold text-gray-800">{detail.serviceName}</p>
-                        <div className="mt-2 grid grid-cols-3 gap-2 text-center text-sm">
-                          <div><p className="text-xs text-gray-500">Comprados</p><p className="font-semibold text-lg">{detail.total}</p></div>
-                          <div><p className="text-xs text-gray-500">Utilizados</p><p className="font-semibold text-lg text-red-600">{detail.used}</p></div>
-                          <div><p className="text-xs text-gray-500">Restantes</p><p className="font-semibold text-lg text-green-600">{detail.remaining}</p></div>
-                        </div>
-                      </div>
-                    ))}
+                <h3 className="text-lg font-semibold text-gray-800 mb-3">Histórico de Agendamentos ({bookings.length})</h3>
+                {loadingBookings ? (<p className="text-gray-500">Carregando histórico...</p>) : bookings.length > 0 ? (
+                  <div className="space-y-3 max-h-60 overflow-y-auto pr-2">
+                    {bookings.map((booking, index) => {
+                        const service = services.find(s => s.id === booking.serviceId);
+                        const statusInfo = statusMap[booking.status as keyof typeof statusMap] || statusMap.Agendado;
+                        
+                        return (
+                            <div key={booking.id} className="bg-gray-50 p-3 rounded-lg border border-gray-200 flex justify-between items-center">
+                                <div>
+                                    <p className="font-bold text-gray-800 text-sm">{service?.name || 'Serviço Desconhecido'}</p>
+                                    <div className="flex items-center gap-3 text-xs text-gray-600 mt-1">
+                                        <span className="flex items-center gap-1"><Calendar size={12} /> {new Date(booking.date).toLocaleDateString('pt-BR')}</span>
+                                        <span className="flex items-center gap-1"><Clock size={12} /> {new Date(booking.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                                    </div>
+                                </div>
+                                <span className={`px-2 py-0.5 text-xs font-semibold rounded-full flex items-center gap-1 ${statusInfo.classes}`}>
+                                    {statusInfo.icon} {statusInfo.text}
+                                </span>
+                            </div>
+                        );
+                    })}
                   </div>
-                ) : (<p className="text-gray-500 text-sm">Nenhum crédito ou procedimento registrado.</p>)}
+                ) : (<p className="text-gray-500 text-sm">Nenhum agendamento registrado para este cliente.</p>)}
               </div>
             )}
           </div>
