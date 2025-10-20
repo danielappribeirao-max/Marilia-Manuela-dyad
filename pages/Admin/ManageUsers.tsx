@@ -77,35 +77,36 @@ export default function AdminManageUsers() {
     };
     
     const filteredUsers = useMemo(() => {
-        console.log(`[Filter] Recalculating users. Query: "${searchQuery}", Role: ${filterRole}`);
+        // console.log(`[Filter] Recalculating users. Query: "${searchQuery}", Role: ${filterRole}`);
         
-        // Cria uma cópia do array antes de filtrar/ordenar
         let filtered = [...users];
 
+        // 1. Filtragem por Função
         if (filterRole !== 'all') {
             filtered = filtered.filter(u => u.role === filterRole);
         }
 
+        // 2. Filtragem por Busca de Texto (Reativa)
         if (searchQuery.trim() !== '') {
             const lowercasedQuery = searchQuery.toLowerCase();
-            // Remove a formatação da query de busca para comparar com os dados brutos
             const unformattedQuery = searchQuery.replace(/\D/g, ''); 
             
-            filtered = filtered.filter(u => 
-                // Busca por nome ou email (case insensitive)
-                u.name.toLowerCase().includes(lowercasedQuery) || 
-                u.email.toLowerCase().includes(lowercasedQuery) ||
-                // Busca por telefone (apenas dígitos)
-                u.phone.replace(/\D/g, '').includes(unformattedQuery) ||
-                // Busca por CPF (apenas dígitos)
-                u.cpf.replace(/\D/g, '').includes(unformattedQuery)
-            );
+            filtered = filtered.filter(u => {
+                const nameMatch = u.name.toLowerCase().includes(lowercasedQuery);
+                const emailMatch = u.email.toLowerCase().includes(lowercasedQuery);
+                
+                // Remove a formatação dos dados do usuário para comparação
+                const phoneMatch = u.phone.replace(/\D/g, '').includes(unformattedQuery);
+                const cpfMatch = u.cpf.replace(/\D/g, '').includes(unformattedQuery);
+                
+                return nameMatch || emailMatch || phoneMatch || cpfMatch;
+            });
         }
         
-        // Ordenação alfabética por nome
+        // 3. Ordenação alfabética por nome
         filtered.sort((a, b) => a.name.localeCompare(b.name));
         
-        console.log(`[Filter] Found ${filtered.length} users.`);
+        // console.log(`[Filter] Found ${filtered.length} users.`);
         return filtered;
     }, [users, filterRole, searchQuery]);
 
@@ -147,10 +148,7 @@ export default function AdminManageUsers() {
                         type="text"
                         placeholder="Buscar por nome, email, telefone ou CPF..."
                         value={searchQuery}
-                        onChange={(e) => {
-                            setSearchQuery(e.target.value);
-                            console.log(`[Input] Search query updated to: ${e.target.value}`);
-                        }}
+                        onChange={(e) => setSearchQuery(e.target.value)}
                         className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-300 transition-shadow"
                     />
                 </div>
