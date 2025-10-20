@@ -64,6 +64,9 @@ export default function AdminAgenda() {
     }, []);
 
     const handleSaveBooking = async (booking: Partial<Booking>) => {
+        // Define isEditing com base na presença do ID do agendamento
+        const isEditing = !!booking.id;
+        
         const originalBooking = bookings.find(b => b.id === booking.id);
         const wasJustCancelled = originalBooking && originalBooking.status !== 'canceled' && booking.status === 'canceled';
 
