@@ -687,11 +687,7 @@ export const getOccupiedSlots = async (date: string): Promise<{ id: number, prof
 
 export const addOrUpdateBooking = async (booking: Partial<Booking> & { serviceName?: string }): Promise<Booking | null> => {
     const bookingDate = booking.date ? booking.date.toISOString().split('T')[0] : undefined;
-    
-    // CORREÇÃO: Usar getHours/getMinutes para garantir HH:MM local
-    const bookingTime = booking.date 
-        ? `${String(booking.date.getHours()).padStart(2, '0')}:${String(booking.date.getMinutes()).padStart(2, '0')}` 
-        : undefined;
+    const bookingTime = booking.date ? booking.date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }).slice(0, 5) : undefined;
     
     const payload = {
         user_id: booking.userId,
@@ -960,7 +956,6 @@ export const bookServiceForNewUser = async (details: { name: string; phone: stri
         // --- CORREÇÃO DE FUSO HORÁRIO ---
         const dateObj = details.date;
         const bookingDate = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
-        // CORREÇÃO: Usar getHours/getMinutes para garantir HH:MM local
         const bookingTime = `${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}`;
         // --------------------------------
         
