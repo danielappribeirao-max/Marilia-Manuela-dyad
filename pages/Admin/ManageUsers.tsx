@@ -85,21 +85,15 @@ export default function AdminManageUsers() {
 
         if (searchQuery.trim() !== '') {
             const lowercasedQuery = searchQuery.toLowerCase();
-            // Remove a formatação da query de busca para comparar com os dados brutos
-            const unformattedQuery = searchQuery.replace(/\D/g, ''); 
-            
             filtered = filtered.filter(u => 
-                // Busca por nome ou email (case insensitive)
                 u.name.toLowerCase().includes(lowercasedQuery) || 
                 u.email.toLowerCase().includes(lowercasedQuery) ||
-                // Busca por telefone (apenas dígitos)
-                u.phone.replace(/\D/g, '').includes(unformattedQuery) ||
-                // Busca por CPF (apenas dígitos)
-                u.cpf.replace(/\D/g, '').includes(unformattedQuery)
+                u.phone.replace(/\D/g, '').includes(searchQuery.replace(/\D/g, '')) ||
+                u.cpf.replace(/\D/g, '').includes(searchQuery.replace(/\D/g, ''))
             );
         }
         
-        // Ordenação alfabética por nome
+        // Adiciona ordenação alfabética por nome
         filtered.sort((a, b) => a.name.localeCompare(b.name));
         
         return filtered;
