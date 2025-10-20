@@ -692,8 +692,13 @@ export const addOrUpdateBooking = async (booking: Partial<Booking> & { serviceNa
     }
     
     // Formata a data e hora para o formato do banco de dados (YYYY-MM-DD e HH:MM)
+    // Usamos UTC para a data (YYYY-MM-DD) e extraímos a hora local (HH:MM)
     const dateObj = booking.date;
+    
+    // Garante que a data seja YYYY-MM-DD (parte da data local)
     const bookingDate = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
+    
+    // Garante que a hora seja HH:MM (parte da hora local)
     const bookingTime = `${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}`;
     
     const payload = {
