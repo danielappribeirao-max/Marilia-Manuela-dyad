@@ -11,7 +11,7 @@ interface BookingModalProps {
   onConfirmBooking: (details: { date: Date, professionalId: string }) => Promise<{ success: boolean, error: string | null }>;
   professionals: User[];
   clinicOperatingHours: OperatingHours | undefined;
-  clinicHolidayExceptions: HolidayException[] | undefined;
+  clinicHolidayExceptions: HolidayException | undefined;
   tempClientData?: { name: string; phone: string; description: string } | null; // Dados temporários do cliente
   newlyCreatedUserEmail?: string | null; // Email do usuário recém-criado
 }
