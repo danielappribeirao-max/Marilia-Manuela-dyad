@@ -94,14 +94,14 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
         if (formData.date && formData.time && formData.professionalId) {
             if (!isClinicOpen) {
                 newErrors.date = 'A clínica está fechada neste dia.';
-            } else {
+            } else if (!availableTimes.includes(formData.time) && !isEditing) {
+                // Se estiver editando, o horário pode ser o original, que não está na lista de disponíveis
+                // porque o slot original foi ignorado no useAvailability.
+                // Se o horário selecionado não for o horário original E não estiver na lista de disponíveis, é um erro.
                 const originalTime = booking ? new Date(booking.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }).slice(0, 5) : null;
                 
-                // Se for um novo agendamento OU se for edição e o horário for diferente do original, verifica a disponibilidade.
-                if (!isEditing || (isEditing && formData.time !== originalTime)) {
-                    if (!availableTimes.includes(formData.time)) {
-                        newErrors.time = 'Horário indisponível. O profissional está ocupado ou o horário está fora do expediente/almoço.';
-                    }
+                if (formData.time !== originalTime && !availableTimes.includes(formData.time)) {
+                    newErrors.time = 'Horário indisponível. O profissional está ocupado ou o horário está fora do expediente/almoço.';
                 }
             }
         }

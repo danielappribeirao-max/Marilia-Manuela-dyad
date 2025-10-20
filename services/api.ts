@@ -686,15 +686,8 @@ export const getOccupiedSlots = async (date: string): Promise<{ id: number, prof
 };
 
 export const addOrUpdateBooking = async (booking: Partial<Booking> & { serviceName?: string }): Promise<Booking | null> => {
-    if (!booking.date) {
-        console.error("Booking date is required.");
-        return null;
-    }
-    
-    // Formata a data e hora para o formato do banco de dados (YYYY-MM-DD e HH:MM)
-    const dateObj = booking.date;
-    const bookingDate = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
-    const bookingTime = `${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}`;
+    const bookingDate = booking.date ? booking.date.toISOString().split('T')[0] : undefined;
+    const bookingTime = booking.date ? booking.date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }).slice(0, 5) : undefined;
     
     const payload = {
         user_id: booking.userId,
