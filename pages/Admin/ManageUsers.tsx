@@ -77,7 +77,8 @@ export default function AdminManageUsers() {
     };
     
     const filteredUsers = useMemo(() => {
-        let filtered = users;
+        // Cria uma cópia do array antes de filtrar/ordenar
+        let filtered = [...users];
 
         if (filterRole !== 'all') {
             filtered = filtered.filter(u => u.role === filterRole);
