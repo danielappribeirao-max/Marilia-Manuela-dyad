@@ -93,6 +93,9 @@ export default function AdminManageUsers() {
             );
         }
         
+        // Adiciona ordenação alfabética por nome
+        filtered.sort((a, b) => a.name.localeCompare(b.name));
+        
         return filtered;
     }, [users, filterRole, searchQuery]);
 
