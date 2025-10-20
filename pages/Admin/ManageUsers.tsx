@@ -84,21 +84,16 @@ export default function AdminManageUsers() {
 
         if (searchQuery.trim() !== '') {
             const lowercasedQuery = searchQuery.toLowerCase();
-            // Remove a formatação da query de busca para comparar com os dados brutos
             const unformattedQuery = searchQuery.replace(/\D/g, ''); 
             
             filtered = filtered.filter(u => 
-                // Busca por nome ou email (case insensitive)
                 u.name.toLowerCase().includes(lowercasedQuery) || 
                 u.email.toLowerCase().includes(lowercasedQuery) ||
-                // Busca por telefone (apenas dígitos)
                 (u.phone && u.phone.replace(/\D/g, '').includes(unformattedQuery)) ||
-                // Busca por CPF (apenas dígitos)
                 (u.cpf && u.cpf.replace(/\D/g, '').includes(unformattedQuery))
             );
         }
         
-        // Ordenação alfabética por nome
         filtered.sort((a, b) => a.name.localeCompare(b.name));
         
         return filtered;
@@ -136,7 +131,8 @@ export default function AdminManageUsers() {
             
             {/* Search and Filter Bar */}
             <div className="mb-6 flex flex-col sm:flex-row gap-4">
-                <div className="relative flex-grow">
+                {/* Envolvendo o campo de busca em um formulário para prevenir o comportamento padrão do Enter */}
+                <form onSubmit={(e) => e.preventDefault()} className="relative flex-grow">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                     <input
                         type="text"
@@ -145,7 +141,7 @@ export default function AdminManageUsers() {
                         onChange={(e) => setSearchQuery(e.target.value)}
                         className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-pink-300 transition-shadow"
                     />
-                </div>
+                </form>
                 <select
                     value={filterRole}
                     onChange={(e) => setFilterRole(e.target.value as Role | 'all')}
