@@ -30,7 +30,7 @@ export default function Footer() {
             <h4 className="font-semibold mb-4 text-lg">Contato</h4>
             <p className="text-gray-400">Av. Maria de Jesus Condeixa n. 600 sala 326</p>
             <p className="text-gray-400">Ribeirão Preto, SP</p>
-            <p className="text-gray-400 mt-2">contato@mariliamanuela.com</p>
+            <p className="text-gray-400 mt-2">contato@mariliamanuela.com.br</p>
             <p className="text-gray-400">(16) 99314-0852</p>
           </div>
           <div>
