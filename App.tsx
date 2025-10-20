@@ -9,9 +9,7 @@ import LoginPage from './pages/LoginPage';
 import UserDashboardPage from './pages/UserDashboardPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
 import BookingModal from './components/BookingModal';
-import PurchaseConfirmationModal from './components/PurchaseConfirmationModal';
-import PackagePurchaseConfirmationModal from './components/PackagePurchaseConfirmationModal';
-import PostPurchaseModal from './components/PostPurchaseModal';
+// Removendo modais de compra: PurchaseConfirmationModal, PackagePurchaseConfirmationModal, PostPurchaseModal
 import QuickRegistrationModal from './components/QuickRegistrationModal';
 import { supabase } from './supabase/client';
 import { FREE_CONSULTATION_SERVICE_ID } from './constants';
@@ -70,12 +68,9 @@ function AppContent() {
   const [professionals, setProfessionals] = useState<User[]>([]);
   const [clinicSettings, setClinicSettings] = useState<ClinicSettings>(api.DEFAULT_CLINIC_SETTINGS); 
   
-  const [bookingService, setBookingService] = useState<Service | null>(null);
-  const [purchaseConfirmation, setPurchaseConfirmation] = useState<{ service: Service, quantity: number } | null>(null);
-  const [purchasePackageConfirmation, setPurchasePackageConfirmation] = useState<ServicePackage | null>(null);
-  const [creditBookingService, setCreditBookingService] = useState<Service | null>(null);
+  // Estado para o serviço a ser agendado (substitui bookingService e creditBookingService)
+  const [serviceToBook, setServiceToBook] = useState<Service | null>(null); 
   const [reschedulingBooking, setReschedulingBooking] = useState<Booking | null>(null);
-  const [postPurchaseService, setPostPurchaseService] = useState<Service | null>(null);
   
   const [isQuickRegisterModalOpen, setIsQuickRegisterModalOpen] = useState(false);
   const [tempClientData, setTempClientData] = useState<{ name: string; phone: string; description: string } | null>(null);
@@ -212,183 +207,101 @@ function AppContent() {
   }, []);
 
   const handleCloseModals = () => {
-    setBookingService(null);
-    setPurchaseConfirmation(null);
-    setPurchasePackageConfirmation(null);
-    setCreditBookingService(null);
+    setServiceToBook(null);
     setReschedulingBooking(null);
-    setPostPurchaseService(null);
     setIsQuickRegisterModalOpen(false);
+    setTempClientData(null); // Limpa dados temporários
     setNewlyCreatedUserEmail(null);
   };
 
+  // --- NOVO FLUXO DE AGENDAMENTO UNIFICADO ---
+  const handleBookService = useCallback((service: Service) => {
+      if (!currentUser) {
+          // Se não estiver logado, abre o modal de cadastro rápido
+          setServiceToBook(service);
+          setIsQuickRegisterModalOpen(true);
+      } else {
+          // Se estiver logado, abre o modal de agendamento direto
+          setServiceToBook(service);
+      }
+  }, [currentUser]);
+  
   const handleStartFreeConsultation = useCallback(() => {
       const freeConsultationService = services.find(s => s.id === FREE_CONSULTATION_SERVICE_ID);
       if (!freeConsultationService) {
           alert("Serviço de consulta gratuita não encontrado.");
           return;
       }
-      
-      if (currentUser) {
-          setBookingService(freeConsultationService);
-      } else {
-          setIsQuickRegisterModalOpen(true);
-      }
-  }, [currentUser, services]);
-
-  const handlePurchaseOrBook = useCallback((service: Service, quantity: number) => {
-    if (service.id === FREE_CONSULTATION_SERVICE_ID) {
-        handleStartFreeConsultation();
-        return;
-    }
-    
-    if (!currentUser) {
-        setCurrentPage(Page.LOGIN);
-        return;
-    }
-    setPurchaseConfirmation({ service, quantity });
-  }, [currentUser, handleStartFreeConsultation]);
+      handleBookService(freeConsultationService);
+  }, [services, handleBookService]);
   
-  const handlePurchasePackage = useCallback((pkg: ServicePackage) => {
-    if (!currentUser) {
-        setCurrentPage(Page.LOGIN);
-        return;
-    }
-    setPurchasePackageConfirmation(pkg);
-  }, [currentUser]);
-
-  // --- FUNÇÕES DE COMPRA REVERTIDAS PARA ADIÇÃO DIRETA DE CRÉDITOS ---
-  const handleConfirmPurchase = useCallback(async () => {
-    if (!purchaseConfirmation || !currentUser) return;
-    const { service, quantity } = purchaseConfirmation;
-    
-    setPurchaseConfirmation(null); // Fecha o modal imediatamente
-
-    const updatedUser = await api.addCreditsToUser(currentUser.id, service.id, quantity, service.sessions);
-
-    if (updatedUser) {
-        setCurrentUser(updatedUser);
-        setPostPurchaseService(service);
-    } else {
-        alert("Erro ao processar a compra e adicionar créditos. Tente novamente.");
-    }
-  }, [purchaseConfirmation, currentUser]);
-
-  const handleConfirmPackagePurchase = useCallback(async () => {
-    if (!purchasePackageConfirmation || !currentUser) return;
-    const pkg = purchasePackageConfirmation;
-    
-    setPurchasePackageConfirmation(null); // Fecha o modal imediatamente
-
-    const updatedUser = await api.addPackageCreditsToUser(currentUser.id, pkg);
-
-    if (updatedUser) {
-        setCurrentUser(updatedUser);
-        // Para o modal pós-compra, usamos o primeiro serviço do pacote como referência
-        const firstServiceInPackage = services.find(s => s.id === pkg.services[0]?.serviceId);
-        if (firstServiceInPackage) {
-            setPostPurchaseService(firstServiceInPackage);
-        } else {
-            alert("Pacote comprado com sucesso, mas não foi possível encontrar o serviço de referência para agendamento.");
-            setCurrentPage(Page.USER_DASHBOARD);
-        }
-    } else {
-        alert("Erro ao processar a compra do pacote e adicionar créditos. Tente novamente.");
-    }
-  }, [purchasePackageConfirmation, currentUser, services]);
-  // ------------------------------------------------------------------
-
-  const handleStartCreditBooking = useCallback((service: Service) => {
-    if(currentUser) setCreditBookingService(service);
-  }, [currentUser]);
-
   const handleStartReschedule = useCallback((booking: Booking) => {
     setReschedulingBooking(booking);
   }, []);
   
   const handleQuickRegisterAndBook = useCallback((data: { name: string; phone: string; description: string }) => {
-      const freeConsultationService = services.find(s => s.id === FREE_CONSULTATION_SERVICE_ID);
-      if (!freeConsultationService) {
-          alert("Serviço de consulta gratuita não encontrado.");
-          return;
-      }
+      if (!serviceToBook) return;
+      
       setTempClientData(data);
       setIsQuickRegisterModalOpen(false);
-      setBookingService(freeConsultationService);
-  }, [services]);
+      // O modal de agendamento será aberto automaticamente porque serviceToBook está definido
+  }, [serviceToBook]);
 
   const handleConfirmFinalBooking = useCallback(async (details: { date: Date, professionalId: string }): Promise<{ success: boolean, error: string | null }> => {
-    if (!currentUser && !tempClientData) return { success: false, error: "Usuário não autenticado." };
-    
-    const serviceToBook = bookingService || creditBookingService || (reschedulingBooking ? services.find(s => s.id === reschedulingBooking.serviceId) : null);
-    if (!serviceToBook) return { success: false, error: "Serviço não selecionado." };
+    const serviceToUse = serviceToBook || (reschedulingBooking ? services.find(s => s.id === reschedulingBooking.serviceId) : null);
+    if (!serviceToUse) return { success: false, error: "Serviço não selecionado." };
 
     if (reschedulingBooking) {
+      // 1. Reagendamento (Usuário logado)
       const updatedBooking = { ...reschedulingBooking, ...details, status: 'confirmed' as const };
       const result = await api.addOrUpdateBooking(updatedBooking);
       if(result) return { success: true, error: null };
       return { success: false, error: "Falha ao reagendar." };
-    } else {
-      if (currentUser) {
-          const newBooking: Omit<Booking, 'id'> = { 
-              userId: currentUser.id, 
-              serviceId: serviceToBook.id, 
-              professionalId: details.professionalId, 
-              date: details.date, 
-              status: 'confirmed', 
-              duration: serviceToBook.duration,
-              serviceName: serviceToBook.name,
-          };
-          const result = await api.addOrUpdateBooking(newBooking);
+    } else if (currentUser) {
+      // 2. Novo Agendamento (Usuário logado)
+      const newBooking: Omit<Booking, 'id'> = { 
+          userId: currentUser.id, 
+          serviceId: serviceToUse.id, 
+          professionalId: details.professionalId, 
+          date: details.date, 
+          status: 'confirmed', 
+          duration: serviceToUse.duration,
+          serviceName: serviceToUse.name,
+      };
+      const result = await api.addOrUpdateBooking(newBooking);
+      
+      // Não há dedução de crédito, pois não há compra/crédito no novo fluxo
+      return { success: !!result, error: result ? null : "Falha ao criar agendamento." };
           
-          if (result && creditBookingService) {
-            const updatedUser = await api.deductCreditFromUser(currentUser.id, creditBookingService.id);
-            if (updatedUser) setCurrentUser(updatedUser);
-          }
-          return { success: !!result, error: result ? null : "Falha ao criar agendamento." };
-          
-      } else if (tempClientData && serviceToBook.id === FREE_CONSULTATION_SERVICE_ID) {
-          // Fluxo de agendamento de consulta gratuita para novo usuário
-          const result = await api.bookFreeConsultationForNewUser({
-              name: tempClientData.name,
-              phone: tempClientData.phone,
-              description: tempClientData.description,
-              date: details.date,
-              professionalId: details.professionalId,
-              serviceId: serviceToBook.id,
-              serviceName: serviceToBook.name,
-              duration: serviceToBook.duration,
-          });
-          
-          if (result.success) {
-              // Limpa tempClientData e define newlyCreatedUserEmail
-              setTempClientData(null);
-              if (result.tempEmail) {
-                  setNewlyCreatedUserEmail(result.tempEmail);
-              }
-              refreshAdminData();
-              return { success: true, error: null };
-          } else {
-              // Se falhar, mantemos tempClientData para que o usuário possa tentar novamente
-              return { success: false, error: result.error };
-          }
-      }
+    } else if (tempClientData) {
+        // 3. Novo Agendamento (Usuário não logado via Cadastro Rápido)
+        const result = await api.bookServiceForNewUser({
+            name: tempClientData.name,
+            phone: tempClientData.phone,
+            description: tempClientData.description,
+            date: details.date,
+            professionalId: details.professionalId,
+            serviceId: serviceToUse.id,
+            serviceName: serviceToUse.name,
+            duration: serviceToUse.duration,
+        });
+        
+        if (result.success) {
+            // Limpa tempClientData e define newlyCreatedUserEmail
+            setTempClientData(null);
+            if (result.tempEmail) {
+                setNewlyCreatedUserEmail(result.tempEmail);
+            }
+            refreshAdminData();
+            return { success: true, error: null };
+        } else {
+            // Se falhar, mantemos tempClientData para que o usuário possa tentar novamente
+            return { success: false, error: result.error };
+        }
     }
     return { success: false, error: "Erro desconhecido no fluxo de agendamento." };
-  }, [currentUser, bookingService, creditBookingService, reschedulingBooking, tempClientData, services, refreshAdminData]);
-
-  
-  const handleScheduleNow = () => {
-      if (postPurchaseService) {
-          setCreditBookingService(postPurchaseService);
-          setPostPurchaseService(null);
-      }
-  };
-  
-  const handleScheduleLater = () => {
-      setPostPurchaseService(null);
-      setCurrentPage(Page.USER_DASHBOARD);
-  };
+  }, [currentUser, serviceToBook, reschedulingBooking, tempClientData, services, refreshAdminData]);
+  // ------------------------------------------------------------------
 
   const addOrUpdateService = useCallback(async (service: Partial<Service>) => {
     const savedService = await api.addOrUpdateService(service);
@@ -482,16 +395,16 @@ function AppContent() {
         return <div className="flex justify-center items-center h-screen"><div className="animate-spin rounded-full h-32 w-32 border-b-2 border-pink-500"></div></div>
     }
     switch (currentPage) {
-      case Page.HOME: return <HomePage onPurchaseOrBook={handlePurchaseOrBook} onPurchasePackage={handlePurchasePackage} onStartFreeConsultation={handleStartFreeConsultation} />;
-      case Page.SERVICES: return <ServicesPage onPurchaseOrBook={handlePurchaseOrBook} onPurchasePackage={handlePurchasePackage} />;
+      case Page.HOME: return <HomePage onBook={handleBookService} onStartFreeConsultation={handleStartFreeConsultation} />;
+      case Page.SERVICES: return <ServicesPage onBook={handleBookService} />;
       case Page.LOGIN: return <LoginPage />;
-      case Page.USER_DASHBOARD: return <UserDashboardPage onBookWithCredit={handleStartCreditBooking} onReschedule={handleStartReschedule} />;
+      case Page.USER_DASHBOARD: return <UserDashboardPage onBookWithCredit={handleBookService} onReschedule={handleStartReschedule} />;
       case Page.ADMIN_DASHBOARD: return <AdminDashboardPage adminDataRefreshKey={adminDataRefreshKey} />;
-      default: return <HomePage onPurchaseOrBook={handlePurchaseOrBook} onPurchasePackage={handlePurchasePackage} onStartFreeConsultation={handleStartFreeConsultation} />;
+      default: return <HomePage onBook={handleBookService} onStartFreeConsultation={handleStartFreeConsultation} />;
     }
   };
 
-  const serviceForBookingModal = bookingService || creditBookingService || (reschedulingBooking ? services.find(s => s.id === reschedulingBooking.serviceId) : null);
+  const serviceForBookingModal = serviceToBook || (reschedulingBooking ? services.find(s => s.id === reschedulingBooking.serviceId) : null);
 
   return (
     <AppContext.Provider value={appContextValue}>
@@ -503,7 +416,7 @@ function AppContent() {
             service={serviceForBookingModal} 
             booking={reschedulingBooking} 
             onClose={handleCloseModals} 
-            isCreditBooking={!!creditBookingService} 
+            isCreditBooking={false} // Sempre false agora
             onConfirmBooking={handleConfirmFinalBooking} 
             professionals={professionals} 
             clinicOperatingHours={clinicSettings.operatingHours} 
@@ -511,9 +424,7 @@ function AppContent() {
             tempClientData={tempClientData} 
             newlyCreatedUserEmail={newlyCreatedUserEmail}
         />}
-        {purchaseConfirmation && <PurchaseConfirmationModal service={purchaseConfirmation.service} quantity={purchaseConfirmation.quantity} onConfirm={handleConfirmPurchase} onClose={handleCloseModals} />}
-        {purchasePackageConfirmation && <PackagePurchaseConfirmationModal servicePackage={purchasePackageConfirmation} services={services} onConfirm={handleConfirmPackagePurchase} onClose={handleCloseModals} />}
-        {postPurchaseService && <PostPurchaseModal service={postPurchaseService} onScheduleNow={handleScheduleNow} onScheduleLater={handleScheduleLater} />}
+        {/* Removendo modais de compra */}
         {isQuickRegisterModalOpen && <QuickRegistrationModal onClose={handleCloseModals} onRegister={handleQuickRegisterAndBook} />}
         <a href="https://wa.me/5516993140852" target="_blank" rel="noopener noreferrer" className={`fixed bottom-6 right-6 bg-green-500 rounded-full p-3 shadow-lg hover:bg-green-600 transition-transform duration-300 transform ${showWhatsApp ? 'scale-100' : 'scale-0'}`} aria-label="Contact us on WhatsApp"><WhatsAppIcon /></a>
       </div>

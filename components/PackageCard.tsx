@@ -1,13 +1,24 @@
 import React from 'react';
 import { ServicePackage, Service } from '../types';
+import { useApp } from '../App';
+import { Page } from '../types';
 
 interface PackageCardProps {
   servicePackage: ServicePackage;
-  onPurchase: (pkg: ServicePackage) => void;
+  // Removendo onPurchase
   services: Service[]; // To look up service names
 }
 
-const PackageCard: React.FC<PackageCardProps> = ({ servicePackage, onPurchase, services }) => {
+const PackageCard: React.FC<PackageCardProps> = ({ servicePackage, services }) => {
+  const { setCurrentPage } = useApp();
+  
+  // Se o pacote não pode ser comprado, o botão deve levar para a página de contato/agendamento geral
+  const handleBook = () => {
+      alert(`Para agendar um pacote, por favor, entre em contato conosco. Preço: R$ ${servicePackage.price.toFixed(2).replace('.', ',')}`);
+      // Redireciona para a página de serviços para que o usuário possa agendar um serviço individual ou entrar em contato
+      setCurrentPage(Page.SERVICES);
+  };
+
   return (
     <div className="bg-white rounded-lg shadow-lg overflow-hidden transform hover:-translate-y-2 transition-transform duration-300 flex flex-col">
       <img src={servicePackage.image} alt={servicePackage.name} className="w-full h-48 object-cover" />
@@ -34,10 +45,10 @@ const PackageCard: React.FC<PackageCardProps> = ({ servicePackage, onPurchase, s
           </div>
 
           <button 
-            onClick={() => onPurchase(servicePackage)}
+            onClick={handleBook}
             className="w-full bg-gray-800 text-white py-2 rounded-full font-semibold hover:bg-pink-500 transition-colors duration-300"
           >
-            Comprar Pacote
+            Agendar/Consultar Pacote
           </button>
         </div>
       </div>

@@ -5,10 +5,10 @@ import { Booking, User, Service } from '../types';
 import EditProfileModal from '../components/EditProfileModal';
 import ConfirmationModal from '../components/ConfirmationModal';
 import UserBookingCard from '../components/UserBookingCard';
-import { CreditCard, Calendar, History } from 'lucide-react';
+import { Calendar, History } from 'lucide-react'; // Removendo CreditCard
 
 interface UserDashboardPageProps {
-    onBookWithCredit: (service: Service) => void;
+    onBookWithCredit: (service: Service) => void; // Mantido para compatibilidade, mas não usado para crédito
     onReschedule: (booking: Booking) => void;
 }
 
@@ -57,9 +57,7 @@ export default function UserDashboardPage({ onBookWithCredit, onReschedule }: Us
                 const service = services.find(s => s.id === booking.serviceId);
                 
                 // 2. Lógica de devolução de crédito:
-                // Assumimos que se o serviço tem 'sessions' definido (o que é o caso de todos os serviços compráveis),
-                // o agendamento consumiu 1 crédito, e este deve ser devolvido.
-                
+                // Mantida apenas para o caso de o usuário ter créditos antigos no perfil (Admin pode ter adicionado)
                 let creditReturned = false;
                 if (service && service.sessions !== undefined) {
                     const updatedUser = await api.returnCreditToUser(currentUser.id, service.id);
@@ -137,12 +135,12 @@ export default function UserDashboardPage({ onBookWithCredit, onReschedule }: Us
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {/* Main Content */}
                     <div className="lg:col-span-2 space-y-8">
-                        {/* Credits Section */}
+                        {/* Credits Section (Mantida, mas adaptada para agendamento direto) */}
                         {userCredits && userCredits.length > 0 && (
                             <section className="bg-white p-6 rounded-xl shadow-lg border border-gray-100">
                                 <div className="flex items-center gap-3 mb-4">
-                                    <CreditCard className="w-6 h-6 text-pink-500" />
-                                    <h2 className="text-2xl font-bold">Meus Créditos</h2>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6 text-pink-500"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+                                    <h2 className="text-2xl font-bold">Créditos de Sessões</h2>
                                 </div>
                                 <div className="space-y-4">
                                     {userCredits.map(([serviceId, count]) => {
@@ -154,6 +152,7 @@ export default function UserDashboardPage({ onBookWithCredit, onReschedule }: Us
                                                     <h3 className="font-bold text-gray-800">{service.name}</h3>
                                                     <p className="text-green-600 font-semibold text-sm">{count as number} {(count as number) > 1 ? 'sessões restantes' : 'sessão restante'}</p>
                                                 </div>
+                                                {/* O botão agora chama onBookWithCredit, que no App.tsx chama handleBookService (agendamento normal) */}
                                                 <button onClick={() => onBookWithCredit(service)} className="px-5 py-2 bg-pink-500 text-white rounded-full font-semibold hover:bg-pink-600 transition-colors text-sm whitespace-nowrap">Agendar Agora</button>
                                             </div>
                                         );

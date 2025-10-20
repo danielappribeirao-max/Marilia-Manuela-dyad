@@ -5,11 +5,10 @@ import PackageCard from '../components/PackageCard';
 import { useApp } from '../App';
 
 interface ServicesPageProps {
-    onPurchaseOrBook: (service: Service, quantity: number) => void;
-    onPurchasePackage: (pkg: ServicePackage) => void;
+    onBook: (service: Service) => void; // Alterado para onBook
 }
 
-export default function ServicesPage({ onPurchaseOrBook, onPurchasePackage }: ServicesPageProps) {
+export default function ServicesPage({ onBook }: ServicesPageProps) {
     const { services, packages } = useApp();
     const [activeTab, setActiveTab] = useState<'services' | 'packages'>('services');
     const [selectedCategory, setSelectedCategory] = useState('Todos');
@@ -99,7 +98,7 @@ export default function ServicesPage({ onPurchaseOrBook, onPurchasePackage }: Se
                             {filteredServices.length > 0 ? (
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
                                     {filteredServices.map(service => (
-                                        <ServiceCard key={service.id} service={service} onPurchaseOrBook={onPurchaseOrBook} />
+                                        <ServiceCard key={service.id} service={service} onBook={onBook} />
                                     ))}
                                 </div>
                             ) : (
@@ -114,7 +113,7 @@ export default function ServicesPage({ onPurchaseOrBook, onPurchasePackage }: Se
                         <div>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                                 {packages.map(pkg => (
-                                    <PackageCard key={pkg.id} servicePackage={pkg} onPurchase={onPurchasePackage} services={services} />
+                                    <PackageCard key={pkg.id} servicePackage={pkg} services={services} />
                                 ))}
                             </div>
                         </div>

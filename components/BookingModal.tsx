@@ -6,21 +6,20 @@ import * as api from '../services/api'; // Importar a API
 interface BookingModalProps {
   service: Service;
   onClose: () => void;
-  isCreditBooking?: boolean;
+  isCreditBooking?: boolean; // Mantido, mas será sempre false no App.tsx
   booking?: Booking | null;
-  // CORREÇÃO: A tipagem deve incluir tempEmail no retorno para o fluxo de consulta gratuita
   onConfirmBooking: (details: { date: Date, professionalId: string }) => Promise<{ success: boolean, error: string | null }>;
   professionals: User[];
   clinicOperatingHours: OperatingHours | undefined;
-  clinicHolidayExceptions: HolidayException[] | undefined; // CORRIGIDO: Deve ser um array
-  tempClientData?: { name: string; phone: string; description: string } | null; // Novo: Dados temporários do cliente
-  newlyCreatedUserEmail?: string | null; // NOVO: Email do usuário recém-criado
+  clinicHolidayExceptions: HolidayException[] | undefined;
+  tempClientData?: { name: string; phone: string; description: string } | null; // Dados temporários do cliente
+  newlyCreatedUserEmail?: string | null; // Email do usuário recém-criado
 }
 
 const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, isCreditBooking = false, booking = null, onConfirmBooking, professionals, clinicOperatingHours, clinicHolidayExceptions, tempClientData = null, newlyCreatedUserEmail = null }) => {
   const isRescheduling = !!booking;
   const isFreeConsultation = service.id === '00000000-0000-0000-0000-000000000000'; // Usar o ID da constante
-  const isNewUserFreeBooking = isFreeConsultation && !!tempClientData;
+  const isNewUserQuickBooking = !!tempClientData; // Novo: Agendamento rápido para novo usuário
 
   const [step, setStep] = useState(1);
   
@@ -39,7 +38,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, isCreditB
   const [selectedProfessionalId, setSelectedProfessionalId] = useState<string | null>(booking?.professionalId || null);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [bookingError, setBookingError] = useState<string | null>(null); // NOVO: Estado para erro específico
+  const [bookingError, setBookingError] = useState<string | null>(null);
 
   const serviceDuration = service.duration;
   const minBookingDate = useMemo(() => new Date().toISOString().split('T')[0], []);
@@ -98,7 +97,7 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, isCreditB
     if (result.success) {
         setShowConfirmation(true);
         // Fecha o modal após a confirmação e um breve delay
-        setTimeout(onClose, isNewUserFreeBooking ? 5000 : 3000); 
+        setTimeout(onClose, isNewUserQuickBooking ? 5000 : 3000); 
     } else {
         // Exibe o erro específico retornado pelo App.tsx (que veio da Edge Function)
         setBookingError(result.error || "Ocorreu um erro desconhecido ao confirmar o agendamento.");
@@ -116,16 +115,14 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, isCreditB
                 <svg className="w-16 h-16 mx-auto text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                 <h3 className="text-2xl font-bold mt-4">{isRescheduling ? 'Agendamento Reagendado!' : 'Agendamento Confirmado!'}</h3>
                 <p className="text-gray-600 mt-2">
-                    {isNewUserFreeBooking
-                        ? `Sua consulta gratuita foi agendada com sucesso! Entraremos em contato pelo WhatsApp ${tempClientData?.phone}.`
+                    {isNewUserQuickBooking
+                        ? `Seu agendamento para "${service.name}" foi registrado com sucesso! Entraremos em contato pelo WhatsApp ${tempClientData?.phone}.`
                         : isRescheduling
                         ? "Seu agendamento foi atualizado com sucesso. Nos vemos em breve!"
-                        : isCreditBooking 
-                        ? "Um crédito foi utilizado com sucesso. Mal podemos esperar para te ver!" 
-                        : "Você receberá um e-mail com os detalhes. Obrigado por escolher a Marília Manuela!"
+                        : "Seu horário foi reservado. Você receberá um e-mail com os detalhes."
                     }
                 </p>
-                {isNewUserFreeBooking && newlyCreatedUserEmail && (
+                {isNewUserQuickBooking && newlyCreatedUserEmail && (
                     <p className="text-sm text-pink-600 mt-4 font-semibold">
                         Você pode fazer login usando o e-mail temporário (<span className="font-mono">{newlyCreatedUserEmail}</span>) e a senha padrão (senhaPadrao123) para gerenciar seu agendamento.
                     </p>
@@ -160,9 +157,9 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, isCreditB
       case 1: // Date, Time, and Professional
         return (
           <div className="space-y-6">
-            {isNewUserFreeBooking && (
+            {isNewUserQuickBooking && (
                 <div className="bg-pink-50 p-3 rounded-lg text-sm text-pink-800 font-semibold">
-                    Agendando consulta gratuita para: {tempClientData?.name} ({tempClientData?.phone})
+                    Agendando {service.name} para: {tempClientData?.name} ({tempClientData?.phone})
                 </div>
             )}
             <div>
@@ -229,17 +226,21 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, isCreditB
                 <div className="flex justify-between"><span className="font-semibold">Data:</span><span>{selectedDate?.toLocaleDateString('pt-BR')}</span></div>
                 <div className="flex justify-between"><span className="font-semibold">Horário:</span><span>{selectedTime}</span></div>
                 <hr className="my-3"/>
-                {isFreeConsultation ? (
-                    <div className="flex justify-between text-xl font-bold text-gray-800"><span>Custo:</span><span className="text-green-600">GRATUITO</span></div>
-                ) : isRescheduling ? (
-                    <div className="flex justify-between text-xl font-bold text-gray-800"><span>Custo da Alteração:</span><span className="text-green-600">Grátis</span></div>
-                ) : isCreditBooking ? (
-                    <div className="flex justify-between text-xl font-bold text-gray-800"><span>Custo:</span><span className="text-green-600">1 Crédito</span></div>
-                ) : (
-                    <div className="flex justify-between text-xl font-bold text-gray-800"><span>Total:</span><span className="text-pink-600">R$ {service.price.toFixed(2).replace('.', ',')}</span></div>
-                )}
+                <div className="flex justify-between text-xl font-bold text-gray-800">
+                    <span>Custo:</span>
+                    <span className={`${isFreeConsultation ? 'text-green-600' : 'text-pink-600'}`}>
+                        {isFreeConsultation ? 'GRATUITO' : `R$ ${service.price.toFixed(2).replace('.', ',')}`}
+                    </span>
+                </div>
             </div>
-            {!isCreditBooking && !isRescheduling && !isFreeConsultation && <p className="text-xs text-gray-500 mt-4 text-center">O pagamento será processado de forma segura. Após a confirmação, o horário será reservado para você.</p>}
+            <p className="text-xs text-gray-500 mt-4 text-center">
+                {isNewUserQuickBooking 
+                    ? "Seu agendamento será registrado e um usuário temporário será criado."
+                    : isRescheduling
+                    ? "Confirme as alterações para reagendar."
+                    : "Seu horário será reservado. O pagamento será acertado na clínica."
+                }
+            </p>
           </div>
         );
       default: return null;

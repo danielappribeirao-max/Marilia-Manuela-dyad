@@ -6,12 +6,11 @@ import { useApp } from '../App';
 import { Page } from '../types';
 
 interface HomePageProps {
-    onPurchaseOrBook: (service: Service, quantity: number) => void;
-    onPurchasePackage: (pkg: ServicePackage) => void;
+    onBook: (service: Service) => void; // Alterado para onBook
     onStartFreeConsultation: () => void;
 }
 
-export default function HomePage({ onPurchaseOrBook, onPurchasePackage, onStartFreeConsultation }: HomePageProps) {
+export default function HomePage({ onBook, onStartFreeConsultation }: HomePageProps) {
   const { setCurrentPage, services, packages, heroImageUrl, aboutImageUrl, clinicSettings } = useApp();
   
   // Filtra os serviços em destaque com base nas configurações
@@ -32,7 +31,7 @@ export default function HomePage({ onPurchaseOrBook, onPurchasePackage, onStartF
         <div className="absolute inset-0 bg-black bg-opacity-40"></div>
         <div className="relative container mx-auto px-6 h-full flex flex-col justify-center items-start">
           <h1 className="text-5xl md:text-6xl font-bold leading-tight">{clinicSettings.heroText}</h1>
-          <p className="mt-4 text-xl max-w-lg">{clinicSettings.heroSubtitle}</p> {/* AGORA DINÂMICO */}
+          <p className="mt-4 text-xl max-w-lg">{clinicSettings.heroSubtitle}</p>
           <div className="flex flex-col sm:flex-row gap-4 mt-8">
             <button 
               onClick={() => setCurrentPage(Page.SERVICES)}
@@ -55,7 +54,7 @@ export default function HomePage({ onPurchaseOrBook, onPurchasePackage, onStartF
           <p className="text-center text-gray-600 mb-12">Os procedimentos mais amados por nossas clientes.</p>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-10">
             {finalFeaturedServices.map(service => (
-              <ServiceCard key={service.id} service={service} onPurchaseOrBook={onPurchaseOrBook} />
+              <ServiceCard key={service.id} service={service} onBook={onBook} />
             ))}
           </div>
         </div>
@@ -68,7 +67,7 @@ export default function HomePage({ onPurchaseOrBook, onPurchasePackage, onStartF
           <p className="text-center text-gray-600 mb-12">Combinações perfeitas de tratamentos com preços especiais para você.</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-10 max-w-4xl mx-auto">
             {featuredPackages.map(pkg => (
-              <PackageCard key={pkg.id} servicePackage={pkg} onPurchase={onPurchasePackage} services={services} />
+              <PackageCard key={pkg.id} servicePackage={pkg} services={services} />
             ))}
           </div>
         </div>

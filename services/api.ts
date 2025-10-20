@@ -497,7 +497,7 @@ export const deletePackage = async (packageId: string): Promise<void> => {
     }
 };
 
-// --- Funções de Créditos ---
+// --- Funções de Créditos (Mantidas para uso do Admin/Interno) ---
 
 export const addCreditsToUser = async (userId: string, serviceId: string, quantity: number, sessionsPerPackage: number = 1): Promise<User | null> => {
     const user = await getUserProfile(userId);
@@ -683,6 +683,74 @@ export const getOccupiedSlots = async (date: string): Promise<{ id: number, prof
         booking_time: d.booking_time,
         duration: d.duration,
     }));
+};
+
+export const addOrUpdateBooking = async (booking: Partial<Booking> & { serviceName?: string }): Promise<Booking | null> => {
+    const bookingDate = booking.date ? booking.date.toISOString().split('T')[0] : undefined;
+    const bookingTime = booking.date ? booking.date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }).slice(0, 5) : undefined;
+    
+    const payload = {
+        user_id: booking.userId,
+        service_id: booking.serviceId,
+        professional_id: booking.professionalId,
+        booking_date: bookingDate,
+        booking_time: bookingTime,
+        status: booking.status,
+        notes: booking.comment,
+        duration: booking.duration,
+        service_name: booking.serviceName,
+    };
+
+    if (booking.id) {
+        // Atualização
+        const { data, error } = await supabase
+            .from('bookings')
+            .update(payload)
+            .eq('id', booking.id)
+            .select('*')
+            .single();
+
+        if (error) {
+            console.error("Error updating booking:", error);
+            return null;
+        }
+        
+        return {
+            id: String(data.id),
+            userId: data.user_id,
+            serviceId: data.service_id,
+            professionalId: data.professional_id,
+            date: new Date(`${data.booking_date}T${data.booking_time}:00`),
+            status: data.status as Booking['status'],
+            rating: data.rating,
+            comment: data.notes,
+            duration: data.duration,
+        } as Booking;
+    } else {
+        // Inserção
+        const { data, error } = await supabase
+            .from('bookings')
+            .insert(payload)
+            .select('*')
+            .single();
+
+        if (error) {
+            console.error("Error inserting booking:", error);
+            return null;
+        }
+        
+        return {
+            id: String(data.id),
+            userId: data.user_id,
+            serviceId: data.service_id,
+            professionalId: data.professional_id,
+            date: new Date(`${data.booking_date}T${data.booking_time}:00`),
+            status: data.status as Booking['status'],
+            rating: data.rating,
+            comment: data.notes,
+            duration: data.duration,
+        } as Booking;
+    }
 };
 
 // --- Funções de Configurações da Clínica ---
@@ -881,9 +949,9 @@ export const sendCancellationNotice = async (details: { to: string; message: str
     }
 };
 
-// --- Funções de Agendamento de Consulta Gratuita (Edge Function) ---
+// --- Funções de Agendamento Rápido (Edge Function) ---
 
-export const bookFreeConsultationForNewUser = async (details: { name: string; phone: string; description: string; date: Date; professionalId: string; serviceId: string; serviceName: string; duration: number }): Promise<{ success: boolean, error: string | null, newUserId?: string, tempEmail?: string }> => {
+export const bookServiceForNewUser = async (details: { name: string; phone: string; description: string; date: Date; professionalId: string; serviceId: string; serviceName: string; duration: number }): Promise<{ success: boolean, error: string | null, newUserId?: string, tempEmail?: string }> => {
     try {
         // --- CORREÇÃO DE FUSO HORÁRIO ---
         const dateObj = details.date;
@@ -891,7 +959,7 @@ export const bookFreeConsultationForNewUser = async (details: { name: string; ph
         const bookingTime = `${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}`;
         // --------------------------------
         
-        const { data, error } = await supabase.functions.invoke('book-free-consultation', {
+        const { data, error } = await supabase.functions.invoke('book-service-for-new-user', {
             body: {
                 name: details.name,
                 phone: details.phone.replace(/\D/g, ''), // Envia apenas dígitos
@@ -906,7 +974,7 @@ export const bookFreeConsultationForNewUser = async (details: { name: string; ph
         });
 
         if (error) {
-            console.error("Error invoking book-free-consultation function:", error);
+            console.error("Error invoking book-service-for-new-user function:", error);
             return { success: false, error: error.message };
         }
         
@@ -917,14 +985,14 @@ export const bookFreeConsultationForNewUser = async (details: { name: string; ph
 
         if (!data.success) {
              console.error("Edge Function returned success: false without specific error.");
-             return { success: false, error: "Falha desconhecida ao agendar a consulta. Tente novamente." };
+             return { success: false, error: "Falha desconhecida ao agendar o serviço. Tente novamente." };
         }
 
         return { success: true, error: null, newUserId: data.newUserId, tempEmail: data.tempEmail };
 
     } catch (e) {
-        console.error("Unexpected error during free consultation booking:", e);
-        return { success: false, error: "Erro inesperado ao tentar agendar a consulta gratuita." };
+        console.error("Unexpected error during service booking:", e);
+        return { success: false, error: "Erro inesperado ao tentar agendar o serviço." };
     }
 };
 
