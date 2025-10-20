@@ -40,29 +40,26 @@ serve(async (req) => {
     let userWasCreated = false;
     
     // 1. Tentar encontrar usuário existente pelo telefone na tabela profiles
-    const { data: existingProfile, error: profileLookupError } = await supabaseAdmin
+    const { data: existingProfile } = await supabaseAdmin
         .from('profiles')
         .select('id')
         .eq('phone', phoneDigits)
-        .single();
+        .maybeSingle(); // Usar maybeSingle para evitar erro se não encontrar
 
     if (existingProfile) {
         userId = existingProfile.id;
-        // Se o perfil for encontrado, tentamos buscar o email de autenticação para retornar
+        // Tenta buscar o email de autenticação para retornar
         const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(userId);
         tempEmail = authUser?.user?.email || `${phoneDigits}@mariliamanuela.com`;
-        console.log(`[BOOKING] Usuário existente encontrado por telefone: ${userId}`);
-    } else if (profileLookupError && profileLookupError.code !== 'PGRST116') { // PGRST116 = No rows found
-        console.error("Profile Lookup Error (non-critical):", profileLookupError);
     }
 
-    // 2. Se o usuário não foi encontrado pelo telefone, criar um novo usuário temporário
+    // 2. Se o usuário não foi encontrado, criar um novo usuário temporário
     if (!userId) {
         tempEmail = `${phoneDigits}@mariliamanuela.com`;
         
         const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
             email: tempEmail,
-            password: 'senhaPadrao123', // Usando senha padrão para facilitar o login temporário
+            password: 'senhaPadrao123',
             email_confirm: false,
             user_metadata: {
                 full_name: name,
@@ -71,11 +68,10 @@ serve(async (req) => {
         });
         
         if (authError) {
-            // Se a criação falhar porque o email temporário já existe (agendamento rápido anterior)
+            // Se a criação falhar porque o email temporário já existe, busca o ID existente
             if (authError.message.includes('User already exists')) {
                 const { data: existingUser, error: fetchError } = await supabaseAdmin.auth.admin.getUserByEmail(tempEmail);
                 if (fetchError || !existingUser?.user) {
-                    console.error("Existing User Fetch Error:", fetchError);
                     return new Response(JSON.stringify({ error: "Já existe um agendamento em andamento com este telefone. Por favor, faça login ou use outro telefone." }), {
                         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
                         status: 400,
@@ -83,7 +79,6 @@ serve(async (req) => {
                 }
                 userId = existingUser.user.id;
             } else {
-                console.error("Auth Error:", authError);
                 return new Response(JSON.stringify({ error: `Erro ao criar usuário: ${authError.message}` }), {
                     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
                     status: 400,
@@ -92,12 +87,10 @@ serve(async (req) => {
         } else {
             userId = authData.user.id;
             userWasCreated = true;
-            console.log(`[BOOKING] Novo usuário criado: ${userId}`);
         }
     }
     
     if (!userId) {
-        console.error("Critical Error: User ID not obtained after creation or lookup.");
         return new Response(JSON.stringify({ error: "Erro interno: Não foi possível obter o ID do cliente." }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 500,
@@ -124,19 +117,10 @@ serve(async (req) => {
       .single()
 
     if (bookingError) {
-      console.error("Booking Insert Error:", bookingError);
       return new Response(JSON.stringify({ error: `Erro ao inserir agendamento: ${bookingError.message}.` }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           status: 400,
       });
-    }
-    
-    if (!bookingData) {
-        console.error("Booking Insert Error: Insert operation returned no data.");
-        return new Response(JSON.stringify({ error: "Falha ao registrar o agendamento no banco de dados. Tente novamente." }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 500,
-        });
     }
     
     // 4. Retornar sucesso
@@ -153,7 +137,6 @@ serve(async (req) => {
       status: 200,
     })
   } catch (error) {
-    console.error("Unexpected Edge Function Error:", error);
     return new Response(JSON.stringify({ error: error.message || "Erro interno inesperado no servidor." }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 500,
