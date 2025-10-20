@@ -157,9 +157,13 @@ const BookingModal: React.FC<BookingModalProps> = ({ service, onClose, isCreditB
       case 1: // Date, Time, and Professional
         return (
           <div className="space-y-6">
-            {isNewUserQuickBooking && (
+            {isNewUserQuickBooking ? (
                 <div className="bg-pink-50 p-3 rounded-lg text-sm text-pink-800 font-semibold">
                     Agendando {service.name} para: {tempClientData?.name} ({tempClientData?.phone})
+                </div>
+            ) : (
+                <div className="bg-gray-50 p-3 rounded-lg text-sm text-gray-700 font-semibold">
+                    Você está agendando o serviço: {service.name}
                 </div>
             )}
             <div>

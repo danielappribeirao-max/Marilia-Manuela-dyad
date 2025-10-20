@@ -8,9 +8,10 @@ import { Page } from '../types';
 interface HomePageProps {
     onBook: (service: Service) => void; // Alterado para onBook
     onStartFreeConsultation: () => void;
+    onBookPackage: (pkg: ServicePackage) => void; // Nova prop
 }
 
-export default function HomePage({ onBook, onStartFreeConsultation }: HomePageProps) {
+export default function HomePage({ onBook, onStartFreeConsultation, onBookPackage }: HomePageProps) {
   const { setCurrentPage, services, packages, heroImageUrl, aboutImageUrl, clinicSettings } = useApp();
   
   // Filtra os serviços em destaque com base nas configurações
@@ -67,7 +68,7 @@ export default function HomePage({ onBook, onStartFreeConsultation }: HomePagePr
           <p className="text-center text-gray-600 mb-12">Combinações perfeitas de tratamentos com preços especiais para você.</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-10 max-w-4xl mx-auto">
             {featuredPackages.map(pkg => (
-              <PackageCard key={pkg.id} servicePackage={pkg} services={services} />
+              <PackageCard key={pkg.id} servicePackage={pkg} services={services} onBookPackage={onBookPackage} />
             ))}
           </div>
         </div>

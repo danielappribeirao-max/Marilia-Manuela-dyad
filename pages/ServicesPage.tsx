@@ -6,9 +6,10 @@ import { useApp } from '../App';
 
 interface ServicesPageProps {
     onBook: (service: Service) => void; // Alterado para onBook
+    onBookPackage: (pkg: ServicePackage) => void; // Nova prop
 }
 
-export default function ServicesPage({ onBook }: ServicesPageProps) {
+export default function ServicesPage({ onBook, onBookPackage }: ServicesPageProps) {
     const { services, packages } = useApp();
     const [activeTab, setActiveTab] = useState<'services' | 'packages'>('services');
     const [selectedCategory, setSelectedCategory] = useState('Todos');
@@ -113,7 +114,7 @@ export default function ServicesPage({ onBook }: ServicesPageProps) {
                         <div>
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                                 {packages.map(pkg => (
-                                    <PackageCard key={pkg.id} servicePackage={pkg} services={services} />
+                                    <PackageCard key={pkg.id} servicePackage={pkg} services={services} onBookPackage={onBookPackage} />
                                 ))}
                             </div>
                         </div>

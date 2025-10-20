@@ -9,8 +9,8 @@ import LoginPage from './pages/LoginPage';
 import UserDashboardPage from './pages/UserDashboardPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
 import BookingModal from './components/BookingModal';
-// Removendo modais de compra: PurchaseConfirmationModal, PackagePurchaseConfirmationModal, PostPurchaseModal
 import QuickRegistrationModal from './components/QuickRegistrationModal';
+import PackageBookingSelectionModal from './components/PackageBookingSelectionModal'; // Importado
 import { supabase } from './supabase/client';
 import { FREE_CONSULTATION_SERVICE_ID } from './constants';
 
@@ -75,6 +75,9 @@ function AppContent() {
   const [isQuickRegisterModalOpen, setIsQuickRegisterModalOpen] = useState(false);
   const [tempClientData, setTempClientData] = useState<{ name: string; phone: string; description: string } | null>(null);
   const [newlyCreatedUserEmail, setNewlyCreatedUserEmail] = useState<string | null>(null);
+  
+  // NOVO: Estado para seleção de serviço dentro do pacote
+  const [packageToSelectService, setPackageToSelectService] = useState<ServicePackage | null>(null);
 
   const [showWhatsApp, setShowWhatsApp] = useState(false);
   
@@ -212,6 +215,7 @@ function AppContent() {
     setIsQuickRegisterModalOpen(false);
     setTempClientData(null); // Limpa dados temporários
     setNewlyCreatedUserEmail(null);
+    setPackageToSelectService(null); // Limpa o pacote selecionado
   };
 
   // --- NOVO FLUXO DE AGENDAMENTO UNIFICADO ---
@@ -225,6 +229,16 @@ function AppContent() {
           setServiceToBook(service);
       }
   }, [currentUser]);
+  
+  const handleBookPackage = useCallback((pkg: ServicePackage) => {
+      // Abre o modal de seleção de serviço dentro do pacote
+      setPackageToSelectService(pkg);
+  }, []);
+  
+  const handleSelectServiceFromPackage = useCallback((service: Service) => {
+      setPackageToSelectService(null); // Fecha o modal de seleção
+      handleBookService(service); // Inicia o fluxo de agendamento para o serviço escolhido
+  }, [handleBookService]);
   
   const handleStartFreeConsultation = useCallback(() => {
       const freeConsultationService = services.find(s => s.id === FREE_CONSULTATION_SERVICE_ID);
@@ -395,12 +409,12 @@ function AppContent() {
         return <div className="flex justify-center items-center h-screen"><div className="animate-spin rounded-full h-32 w-32 border-b-2 border-pink-500"></div></div>
     }
     switch (currentPage) {
-      case Page.HOME: return <HomePage onBook={handleBookService} onStartFreeConsultation={handleStartFreeConsultation} />;
-      case Page.SERVICES: return <ServicesPage onBook={handleBookService} />;
+      case Page.HOME: return <HomePage onBook={handleBookService} onStartFreeConsultation={handleStartFreeConsultation} onBookPackage={handleBookPackage} />;
+      case Page.SERVICES: return <ServicesPage onBook={handleBookService} onBookPackage={handleBookPackage} />;
       case Page.LOGIN: return <LoginPage />;
       case Page.USER_DASHBOARD: return <UserDashboardPage onBookWithCredit={handleBookService} onReschedule={handleStartReschedule} />;
       case Page.ADMIN_DASHBOARD: return <AdminDashboardPage adminDataRefreshKey={adminDataRefreshKey} />;
-      default: return <HomePage onBook={handleBookService} onStartFreeConsultation={handleStartFreeConsultation} />;
+      default: return <HomePage onBook={handleBookService} onStartFreeConsultation={handleStartFreeConsultation} onBookPackage={handleBookPackage} />;
     }
   };
 
@@ -424,8 +438,18 @@ function AppContent() {
             tempClientData={tempClientData} 
             newlyCreatedUserEmail={newlyCreatedUserEmail}
         />}
-        {/* Removendo modais de compra */}
         {isQuickRegisterModalOpen && <QuickRegistrationModal onClose={handleCloseModals} onRegister={handleQuickRegisterAndBook} />}
+        
+        {/* NOVO MODAL DE SELEÇÃO DE SERVIÇO DO PACOTE */}
+        {packageToSelectService && (
+            <PackageBookingSelectionModal
+                pkg={packageToSelectService}
+                services={services}
+                onClose={handleCloseModals}
+                onSelectService={handleSelectServiceFromPackage}
+            />
+        )}
+        
         <a href="https://wa.me/5516993140852" target="_blank" rel="noopener noreferrer" className={`fixed bottom-6 right-6 bg-green-500 rounded-full p-3 shadow-lg hover:bg-green-600 transition-transform duration-300 transform ${showWhatsApp ? 'scale-100' : 'scale-0'}`} aria-label="Contact us on WhatsApp"><WhatsAppIcon /></a>
       </div>
     </AppContext.Provider>

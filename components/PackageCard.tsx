@@ -6,16 +6,11 @@ import { Page } from '../types';
 interface PackageCardProps {
   servicePackage: ServicePackage;
   services: Service[]; // To look up service names
+  onBookPackage: (pkg: ServicePackage) => void; // Nova prop para iniciar o fluxo
 }
 
-const PackageCard: React.FC<PackageCardProps> = ({ servicePackage, services }) => {
-  const { setCurrentPage } = useApp();
+const PackageCard: React.FC<PackageCardProps> = ({ servicePackage, services, onBookPackage }) => {
   
-  // Redireciona para a página de serviços para que o usuário possa agendar um serviço individual ou entrar em contato
-  const handleBook = () => {
-      setCurrentPage(Page.SERVICES);
-  };
-
   return (
     <div className="bg-white rounded-lg shadow-lg overflow-hidden transform hover:-translate-y-2 transition-transform duration-300 flex flex-col">
       <img src={servicePackage.image} alt={servicePackage.name} className="w-full h-48 object-cover" />
@@ -42,10 +37,10 @@ const PackageCard: React.FC<PackageCardProps> = ({ servicePackage, services }) =
           </div>
 
           <button 
-            onClick={handleBook}
+            onClick={() => onBookPackage(servicePackage)}
             className="w-full bg-gray-800 text-white py-2 rounded-full font-semibold hover:bg-pink-500 transition-colors duration-300"
           >
-            Ver Serviços e Agendar
+            Agendar Serviço do Pacote
           </button>
         </div>
       </div>
