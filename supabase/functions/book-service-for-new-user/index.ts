@@ -44,7 +44,7 @@ serve(async (req) => {
         .from('profiles')
         .select('id')
         .eq('phone', phoneDigits)
-        .maybeSingle(); // Usar maybeSingle para evitar erro se não encontrar
+        .maybeSingle();
 
     if (existingProfile) {
         userId = existingProfile.id;
@@ -117,7 +117,8 @@ serve(async (req) => {
       .single()
 
     if (bookingError) {
-      return new Response(JSON.stringify({ error: `Erro ao inserir agendamento: ${bookingError.message}.` }), {
+      // Se houver erro de RLS ou de disponibilidade (que deve ser verificado no frontend, mas falha de fallback)
+      return new Response(JSON.stringify({ error: `Erro ao inserir agendamento: ${bookingError.message}. Verifique a disponibilidade e tente novamente.` }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           status: 400,
       });
