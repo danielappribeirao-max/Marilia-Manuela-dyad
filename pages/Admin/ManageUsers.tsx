@@ -70,7 +70,8 @@ export default function AdminManageUsers() {
             alert(`Usuário ${userToDelete.name} excluído com sucesso.`);
             await fetchUsers();
         } else {
-            alert(`Falha ao excluir usuário: ${result.error}`);
+            // Exibe a mensagem de erro específica retornada pela API
+            alert(`Falha ao excluir usuário: ${result.error || 'Erro desconhecido.'}`);
         }
         setUserToDelete(null);
     };
