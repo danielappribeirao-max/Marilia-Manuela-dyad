@@ -19,8 +19,8 @@ export default function AdminManageServices() {
     const [reorderableServices, setReorderableServices] = useState<Service[]>([]);
 
     useEffect(() => {
-        const filteredServices = services.filter(s => s.id !== FREE_CONSULTATION_SERVICE_ID);
-        setReorderableServices(filteredServices);
+        // Filtra todos os serviços, pois não há mais um ID fixo a ser excluído
+        setReorderableServices(services);
     }, [services]);
 
     const handleAddNew = () => {
@@ -36,10 +36,7 @@ export default function AdminManageServices() {
     };
 
     const handleDelete = (service: Service) => {
-        if (service.id === FREE_CONSULTATION_SERVICE_ID) {
-            alert("O serviço de Consulta de Avaliação Gratuita não pode ser excluído.");
-            return;
-        }
+        // Não há mais verificação de ID fixo, todos os serviços podem ser excluídos
         setServiceToDelete(service);
     };
 
@@ -54,6 +51,7 @@ export default function AdminManageServices() {
         console.log("Attempting to save service:", savedService);
         
         if (!savedService.id) {
+            // Se for novo, calcula a ordem máxima
             const maxOrder = services.reduce((max, s) => Math.max(max, s.order || 0), 0);
             savedService.order = maxOrder + 1;
         }
@@ -64,12 +62,7 @@ export default function AdminManageServices() {
             console.log("Service saved successfully:", result);
             setSelectedService(null); 
             setIsServiceModalOpen(false);
-            
-            if (savedService.id === FREE_CONSULTATION_SERVICE_ID) {
-                alert(`Serviço "${result.name}" atualizado localmente com sucesso!`);
-            } else {
-                alert(`Serviço "${result.name}" salvo com sucesso!`);
-            }
+            alert(`Serviço "${result.name}" salvo com sucesso!`);
         } else {
             console.error("Failed to save service. Result was null.");
             alert("Falha ao salvar o serviço. Verifique os dados e tente novamente.");
@@ -77,13 +70,11 @@ export default function AdminManageServices() {
     };
     
     const handleSaveOrder = async (orderUpdates: { id: string; order: number }[]): Promise<boolean> => {
-        const freeConsultationService = services.find(s => s.id === FREE_CONSULTATION_SERVICE_ID);
-        const finalOrderUpdates = freeConsultationService ? [{ id: freeConsultationService.id, order: 0 }, ...orderUpdates] : orderUpdates;
-        
-        const success = await api.updateServiceOrder(finalOrderUpdates);
+        // A ordem agora é baseada apenas nos serviços reordenáveis
+        const success = await api.updateServiceOrder(orderUpdates);
         
         if (success) {
-            const updatedServicesMap = new Map(finalOrderUpdates.map(u => [u.id, u.order]));
+            const updatedServicesMap = new Map(orderUpdates.map(u => [u.id, u.order]));
             setServices(prev => {
                 const newServices = prev.map(s => ({
                     ...s,
@@ -108,8 +99,8 @@ export default function AdminManageServices() {
         </button>
     );
     
-    const servicesForManagement = services.filter(s => s.id !== FREE_CONSULTATION_SERVICE_ID);
-    const freeConsultationService = services.find(s => s.id === FREE_CONSULTATION_SERVICE_ID);
+    // Todos os serviços são gerenciáveis agora
+    const servicesForManagement = services;
 
     return (
         <div>
@@ -131,21 +122,6 @@ export default function AdminManageServices() {
             {activeTab === 'manage' && (
                 <div className="space-y-4">
                     <h3 className="text-2xl font-bold mb-4">Serviços Atuais ({services.length})</h3>
-                    
-                    {freeConsultationService && (
-                        <div className="bg-yellow-50 border-yellow-300 border-l-4 p-4 rounded-lg mb-4 flex justify-between items-center">
-                            <div>
-                                <p className="font-bold text-yellow-800">Consulta de Avaliação Gratuita</p>
-                                <p className="text-sm text-yellow-700">Este serviço é fixo e não pode ser excluído. Edite apenas os detalhes.</p>
-                            </div>
-                            <button 
-                                onClick={() => handleEdit(freeConsultationService)} 
-                                className="px-3 py-1.5 bg-yellow-200 text-yellow-800 rounded-full text-sm font-semibold hover:bg-yellow-300 transition-colors"
-                            >
-                                Editar Detalhes
-                            </button>
-                        </div>
-                    )}
                     
                     {servicesForManagement.map(service => (
                         <AdminServiceCard 

@@ -108,24 +108,17 @@ function AppContent() {
       let professionalsData: User[] | null = null;
       let packagesData: ServicePackage[] | null = null;
       let settingsData: ClinicSettings = api.DEFAULT_CLINIC_SETTINGS;
-      let freeConsultationService: Service | null = null;
 
       try {
-        [servicesData, professionalsData, packagesData, settingsData, freeConsultationService] = await Promise.all([
+        [servicesData, professionalsData, packagesData, settingsData] = await Promise.all([
           api.getServices(),
           api.getProfessionals(),
           api.getServicePackages(),
           api.getClinicSettings(),
-          api.ensureFreeConsultationServiceExists(),
         ]);
         
-        let allServices = servicesData || [];
-        if (freeConsultationService) {
-            allServices = allServices.filter(s => s.id !== FREE_CONSULTATION_SERVICE_ID);
-            allServices.unshift(freeConsultationService);
-        }
-        
-        setServices(allServices);
+        // A lista de serviços agora vem diretamente do banco, ordenada pelo campo 'order'
+        setServices(servicesData || []);
         setProfessionals(professionalsData || []);
         setPackages(packagesData || []);
         setClinicSettings(settingsData);
@@ -242,9 +235,10 @@ function AppContent() {
   }, [handleBookService]);
   
   const handleStartFreeConsultation = useCallback(() => {
-      const freeConsultationService = services.find(s => s.id === FREE_CONSULTATION_SERVICE_ID);
+      // Busca o primeiro serviço com preço 0 (o novo serviço de consulta)
+      const freeConsultationService = services.find(s => s.price === 0);
       if (!freeConsultationService) {
-          alert("Serviço de consulta gratuita não encontrado.");
+          alert("Serviço de consulta gratuita não encontrado. Por favor, cadastre um serviço com preço R$ 0,00.");
           return;
       }
       handleBookService(freeConsultationService);

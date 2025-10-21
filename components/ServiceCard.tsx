@@ -8,7 +8,8 @@ interface ServiceCardProps {
 }
 
 const ServiceCard: React.FC<ServiceCardProps> = ({ service, onBook }) => {
-  const isFreeConsultation = service.id === FREE_CONSULTATION_SERVICE_ID;
+  // Agora identificamos a consulta gratuita pelo preço zero
+  const isFreeConsultation = service.price === 0;
   
   const sessionsPerPackage = service.sessions || 1;
 

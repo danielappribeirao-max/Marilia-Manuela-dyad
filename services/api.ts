@@ -320,31 +320,7 @@ export const getServices = async (): Promise<Service[] | null> => {
     return data as Service[];
 };
 
-export const ensureFreeConsultationServiceExists = async (): Promise<Service | null> => {
-    const freeConsultation: Partial<Service> = {
-        id: FREE_CONSULTATION_SERVICE_ID,
-        name: 'Consulta de Avaliação Gratuita',
-        description: 'Avaliação inicial sem custo para definir o melhor plano de tratamento para você.',
-        duration: 30,
-        price: 0,
-        image: getAssetUrl('consulta.jpeg'), // IMAGEM ATUALIZADA COM V4
-        category: 'Avaliação',
-        sessions: 1,
-        order: 0, // Sempre o primeiro
-    };
-
-    const { data, error } = await supabase
-        .from('services')
-        .upsert(freeConsultation as Service, { onConflict: 'id' })
-        .select('*')
-        .single();
-
-    if (error) {
-        console.error("Error ensuring free consultation service exists:", error);
-        return null;
-    }
-    return data as Service;
-};
+// REMOVIDA: ensureFreeConsultationServiceExists
 
 export const addOrUpdateService = async (service: Partial<Service>): Promise<Service | null> => {
     if (service.id) {

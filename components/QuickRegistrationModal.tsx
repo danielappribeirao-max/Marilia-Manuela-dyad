@@ -10,7 +10,8 @@ interface QuickRegistrationModalProps {
 }
 
 const QuickRegistrationModal: React.FC<QuickRegistrationModalProps> = ({ service, onClose, onRegister }) => {
-  const isFreeConsultation = service.id === FREE_CONSULTATION_SERVICE_ID;
+  // Agora identificamos a consulta gratuita pelo preço zero
+  const isFreeConsultation = service.price === 0;
   
   const [formData, setFormData] = useState({
     name: '',
