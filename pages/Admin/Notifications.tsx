@@ -110,12 +110,15 @@ Equipe Marília Manuela`
         }
 
         // 4. Populate message template
+        const formattedDate = new Date(mockBooking.date).toLocaleDateString('pt-BR');
+        const formattedTime = new Date(mockBooking.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        
         const personalizedMessage = messageTemplate
             .replace('{clientName}', client.name)
             .replace('{serviceName}', service.name)
             .replace('{professionalName}', professional.name)
-            .replace('{date}', new Date(mockBooking.date).toLocaleDateString('pt-BR'))
-            .replace('{time}', new Date(mockBooking.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
+            .replace('{date}', formattedDate)
+            .replace('{time}', formattedTime);
         
         // 5. Format timings string
         const timingsString = timings.sort((a, b) => b - a).join(' e ') + ` hora${timings.length > 1 || (timings.length > 0 && timings[0] > 1) ? 's' : ''} antes`;
@@ -124,12 +127,12 @@ Equipe Marília Manuela`
         let finalAlertMessage = "--- Visualização do Lembrete de Teste ---\n";
         finalAlertMessage += `(Configurado para enviar ${timingsString} do agendamento)\n\n`;
         
-        let whatsappSuccess = true;
-        let whatsappError = '';
-
+        // --- WHATSAPP SIMULATION ---
         if (channels.whatsapp) {
-            // 7. Call Edge Function for WhatsApp simulation
+            let whatsappSuccess = true;
+            let whatsappError = '';
             const phoneToSend = client.phone.replace(/\D/g, ''); // Remove formatação
+            
             if (phoneToSend.length < 10) {
                 whatsappError = `O telefone do cliente (${client.phone}) é inválido para envio.`;
                 whatsappSuccess = false;
@@ -145,9 +148,25 @@ Equipe Marília Manuela`
             finalAlertMessage += `--------------------------------\n${personalizedMessage}\n--------------------------------\n\n`;
         }
         
+        // --- EMAIL SIMULATION ---
         if (channels.email) {
+            let emailSuccess = true;
+            let emailError = '';
+            const subject = `Lembrete de Agendamento: ${service.name} em ${formattedDate}`;
+            
+            if (!client.email || !client.email.includes('@')) {
+                emailError = `O e-mail do cliente (${client.email || 'N/A'}) é inválido para envio.`;
+                emailSuccess = false;
+            } else {
+                const result = await api.sendEmailReminder({ to: client.email, subject, message: personalizedMessage });
+                emailSuccess = result.success;
+                emailError = result.error || '';
+            }
+            
             finalAlertMessage += `📧 E-MAIL:\n`;
-            finalAlertMessage += `Um e-mail seria enviado para ${client.email} com o conteúdo:\n`;
+            finalAlertMessage += `Status: ${emailSuccess ? 'SUCESSO (Simulado)' : `FALHA: ${emailError}`}\n`;
+            finalAlertMessage += `Assunto: ${subject}\n`;
+            finalAlertMessage += `Enviado para ${client.email} com o conteúdo:\n`;
             finalAlertMessage += `--------------------------------\n${personalizedMessage}\n--------------------------------\n\n`;
         }
 

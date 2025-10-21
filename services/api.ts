@@ -919,6 +919,29 @@ export const sendWhatsappReminder = async (details: { to: string; message: strin
     }
 };
 
+export const sendEmailReminder = async (details: { to: string; subject: string; message: string }): Promise<{ success: boolean, error?: string }> => {
+    try {
+        const { data, error } = await supabase.functions.invoke('send-email-reminder', {
+            body: details,
+        });
+
+        if (error) {
+            console.error("Error invoking send-email-reminder function:", error);
+            return { success: false, error: error.message };
+        }
+        
+        if (data.error) {
+            console.error("Edge Function returned error:", data.error);
+            return { success: false, error: data.error };
+        }
+
+        return { success: true };
+    } catch (e) {
+        console.error("Unexpected error during email reminder:", e);
+        return { success: false, error: "Erro inesperado ao tentar enviar lembrete por e-mail." };
+    }
+};
+
 export const sendCancellationNotice = async (details: { to: string; message: string }): Promise<{ success: boolean, error?: string }> => {
     try {
         const { data, error } = await supabase.functions.invoke('send-cancellation-notice', {
