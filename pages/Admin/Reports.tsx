@@ -24,15 +24,16 @@ export default function AdminReports() {
     const [allSales, setAllSales] = useState<Sale[]>([]);
     const [loading, setLoading] = useState(true);
 
-    const today = useMemo(() => {
+    // Calcula 'today' uma vez para inicialização
+    const initialToday = useMemo(() => {
         const d = new Date();
         d.setHours(0, 0, 0, 0);
         return d;
     }, []);
 
     const [activeRange, setActiveRange] = useState<DateRange>('30days');
-    const [startDate, setStartDate] = useState(new Date(new Date().setDate(today.getDate() - 29)));
-    const [endDate, setEndDate] = useState(today);
+    const [startDate, setStartDate] = useState(new Date(new Date().setDate(initialToday.getDate() - 29)));
+    const [endDate, setEndDate] = useState(initialToday);
     const [isPopoverOpen, setIsPopoverOpen] = useState(false);
     const popoverRef = useRef<HTMLDivElement>(null);
     
@@ -42,6 +43,7 @@ export default function AdminReports() {
     useEffect(() => {
         const fetchSales = async () => {
             setLoading(true);
+            // Agora chama a função RPC real
             const salesData = await api.getSalesData();
             setAllSales(salesData || []);
             setLoading(false);
@@ -103,6 +105,7 @@ export default function AdminReports() {
         const endOfDay = new Date(endDate);
         endOfDay.setHours(23, 59, 59, 999);
         return allSales.filter(sale => {
+            // A data da venda já é um objeto Date graças à API
             const saleDate = new Date(sale.date);
             return saleDate >= startOfDay && saleDate <= endOfDay;
         });
@@ -132,6 +135,7 @@ export default function AdminReports() {
 
     const salesTrendData = useMemo(() => {
         const salesByDate = filteredSales.reduce((acc, sale) => {
+            // A data da venda já é um objeto Date
             const dateKey = new Date(sale.date).toISOString().split('T')[0];
             acc[dateKey] = (acc[dateKey] || 0) + sale.amount;
             return acc;
@@ -161,6 +165,7 @@ export default function AdminReports() {
     
     const salesByCategoryData = useMemo(() => {
         const salesByCat = filteredSales.reduce((acc, sale) => {
+            // Busca a categoria pelo nome do serviço (que vem da RPC)
             const service = services.find(s => s.name === sale.serviceName);
             const category = service?.category || 'Outros';
             acc[category] = (acc[category] || 0) + sale.amount;
@@ -207,7 +212,7 @@ export default function AdminReports() {
                                         <input type="date" id="startDate" value={toInputDateString(customStartDate)} onChange={(e) => setCustomStartDate(new Date(e.target.value + 'T00:00:00'))} className="w-full mt-1 p-1.5 border border-gray-300 rounded-md text-sm shadow-sm focus:ring-pink-500 focus:border-pink-500 bg-white text-gray-900" />
                                     </div>
                                     <div>
-                                        <label htmlFor="endDate" className="text-xs font-medium text-gray-500">Até:</label>
+                                        <label htmlFor="endDate" className="block text-xs font-medium text-gray-500">Até:</label>
                                         <input type="date" id="endDate" value={toInputDateString(customEndDate)} onChange={(e) => setCustomEndDate(new Date(e.target.value + 'T00:00:00'))} className="w-full mt-1 p-1.5 border border-gray-300 rounded-md text-sm shadow-sm focus:ring-pink-500 focus:border-pink-500 bg-white text-gray-900" />
                                     </div>
                                 </div>

@@ -1017,23 +1017,18 @@ export const bookServiceForNewUser = async (details: { name: string; phone: stri
 // --- Funções de Relatórios ---
 
 export const getSalesData = async (): Promise<Sale[]> => {
-    // Dados mockados para relatórios
-    const mockSales: Sale[] = [
-        { id: 's1', serviceName: 'Limpeza de Pele Profunda', clientName: 'Ana Silva', amount: 150.00, date: new Date(Date.now() - 86400000 * 5) },
-        { id: 's2', serviceName: 'Massagem Relaxante', clientName: 'Bruno Costa', amount: 90.00, date: new Date(Date.now() - 86400000 * 5) },
-        { id: 's3', serviceName: 'Preenchimento Labial', clientName: 'Carla Dias', amount: 800.00, date: new Date(Date.now() - 86400000 * 10) },
-        { id: 's4', serviceName: 'Limpeza de Pele Profunda', clientName: 'Daniela Alves', amount: 150.00, date: new Date(Date.now() - 86400000 * 15) },
-        { id: 's5', serviceName: 'Pacote Corporal 5 Sessões', clientName: 'Eduardo Lima', amount: 500.00, date: new Date(Date.now() - 86400000 * 20) },
-        { id: 's6', serviceName: 'Massagem Relaxante', clientName: 'Fábio Gomes', amount: 90.00, date: new Date(Date.now() - 86400000 * 25) },
-        { id: 's7', serviceName: 'Preenchimento Labial', clientName: 'Gabriela Rocha', amount: 800.00, date: new Date(Date.now() - 86400000 * 30) },
-        { id: 's8', serviceName: 'Limpeza de Pele Profunda', clientName: 'Helena Souza', amount: 150.00, date: new Date(Date.now() - 86400000 * 35) },
-        { id: 's9', serviceName: 'Pacote Corporal 5 Sessões', clientName: 'Igor Pereira', amount: 500.00, date: new Date(Date.now() - 86400000 * 40) },
-        { id: 's10', serviceName: 'Massagem Relaxante', clientName: 'Juliana Martins', amount: 90.00, date: new Date(Date.now() - 86400000 * 45) },
-        { id: 's11', serviceName: 'Limpeza de Pele Profunda', clientName: 'Lucas Ferreira', amount: 150.00, date: new Date(Date.now() - 86400000 * 50) },
-        { id: 's12', serviceName: 'Preenchimento Labial', clientName: 'Mariana Nunes', amount: 800.00, date: new Date(Date.now() - 86400000 * 55) },
-        { id: 's13', serviceName: 'Limpeza de Pele Profunda', clientName: 'Nathalia Oliveira', amount: 150.00, date: new Date(Date.now() - 86400000 * 60) },
-        { id: 's14', serviceName: 'Massagem Relaxante', clientName: 'Otávio Rodrigues', amount: 90.00, date: new Date(Date.now() - 86400000 * 65) },
-        { id: 's15', serviceName: 'Pacote Corporal 5 Sessões', clientName: 'Patrícia Santos', amount: 500.00, date: new Date(Date.now() - 86400000 * 70) },
-    ];
-    return mockSales;
+    const { data, error } = await supabase.rpc('get_sales_data');
+
+    if (error) {
+        console.error("Error fetching sales data:", error);
+        return [];
+    }
+
+    return data.map(d => ({
+        id: String(d.id),
+        serviceName: d.service_name,
+        clientName: d.client_name || 'Cliente Desconhecido',
+        amount: Number(d.amount),
+        date: new Date(d.date),
+    })) as Sale[];
 };
