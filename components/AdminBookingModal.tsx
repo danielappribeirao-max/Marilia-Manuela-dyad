@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Booking, User, Service, Role } from '../types';
-import { useApp } from '../../App';
+import { useApp } from '../App';
 import * as api from '../services/api';
 import { useAvailability } from '../hooks/useAvailability';
 
