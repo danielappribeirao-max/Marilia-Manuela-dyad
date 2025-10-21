@@ -73,8 +73,8 @@ function AppContent() {
   const [reschedulingBooking, setReschedulingBooking] = useState<Booking | null>(null);
   
   const [isQuickRegisterModalOpen, setIsQuickRegisterModalOpen] = useState(false);
-  // O tempClientData agora só precisa de nome e telefone, a descrição é gerada
-  const [tempClientData, setTempClientData] = useState<{ name: string; phone: string; description: string } | null>(null);
+  // O tempClientData agora inclui o email
+  const [tempClientData, setTempClientData] = useState<{ name: string; phone: string; email: string; description: string } | null>(null);
   const [newlyCreatedUserEmail, setNewlyCreatedUserEmail] = useState<string | null>(null);
   
   // NOVO: Estado para seleção de serviço dentro do pacote
@@ -250,14 +250,10 @@ function AppContent() {
       handleBookService(freeConsultationService);
   }, [services, handleBookService]);
   
-  const handleStartReschedule = useCallback((booking: Booking) => {
-    setReschedulingBooking(booking);
-  }, []);
-  
-  const handleQuickRegisterAndBook = useCallback((data: { name: string; phone: string; description: string }) => {
+  // ATUALIZADO: Agora recebe o email
+  const handleQuickRegisterAndBook = useCallback((data: { name: string; phone: string; email: string; description: string }) => {
       if (!serviceToBook) return;
       
-      // A descrição é passada aqui, seja o interesse (consulta gratuita) ou o nome do serviço (serviço pago)
       setTempClientData(data);
       setIsQuickRegisterModalOpen(false);
       // O modal de agendamento será aberto automaticamente porque serviceToBook está definido
@@ -294,7 +290,8 @@ function AppContent() {
         const result = await api.bookServiceForNewUser({
             name: tempClientData.name,
             phone: tempClientData.phone,
-            description: tempClientData.description, // Usa a descrição (interesse ou nome do serviço)
+            email: tempClientData.email, // NOVO: Passando o email
+            description: tempClientData.description, 
             date: details.date,
             professionalId: details.professionalId,
             serviceId: serviceToUse.id,
