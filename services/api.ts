@@ -302,6 +302,11 @@ export const deleteUser = async (userId: string): Promise<{ success: boolean, er
                 errorMessage = (error as any).msg;
             }
             
+            // Se a mensagem ainda for o erro genérico, tentamos ser mais específicos
+            if (errorMessage.includes('non-2xx status code')) {
+                errorMessage = "Falha na comunicação com o servidor. Verifique se você está tentando excluir o último administrador.";
+            }
+            
             return { success: false, error: errorMessage };
         }
 
