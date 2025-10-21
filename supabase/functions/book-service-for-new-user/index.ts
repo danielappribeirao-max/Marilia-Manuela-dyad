@@ -17,9 +17,9 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    const { name, phone, email, description, date, time, professionalId, serviceId, serviceName, duration } = await req.json()
+    const { name, phone, description, date, time, professionalId, serviceId, serviceName, duration } = await req.json()
 
-    if (!name || !phone || !email || !description || !date || !time || !professionalId || !serviceId || !serviceName || !duration) {
+    if (!name || !phone || !description || !date || !time || !professionalId || !serviceId || !serviceName || !duration) {
         return new Response(JSON.stringify({ error: "Todos os campos de agendamento são obrigatórios." }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 400,
@@ -36,49 +36,58 @@ serve(async (req) => {
     
     const phoneDigits = phone.replace(/\D/g, '');
     let userId: string | null = null;
+    let tempEmail: string | null = null;
     let userWasCreated = false;
     
-    // 1. Tentar encontrar usuário existente pelo EMAIL
-    const { data: existingAuthUser, error: fetchAuthError } = await supabaseAdmin.auth.admin.getUserByEmail(email);
+    // 1. Tentar encontrar usuário existente pelo telefone na tabela profiles
+    const { data: existingProfile } = await supabaseAdmin
+        .from('profiles')
+        .select('id')
+        .eq('phone', phoneDigits)
+        .maybeSingle(); // Usar maybeSingle para evitar erro se não encontrar
 
-    if (fetchAuthError && fetchAuthError.message !== 'User not found') {
-        // Erro inesperado ao buscar usuário
-        return new Response(JSON.stringify({ error: `Erro ao verificar usuário: ${fetchAuthUser.message}` }), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 400,
-        });
+    if (existingProfile) {
+        userId = existingProfile.id;
+        // Tenta buscar o email de autenticação para retornar
+        const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(userId);
+        tempEmail = authUser?.user?.email || `${phoneDigits}@mariliamanuela.com`;
     }
-    
-    if (existingAuthUser?.user) {
-        userId = existingAuthUser.user.id;
-        // Se o usuário existe, garantimos que o perfil tenha o telefone atualizado
-        await supabaseAdmin
-            .from('profiles')
-            .update({ full_name: name, phone: phoneDigits })
-            .eq('id', userId);
-            
-    } else {
-        // 2. Se o usuário NÃO foi encontrado pelo email, criar um novo usuário
+
+    // 2. Se o usuário não foi encontrado, criar um novo usuário temporário
+    if (!userId) {
+        tempEmail = `${phoneDigits}@mariliamanuela.com`;
         
         const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-            email: email,
-            password: 'senhaPadrao123', // Senha padrão para agendamento rápido
+            email: tempEmail,
+            password: 'senhaPadrao123',
             email_confirm: false,
             user_metadata: {
                 full_name: name,
-                phone: phoneDigits,
+                phone: phone,
             },
         });
         
         if (authError) {
-            return new Response(JSON.stringify({ error: `Erro ao criar usuário: ${authError.message}` }), {
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-                status: 400,
-            });
+            // Se a criação falhar porque o email temporário já existe, busca o ID existente
+            if (authError.message.includes('User already exists')) {
+                const { data: existingUser, error: fetchError } = await supabaseAdmin.auth.admin.getUserByEmail(tempEmail);
+                if (fetchError || !existingUser?.user) {
+                    return new Response(JSON.stringify({ error: "Já existe um agendamento em andamento com este telefone. Por favor, faça login ou use outro telefone." }), {
+                        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                        status: 400,
+                    });
+                }
+                userId = existingUser.user.id;
+            } else {
+                return new Response(JSON.stringify({ error: `Erro ao criar usuário: ${authError.message}` }), {
+                    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                    status: 400,
+                });
+            }
+        } else {
+            userId = authData.user.id;
+            userWasCreated = true;
         }
-        
-        userId = authData.user.id;
-        userWasCreated = true;
     }
     
     if (!userId) {
@@ -119,7 +128,7 @@ serve(async (req) => {
         success: true, 
         booking: bookingData, 
         newUserId: userId,
-        tempEmail: email, // Retorna o email fornecido
+        tempEmail: tempEmail,
         tempPassword: userWasCreated ? 'senhaPadrao123' : undefined, 
     };
     
