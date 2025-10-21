@@ -680,7 +680,7 @@ export const addOrUpdateBooking = async (booking: Partial<Booking> & { serviceNa
     const bookingTime = `${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}`;
     
     const payload = {
-        user_id: booking.userId,
+        user_id: booking.userId || null, // Permite null se userId for undefined/null
         service_id: booking.serviceId,
         professional_id: booking.professionalId,
         booking_date: bookingDate,

@@ -85,7 +85,11 @@ const AgendaWeekView: React.FC<AgendaWeekViewProps> = ({ currentDate, bookings, 
                                 .filter(b => new Date(b.date).toDateString() === day.toDateString())
                                 .map(booking => {
                                     const service = services.find(s => s.id === booking.serviceId);
-                                    const user = users.find(u => u.id === booking.userId);
+                                    // Busca o usuário, se não encontrar, usa um objeto placeholder
+                                    const user = booking.userId ? users.find(u => u.id === booking.userId) : null;
+                                    const clientName = user?.name || 'Cliente Excluído';
+                                    const clientPhone = user?.phone || 'N/A';
+
                                     if (!service) return null;
 
                                     // Usar a duração do agendamento se existir, senão a do serviço
@@ -112,8 +116,8 @@ const AgendaWeekView: React.FC<AgendaWeekViewProps> = ({ currentDate, bookings, 
                                             style={{ top: `${top}rem`, height: `${height}rem`, minHeight: '3rem' }}
                                         >
                                             <p className="font-bold truncate">{service.name}</p>
-                                            <p className="truncate">{user?.name || 'Cliente'}</p>
-                                            {user?.phone && <p className="text-gray-600 font-medium">{formatPhone(user.phone)}</p>}
+                                            <p className="truncate">{clientName}</p>
+                                            {clientPhone !== 'N/A' && <p className="text-gray-600 font-medium">{formatPhone(clientPhone)}</p>}
                                             <p className="text-gray-600">{bookingDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>
                                         </div>
                                     );

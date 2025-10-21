@@ -58,6 +58,7 @@ const AgendaMonthView: React.FC<AgendaMonthViewProps> = ({ currentDate, bookings
         confirmed: 'bg-blue-100 border-blue-400 text-blue-800 hover:bg-blue-200',
         completed: 'bg-green-100 border-green-400 text-green-800 hover:bg-green-200',
         canceled: 'bg-red-100 border-red-400 text-red-800 hover:bg-red-200 line-through',
+        Agendado: 'bg-yellow-100 border-yellow-400 text-yellow-800 hover:bg-yellow-200', // Adicionado status 'Agendado'
     };
 
     return (
@@ -92,8 +93,12 @@ const AgendaMonthView: React.FC<AgendaMonthViewProps> = ({ currentDate, bookings
                         <div className="mt-1 space-y-1">
                             {dayBookings.map(booking => {
                                 const service = services.find(s => s.id === booking.serviceId);
-                                const user = users.find(u => u.id === booking.userId);
-                                const bookingStatusClasses = statusClasses[booking.status] || statusClasses.confirmed;
+                                // Busca o usuário, se não encontrar, usa um objeto placeholder
+                                const user = booking.userId ? users.find(u => u.id === booking.userId) : null;
+                                const clientName = user?.name || 'Cliente Excluído';
+                                const clientPhone = user?.phone || 'N/A';
+                                
+                                const bookingStatusClasses = statusClasses[booking.status as keyof typeof statusClasses] || statusClasses.Agendado;
                                 
                                 return (
                                     <div 
@@ -101,13 +106,14 @@ const AgendaMonthView: React.FC<AgendaMonthViewProps> = ({ currentDate, bookings
                                         onClick={() => onBookingClick(booking)}
                                         className={`border-l-4 p-1.5 rounded-r-md cursor-pointer transition-colors ${bookingStatusClasses}`}
                                         role="button"
-                                        aria-label={`Agendamento de ${service?.name} para ${user?.name}`}
+                                        aria-label={`Agendamento de ${service?.name} para ${clientName}`}
                                     >
                                         <p className="font-bold text-xs">
                                             {new Date(booking.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                                         </p>
                                         <p className="text-xs truncate font-medium">{service?.name}</p>
-                                        {user?.phone && <p className="text-xs text-gray-600 font-medium">{formatPhone(user.phone)}</p>}
+                                        {clientPhone !== 'N/A' && <p className="text-xs text-gray-600 font-medium">{formatPhone(clientPhone)}</p>}
+                                        {clientName === 'Cliente Excluído' && <p className="text-xs text-red-600 font-medium">Excluído</p>}
                                     </div>
                                 );
                             })}

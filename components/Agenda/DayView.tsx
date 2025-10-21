@@ -61,7 +61,11 @@ const AgendaDayView: React.FC<AgendaDayViewProps> = ({ currentDate, bookings, on
                         .filter(b => new Date(b.date).toDateString() === currentDate.toDateString())
                         .map(booking => {
                             const service = services.find(s => s.id === booking.serviceId);
-                            const user = users.find(u => u.id === booking.userId);
+                            // Busca o usuário, se não encontrar, usa um objeto placeholder
+                            const user = booking.userId ? users.find(u => u.id === booking.userId) : null;
+                            const clientName = user?.name || 'Cliente Excluído';
+                            const clientPhone = user?.phone || 'N/A';
+
                             if (!service) return null;
 
                             // Usar a duração do agendamento se existir, senão a do serviço
@@ -88,8 +92,8 @@ const AgendaDayView: React.FC<AgendaDayViewProps> = ({ currentDate, bookings, on
                                     style={{ top: `${top}rem`, height: `${height}rem`, minHeight: '3rem' }}
                                 >
                                     <p className="font-bold truncate">{service.name}</p>
-                                    <p className="truncate">{user?.name || 'Cliente não encontrado'}</p>
-                                    {user?.phone && <p className="text-gray-600 text-xs font-medium">{formatPhone(user.phone)}</p>}
+                                    <p className="truncate">{clientName}</p>
+                                    {clientPhone !== 'N/A' && <p className="text-gray-600 text-xs font-medium">{formatPhone(clientPhone)}</p>}
                                     <p className="text-gray-600 text-xs">{bookingDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} - {new Date(bookingDate.getTime() + bookingDuration * 60000).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>
                                 </div>
                             );

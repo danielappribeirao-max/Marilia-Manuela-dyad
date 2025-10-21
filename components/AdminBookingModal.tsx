@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Booking, User, Service, Role } from '../types';
-import { useApp } from '../App';
+import { useApp } from '../../App';
 import * as api from '../services/api';
 import { useAvailability } from '../hooks/useAvailability';
 
@@ -42,7 +42,7 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
     const initialTime = booking ? new Date(booking.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }).slice(0, 5) : (defaultDate ? defaultDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }).slice(0, 5) : '');
     
     return {
-      userId: booking?.userId || '',
+      userId: booking?.userId || '', // Permite que seja string vazia se o usuário foi excluído
       serviceId: booking?.serviceId || '',
       professionalId: booking?.professionalId || '',
       date: initialDate.toISOString().split('T')[0],
@@ -79,7 +79,8 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
 
   const validate = () => {
     const newErrors: { [key: string]: string } = {};
-    if (!formData.userId) newErrors.userId = 'Selecione um cliente.';
+    // A validação de userId só é obrigatória se for um NOVO agendamento/venda de pacote
+    if (!isEditing && !isPackageSale && !formData.userId) newErrors.userId = 'Selecione um cliente.';
     if (!formData.serviceId) newErrors.serviceId = 'Selecione um serviço.';
 
     if (isPackageSale) {
@@ -152,7 +153,7 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
 
     const newBooking: Partial<Booking> = {
       id: booking?.id,
-      userId: formData.userId,
+      userId: formData.userId || undefined, // Envia undefined se for string vazia (usuário excluído)
       serviceId: formData.serviceId,
       professionalId: formData.professionalId,
       date: bookingDate,
@@ -189,10 +190,13 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
             <div>
               <label htmlFor="userId" className="block text-sm font-medium text-gray-700 mb-1">Cliente</label>
               <select id="userId" name="userId" value={formData.userId} onChange={handleChange} className={`w-full p-2 border bg-white text-gray-900 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500 ${errors.userId ? 'border-red-500' : 'border-gray-300'}`}>
-                <option value="" disabled>Selecione um cliente</option>
+                <option value="" disabled={!isEditing}>
+                    {isEditing && !formData.userId ? 'Cliente Excluído' : 'Selecione um cliente'}
+                </option>
                 {clientUsers.map(user => <option key={user.id} value={user.id}>{user.name}</option>)}
               </select>
               {errors.userId && <p className="text-red-500 text-xs mt-1">{errors.userId}</p>}
+              {isEditing && !formData.userId && <p className="text-orange-500 text-xs mt-1">Este agendamento não tem um cliente associado (usuário pode ter sido excluído).</p>}
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="sm:col-span-2">
@@ -261,6 +265,7 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
                     <option value="confirmed">Confirmado</option>
                     <option value="completed">Concluído</option>
                     <option value="canceled">Cancelado</option>
+                    <option value="Agendado">Agendado (Padrão)</option>
                   </select>
                 </div>
               </>
