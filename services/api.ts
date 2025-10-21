@@ -289,20 +289,10 @@ export const deleteUser = async (userId: string): Promise<{ success: boolean, er
 
         if (error) {
             console.error("Error invoking admin-delete-user function:", error);
-            // Se o erro for de invocação (non-2xx status), tentamos extrair a mensagem de erro do corpo
-            // Nota: O objeto 'error' do invoke pode ser um objeto Error ou um objeto de resposta.
-            // Se for um erro de status, a mensagem de erro da Edge Function estará em data.error.
-            // Se for um erro de rede, a mensagem estará em error.message.
             
-            // Se a Edge Function retornou um erro 400/500, o erro de invocação pode ser genérico.
-            // Vamos confiar que a Edge Function retornou { error: "mensagem" } no corpo.
-            
-            // Tenta ler o corpo da resposta de erro se for um erro de invocação
-            if ((error as any).context?.body?.error) {
-                return { success: false, error: (error as any).context.body.error };
-            }
-            
-            return { success: false, error: error.message };
+            // Tenta extrair a mensagem de erro do objeto de erro de invocação
+            const errorMessage = (error as any).context?.body?.error || error.message;
+            return { success: false, error: errorMessage };
         }
 
         if (data.error) {
