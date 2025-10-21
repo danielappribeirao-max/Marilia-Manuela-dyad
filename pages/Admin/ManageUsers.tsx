@@ -85,13 +85,16 @@ export default function AdminManageUsers() {
 
         // 2. Filtrar por Busca (Search Query)
         if (searchQuery.trim() !== '') {
-            const lowercasedQuery = searchQuery.toLowerCase();
+            const lowercasedQuery = searchQuery.toLowerCase().trim();
             const unformattedQuery = searchQuery.replace(/\D/g, ''); 
             
             filtered = filtered.filter(u => 
+                // Busca por nome ou email (case insensitive)
                 u.name.toLowerCase().includes(lowercasedQuery) || 
                 u.email.toLowerCase().includes(lowercasedQuery) ||
+                // Busca por telefone (apenas dígitos)
                 (u.phone && u.phone.replace(/\D/g, '').includes(unformattedQuery)) ||
+                // Busca por CPF (apenas dígitos)
                 (u.cpf && u.cpf.replace(/\D/g, '').includes(unformattedQuery))
             );
         }

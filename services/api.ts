@@ -327,7 +327,7 @@ export const ensureFreeConsultationServiceExists = async (): Promise<Service | n
         description: 'Avaliação inicial sem custo para definir o melhor plano de tratamento para você.',
         duration: 30,
         price: 0,
-        image: getAssetUrl('consulta.jpeg'), // IMAGEM ATUALIZADA
+        image: getAssetUrl('consulta.jpeg'), // IMAGEM ATUALIZADA COM V4
         category: 'Avaliação',
         sessions: 1,
         order: 0, // Sempre o primeiro
@@ -914,7 +914,7 @@ const SUPABASE_ASSETS_BASE_URL = 'https://mdxqiozhqmcriiqspbqf.supabase.co/stora
 export const getAssetUrl = (path: string): string => {
     // Adiciona um parâmetro de versão para forçar o cache-busting em ativos estáticos
     // Aumentei a versão para garantir que o cache seja ignorado após o último upload.
-    const version = path === 'consulta.jpeg' ? 'v3' : 'v0'; 
+    const version = path === 'consulta.jpeg' ? 'v4' : 'v0'; 
     return `${SUPABASE_ASSETS_BASE_URL}${path}?v=${version}`;
 };
 
