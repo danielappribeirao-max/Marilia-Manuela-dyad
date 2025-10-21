@@ -21,21 +21,53 @@ serve(async (req) => {
     const { userId } = await req.json()
 
     if (!userId) {
-        // Retorna erro de validação
         return new Response(JSON.stringify({ error: "ID do usuário é obrigatório." }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            status: 200, // Retorna 200 para que o cliente possa ler o corpo JSON
+            status: 200, 
         })
     }
+    
+    // --- 1. Verificação de Último Administrador ---
+    const { data: profile, error: profileError } = await supabaseAdmin
+        .from('profiles')
+        .select('role')
+        .eq('id', userId)
+        .single();
+        
+    if (profileError) {
+        throw new Error(`Perfil não encontrado para o usuário: ${profileError.message}`);
+    }
+    
+    if (profile.role === 'admin') {
+        const { count, error: countError } = await supabaseAdmin
+            .from('profiles')
+            .select('id', { count: 'exact' })
+            .eq('role', 'admin');
+            
+        if (countError) {
+            throw new Error(`Erro ao contar administradores: ${countError.message}`);
+        }
+        
+        if (count === 1) {
+            return new Response(JSON.stringify({ error: "Não é possível excluir o último usuário com função 'admin'. Garanta que haja pelo menos um administrador ativo." }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 200, 
+            });
+        }
+    }
+    // ---------------------------------------------
 
-    // 1. Excluir o usuário do sistema de autenticação
+    // 2. Excluir o usuário do sistema de autenticação
     const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(userId)
 
     if (deleteError) {
-      // Se houver um erro de exclusão (ex: último admin), capturamos a mensagem
       console.error("Supabase Auth Delete Error:", deleteError.message);
-      // Retorna 200 com a mensagem de erro no corpo JSON
-      return new Response(JSON.stringify({ error: deleteError.message }), {
+      // Se o erro for genérico, retornamos uma mensagem mais útil
+      const errorMessage = deleteError.message.includes('Database error deleting user') 
+        ? "Falha na exclusão. O usuário pode ter dados associados que impedem a exclusão, ou é o último administrador."
+        : deleteError.message;
+        
+      return new Response(JSON.stringify({ error: errorMessage }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200, 
       })
@@ -46,12 +78,11 @@ serve(async (req) => {
       status: 200,
     })
   } catch (error) {
-    // Captura erros de parsing ou validação inicial
     const errorMessage = error instanceof Error ? error.message : "Erro desconhecido ao excluir usuário.";
     
     return new Response(JSON.stringify({ error: errorMessage }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 200, // Retorna 200 para que o cliente possa ler o corpo JSON
+      status: 200, 
     })
   }
 })
