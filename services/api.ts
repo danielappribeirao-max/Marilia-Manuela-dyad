@@ -290,8 +290,18 @@ export const deleteUser = async (userId: string): Promise<{ success: boolean, er
         if (error) {
             console.error("Error invoking admin-delete-user function:", error);
             
-            // Tenta extrair a mensagem de erro do objeto de erro de invocação
-            const errorMessage = (error as any).context?.body?.error || error.message;
+            // Tenta extrair a mensagem de erro de forma mais abrangente
+            let errorMessage = error.message;
+            
+            // 1. Tenta extrair do corpo do contexto (se for um erro de status)
+            if ((error as any).context?.body?.error) {
+                errorMessage = (error as any).context.body.error;
+            } 
+            // 2. Tenta extrair de uma propriedade 'msg' ou 'details' se existir
+            else if ((error as any).msg) {
+                errorMessage = (error as any).msg;
+            }
+            
             return { success: false, error: errorMessage };
         }
 
