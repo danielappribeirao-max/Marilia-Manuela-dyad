@@ -909,8 +909,9 @@ export const uploadAvatar = (userId: string, file: File) => uploadFile('avatars'
 
 export const getAssetUrl = (path: string): string => {
     const { data } = supabase.storage.from('assets').getPublicUrl(path);
-    // Removendo o timestamp para garantir URLs estáveis
-    return data.publicUrl;
+    // Adiciona um parâmetro de versão para forçar o cache-busting em ativos estáticos
+    const version = path === 'consulta.jpeg' ? 'v1' : 'v0'; // Versão específica para a imagem de consulta
+    return `${data.publicUrl}?v=${version}`;
 };
 
 // --- Funções de Notificações ---
