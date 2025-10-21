@@ -27,17 +27,29 @@ serve(async (req) => {
         })
     }
     
-    // 1. Excluir o usuário do sistema de autenticação
+    // --- 1. Tentar anular referências em tabelas dependentes (ex: bookings) ---
+    // Isso é necessário se a chave estrangeira não tiver ON DELETE CASCADE ou SET NULL
+    const { error: updateBookingsError } = await supabaseAdmin
+        .from('bookings')
+        .update({ user_id: null })
+        .eq('user_id', userId);
+        
+    if (updateBookingsError) {
+        console.error("Error setting user_id to null in bookings:", updateBookingsError);
+        // Não é um erro fatal, mas é bom logar
+    }
+    
+    // --- 2. Excluir o usuário do sistema de autenticação ---
     // Isso deve acionar a exclusão em cascata do perfil.
     const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(userId)
 
     if (deleteError) {
       console.error("Supabase Auth Delete Error:", deleteError.message);
       
-      // Se o erro for o genérico de DB, fornecemos uma mensagem mais útil
       let errorMessage = deleteError.message;
       if (deleteError.message.includes('Database error deleting user')) {
-          errorMessage = "Falha na exclusão. O usuário pode ter agendamentos ou dados associados que impedem a exclusão. Tente cancelar agendamentos pendentes primeiro.";
+          // Se ainda falhar após anular os bookings, é provável que seja o último admin
+          errorMessage = "Falha na exclusão. O usuário pode ser o último administrador, ou ter outros dados associados que impedem a exclusão.";
       }
         
       return new Response(JSON.stringify({ error: errorMessage }), {
