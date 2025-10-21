@@ -907,11 +907,13 @@ export const uploadHeroImage = (file: File) => uploadFile('assets', file, 'hero-
 export const uploadAboutImage = (file: File) => uploadFile('assets', file, 'about-image.jpeg');
 export const uploadAvatar = (userId: string, file: File) => uploadFile('avatars', file, `${userId}/avatar.jpeg`);
 
+// URL base do Supabase Storage para o bucket 'assets'
+const SUPABASE_ASSETS_BASE_URL = 'https://mdxqiozhqmcriiqspbqf.supabase.co/storage/v1/object/public/assets/';
+
 export const getAssetUrl = (path: string): string => {
-    const { data } = supabase.storage.from('assets').getPublicUrl(path);
     // Adiciona um parâmetro de versão para forçar o cache-busting em ativos estáticos
-    const version = path === 'consulta.jpeg' ? 'v1' : 'v0'; // Versão específica para a imagem de consulta
-    return `${data.publicUrl}?v=${version}`;
+    const version = path === 'consulta.jpeg' ? 'v2' : 'v0'; // Aumentei a versão para garantir o cache-busting
+    return `${SUPABASE_ASSETS_BASE_URL}${path}?v=${version}`;
 };
 
 // --- Funções de Notificações ---
