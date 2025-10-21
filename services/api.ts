@@ -12,7 +12,7 @@ export const DEFAULT_CLINIC_SETTINGS: ClinicSettings = {
         3: { open: true, start: '08:00', end: '20:00' }, // Quarta
         4: { open: true, start: '08:00', end: '20:00' }, // Quinta
         5: { open: true, start: '08:00', end: '20:00' }, // Sexta
-        6: { open: false }, // Sábado
+        6: { open: true, start: '08:00', end: '20:00' }, // Sábado (AGORA ABERTO POR PADRÃO)
     },
     holidayExceptions: [],
     featuredServiceIds: [],
