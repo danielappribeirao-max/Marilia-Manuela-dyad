@@ -78,10 +78,12 @@ export default function AdminManageUsers() {
     const filteredUsers = useMemo(() => {
         let filtered = [...users];
 
+        // 1. Filtrar por Função (Role)
         if (filterRole !== 'all') {
             filtered = filtered.filter(u => u.role === filterRole);
         }
 
+        // 2. Filtrar por Busca (Search Query)
         if (searchQuery.trim() !== '') {
             const lowercasedQuery = searchQuery.toLowerCase();
             const unformattedQuery = searchQuery.replace(/\D/g, ''); 
