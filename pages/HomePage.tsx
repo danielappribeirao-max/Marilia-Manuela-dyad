@@ -81,7 +81,7 @@ export default function HomePage({ onBook, onStartFreeConsultation, onBookPackag
                 <img src={aboutImageUrl} alt="Interior da clínica" className="rounded-lg shadow-xl"/>
             </div>
             <div className="md:w-1/2">
-                <h2 className="text-4xl font-bold text-gray-800 mb-4">Bem-vinda à Marília Manuela</h2>
+                <h2 className="text-4xl font-bold text-gray-800 mb-4">Bem-vindos à Marília Manuela</h2>
                 <p className="text-gray-600 mb-4 leading-relaxed">
                     {clinicSettings.aboutText}
                 </p>
