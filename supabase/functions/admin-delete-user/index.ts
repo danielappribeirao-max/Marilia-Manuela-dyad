@@ -29,7 +29,8 @@ serve(async (req) => {
     const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(userId)
 
     if (deleteError) {
-      throw deleteError
+      // Se houver um erro de exclusão (ex: último admin), lança o erro para ser capturado abaixo
+      throw new Error(deleteError.message);
     }
 
     return new Response(JSON.stringify({ success: true, message: `Usuário ${userId} excluído com sucesso.` }), {
@@ -37,9 +38,12 @@ serve(async (req) => {
       status: 200,
     })
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
+    // Captura qualquer erro (incluindo o erro de deleteError lançado acima)
+    const errorMessage = error instanceof Error ? error.message : "Erro desconhecido ao excluir usuário.";
+    
+    return new Response(JSON.stringify({ error: errorMessage }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 400,
+      status: 400, // Retorna 400 para indicar falha na requisição de exclusão
     })
   }
 })
