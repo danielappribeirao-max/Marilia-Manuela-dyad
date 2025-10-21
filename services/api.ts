@@ -327,7 +327,7 @@ export const ensureFreeConsultationServiceExists = async (): Promise<Service | n
         description: 'Avaliação inicial sem custo para definir o melhor plano de tratamento para você.',
         duration: 30,
         price: 0,
-        image: getAssetUrl('consulta.jpeg'), // IMAGEM ATUALIZADA PARA 'consulta.jpeg'
+        image: getAssetUrl('consulta.jpeg'), // IMAGEM ATUALIZADA
         category: 'Avaliação',
         sessions: 1,
         order: 0, // Sempre o primeiro
