@@ -21,7 +21,11 @@ serve(async (req) => {
     const { userId } = await req.json()
 
     if (!userId) {
-        throw new Error("ID do usuário é obrigatório.");
+        // Retorna erro de validação
+        return new Response(JSON.stringify({ error: "ID do usuário é obrigatório." }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 200, // Retorna 200 para que o cliente possa ler o corpo JSON
+        })
     }
 
     // 1. Excluir o usuário do sistema de autenticação
@@ -30,10 +34,10 @@ serve(async (req) => {
     if (deleteError) {
       // Se houver um erro de exclusão (ex: último admin), capturamos a mensagem
       console.error("Supabase Auth Delete Error:", deleteError.message);
-      // Retorna 400 com a mensagem de erro no corpo JSON
+      // Retorna 200 com a mensagem de erro no corpo JSON
       return new Response(JSON.stringify({ error: deleteError.message }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 400, 
+        status: 200, 
       })
     }
 
@@ -47,7 +51,7 @@ serve(async (req) => {
     
     return new Response(JSON.stringify({ error: errorMessage }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 400,
+      status: 200, // Retorna 200 para que o cliente possa ler o corpo JSON
     })
   }
 })

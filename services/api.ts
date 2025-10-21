@@ -287,31 +287,15 @@ export const deleteUser = async (userId: string): Promise<{ success: boolean, er
             body: { userId },
         });
 
+        // Se houver um erro de invocação (rede, timeout, etc.)
         if (error) {
             console.error("Error invoking admin-delete-user function:", error);
-            
-            // Tenta extrair a mensagem de erro de forma mais abrangente
-            let errorMessage = error.message;
-            
-            // 1. Tenta extrair do corpo do contexto (se for um erro de status)
-            if ((error as any).context?.body?.error) {
-                errorMessage = (error as any).context.body.error;
-            } 
-            // 2. Tenta extrair de uma propriedade 'msg' ou 'details' se existir
-            else if ((error as any).msg) {
-                errorMessage = (error as any).msg;
-            }
-            
-            // Se a mensagem ainda for o erro genérico, tentamos ser mais específicos
-            if (errorMessage.includes('non-2xx status code')) {
-                errorMessage = "Falha na comunicação com o servidor. Verifique se você está tentando excluir o último administrador.";
-            }
-            
-            return { success: false, error: errorMessage };
+            return { success: false, error: "Falha na comunicação com o servidor. Verifique se você está tentando excluir o último administrador." };
         }
 
+        // Se a Edge Function retornou 200, mas com um erro de aplicação no corpo (data.error)
         if (data.error) {
-            console.error("Edge Function returned error:", data.error);
+            console.error("Edge Function returned application error:", data.error);
             return { success: false, error: data.error };
         }
 
