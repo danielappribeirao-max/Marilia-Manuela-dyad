@@ -27,45 +27,18 @@ serve(async (req) => {
         })
     }
     
-    // --- 1. Verificação de Último Administrador ---
-    const { data: profile, error: profileError } = await supabaseAdmin
-        .from('profiles')
-        .select('role')
-        .eq('id', userId)
-        .single();
-        
-    if (profileError) {
-        throw new Error(`Perfil não encontrado para o usuário: ${profileError.message}`);
-    }
-    
-    if (profile.role === 'admin') {
-        const { count, error: countError } = await supabaseAdmin
-            .from('profiles')
-            .select('id', { count: 'exact' })
-            .eq('role', 'admin');
-            
-        if (countError) {
-            throw new Error(`Erro ao contar administradores: ${countError.message}`);
-        }
-        
-        if (count === 1) {
-            return new Response(JSON.stringify({ error: "Não é possível excluir o último usuário com função 'admin'. Garanta que haja pelo menos um administrador ativo." }), {
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-                status: 200, 
-            });
-        }
-    }
-    // ---------------------------------------------
-
-    // 2. Excluir o usuário do sistema de autenticação
+    // 1. Excluir o usuário do sistema de autenticação
+    // Isso deve acionar a exclusão em cascata do perfil.
     const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(userId)
 
     if (deleteError) {
       console.error("Supabase Auth Delete Error:", deleteError.message);
-      // Se o erro for genérico, retornamos uma mensagem mais útil
-      const errorMessage = deleteError.message.includes('Database error deleting user') 
-        ? "Falha na exclusão. O usuário pode ter dados associados que impedem a exclusão, ou é o último administrador."
-        : deleteError.message;
+      
+      // Se o erro for o genérico de DB, fornecemos uma mensagem mais útil
+      let errorMessage = deleteError.message;
+      if (deleteError.message.includes('Database error deleting user')) {
+          errorMessage = "Falha na exclusão. O usuário pode ter agendamentos ou dados associados que impedem a exclusão. Tente cancelar agendamentos pendentes primeiro.";
+      }
         
       return new Response(JSON.stringify({ error: errorMessage }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
