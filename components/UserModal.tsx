@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { User, Role, Service, Booking } from '../types';
 import { formatCPF, formatPhone } from '../utils/formatters';
 import * as api from '../services/api';
-import { Calendar, Clock, User as UserIcon, CheckCircle, XCircle } from 'lucide-react';
+import { Calendar, Clock, User as UserIcon, CheckCircle, XCircle, Package } from 'lucide-react';
 
 interface UserModalProps {
   user: Partial<User> | null;
@@ -29,6 +29,16 @@ const UserModal: React.FC<UserModalProps> = ({ user, onClose, onSave, services }
   const [loadingBookings, setLoadingBookings] = useState(false);
 
   const isEditing = !!user;
+  
+  const userCredits = useMemo(() => {
+      if (!user?.credits) return [];
+      return Object.entries(user.credits)
+          .map(([serviceId, count]) => {
+              const service = services.find(s => s.id === serviceId);
+              return { service, count: count as number };
+          })
+          .filter(item => item.service && item.count > 0);
+  }, [user, services]);
 
   useEffect(() => {
     if (isEditing && user?.id) {
@@ -152,6 +162,22 @@ const UserModal: React.FC<UserModalProps> = ({ user, onClose, onSave, services }
                     <option value={Role.STAFF}>Profissional</option>
                 </select>
             </div>
+            
+            {/* Seção de Créditos (Apenas para edição) */}
+            {isEditing && user && userCredits.length > 0 && (
+                <div className="pt-4 mt-4 border-t border-gray-200">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-3 flex items-center gap-2"><Package size={20} className="text-pink-500" /> Créditos de Sessões</h3>
+                    <div className="space-y-2 max-h-40 overflow-y-auto pr-2">
+                        {userCredits.map(item => (
+                            <div key={item.service!.id} className="bg-pink-50 p-3 rounded-lg border border-pink-200 flex justify-between items-center">
+                                <p className="font-medium text-gray-800 text-sm">{item.service!.name}</p>
+                                <span className="font-bold text-pink-600">{item.count}x</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+            
             {isEditing && user && (
               <div className="pt-4 mt-4 border-t border-gray-200">
                 <h3 className="text-lg font-semibold text-gray-800 mb-3">Histórico de Agendamentos ({bookings.length})</h3>
