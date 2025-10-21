@@ -24,17 +24,18 @@ serve(async (req) => {
     }
     
     // 1. Atualizar o registro de autenticação (apenas nome/metadados)
+    // Nota: O CPF não deve ir para user_metadata.
     const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
         user_metadata: {
             full_name: name,
-            phone: phone,
-            avatar_url: avatarUrl,
+            phone: phone || null, // Garante que seja null se vazio
+            avatar_url: avatarUrl || null, // Garante que seja null se vazio
         },
     });
 
     if (authError) {
-        console.error("Auth Update Error:", authError);
-        // Não lançamos erro fatal, apenas avisamos, pois o perfil é mais importante
+        // Logamos o erro, mas não o tornamos fatal, pois a atualização do perfil é crítica.
+        console.error("Auth Update Error (Non-fatal):", authError);
     }
 
     // 2. Atualizar o perfil na tabela public.profiles
@@ -42,10 +43,10 @@ serve(async (req) => {
       .from('profiles')
       .update({
         full_name: name,
-        phone: phone,
-        cpf: cpf,
+        phone: phone || null, // Garante que seja null se vazio
+        cpf: cpf || null, // Garante que seja null se vazio
         role: role,
-        avatar_url: avatarUrl,
+        avatar_url: avatarUrl || null, // Garante que seja null se vazio
         updated_at: new Date().toISOString(),
       })
       .eq('id', userId)
@@ -53,6 +54,7 @@ serve(async (req) => {
       .single()
 
     if (profileError) {
+      console.error("Profile Update Error (Fatal):", profileError);
       throw profileError
     }
     
@@ -69,7 +71,9 @@ serve(async (req) => {
       status: 200,
     })
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
+    const errorMessage = error instanceof Error ? error.message : "Erro desconhecido ao atualizar usuário.";
+    
+    return new Response(JSON.stringify({ error: errorMessage }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 400,
     })
