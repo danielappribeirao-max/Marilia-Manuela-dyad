@@ -88,16 +88,12 @@ export default function AdminManageUsers() {
             const lowercasedQuery = searchQuery.toLowerCase();
             const unformattedQuery = searchQuery.replace(/\D/g, ''); 
             
-            filtered = filtered.filter(u => {
-                const nameMatch = (u.name || '').toLowerCase().includes(lowercasedQuery);
-                const emailMatch = (u.email || '').toLowerCase().includes(lowercasedQuery);
-                
-                // Busca por telefone e CPF (apenas dígitos)
-                const phoneMatch = (u.phone || '').replace(/\D/g, '').includes(unformattedQuery);
-                const cpfMatch = (u.cpf || '').replace(/\D/g, '').includes(unformattedQuery);
-                
-                return nameMatch || emailMatch || phoneMatch || cpfMatch;
-            });
+            filtered = filtered.filter(u => 
+                u.name.toLowerCase().includes(lowercasedQuery) || 
+                u.email.toLowerCase().includes(lowercasedQuery) ||
+                (u.phone && u.phone.replace(/\D/g, '').includes(unformattedQuery)) ||
+                (u.cpf && u.cpf.replace(/\D/g, '').includes(unformattedQuery))
+            );
         }
         
         filtered.sort((a, b) => a.name.localeCompare(b.name));
