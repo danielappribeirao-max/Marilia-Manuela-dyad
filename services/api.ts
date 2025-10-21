@@ -898,6 +898,7 @@ const uploadFile = async (bucket: string, file: File, path: string): Promise<str
         return null;
     }
 
+    // Retorna a URL pública para que o frontend possa usá-la imediatamente
     const { data: publicUrlData } = supabase.storage.from(bucket).getPublicUrl(data.path);
     return publicUrlData.publicUrl;
 };
@@ -912,7 +913,8 @@ const SUPABASE_ASSETS_BASE_URL = 'https://mdxqiozhqmcriiqspbqf.supabase.co/stora
 
 export const getAssetUrl = (path: string): string => {
     // Adiciona um parâmetro de versão para forçar o cache-busting em ativos estáticos
-    const version = path === 'consulta.jpeg' ? 'v2' : 'v0'; // Aumentei a versão para garantir o cache-busting
+    // Aumentei a versão para garantir que o cache seja ignorado após o último upload.
+    const version = path === 'consulta.jpeg' ? 'v2' : 'v0'; 
     return `${SUPABASE_ASSETS_BASE_URL}${path}?v=${version}`;
 };
 
