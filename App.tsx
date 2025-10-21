@@ -73,8 +73,8 @@ function AppContent() {
   const [reschedulingBooking, setReschedulingBooking] = useState<Booking | null>(null);
   
   const [isQuickRegisterModalOpen, setIsQuickRegisterModalOpen] = useState(false);
-  // O tempClientData agora inclui o email
-  const [tempClientData, setTempClientData] = useState<{ name: string; phone: string; description: string; email: string } | null>(null);
+  // O tempClientData agora só precisa de nome e telefone, a descrição é gerada
+  const [tempClientData, setTempClientData] = useState<{ name: string; phone: string; description: string } | null>(null);
   const [newlyCreatedUserEmail, setNewlyCreatedUserEmail] = useState<string | null>(null);
   
   // NOVO: Estado para seleção de serviço dentro do pacote
@@ -254,7 +254,7 @@ function AppContent() {
     setReschedulingBooking(booking);
   }, []);
   
-  const handleQuickRegisterAndBook = useCallback((data: { name: string; phone: string; description: string; email: string }) => {
+  const handleQuickRegisterAndBook = useCallback((data: { name: string; phone: string; description: string }) => {
       if (!serviceToBook) return;
       
       // A descrição é passada aqui, seja o interesse (consulta gratuita) ou o nome do serviço (serviço pago)
@@ -294,7 +294,6 @@ function AppContent() {
         const result = await api.bookServiceForNewUser({
             name: tempClientData.name,
             phone: tempClientData.phone,
-            email: tempClientData.email, // Passando o email
             description: tempClientData.description, // Usa a descrição (interesse ou nome do serviço)
             date: details.date,
             professionalId: details.professionalId,

@@ -963,7 +963,7 @@ export const sendCancellationNotice = async (details: { to: string; message: str
 
 // --- Funções de Agendamento Rápido (Edge Function) ---
 
-export const bookServiceForNewUser = async (details: { name: string; phone: string; email: string; description: string; date: Date; professionalId: string; serviceId: string; serviceName: string; duration: number }): Promise<{ success: boolean, error: string | null, newUserId?: string, tempEmail?: string }> => {
+export const bookServiceForNewUser = async (details: { name: string; phone: string; description: string; date: Date; professionalId: string; serviceId: string; serviceName: string; duration: number }): Promise<{ success: boolean, error: string | null, newUserId?: string, tempEmail?: string }> => {
     try {
         // --- CORREÇÃO DE FUSO HORÁRIO ---
         const dateObj = details.date;
@@ -975,7 +975,6 @@ export const bookServiceForNewUser = async (details: { name: string; phone: stri
             body: {
                 name: details.name,
                 phone: details.phone.replace(/\D/g, ''), // Envia apenas dígitos
-                email: details.email, // Enviando o email
                 description: details.description,
                 date: bookingDate, // Enviando data YYYY-MM-DD
                 time: bookingTime, // Enviando hora HH:MM

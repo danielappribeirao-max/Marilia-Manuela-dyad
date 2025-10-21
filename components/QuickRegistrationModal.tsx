@@ -6,7 +6,7 @@ import { FREE_CONSULTATION_SERVICE_ID } from '../constants';
 interface QuickRegistrationModalProps {
   service: Service; // Novo: Recebe o serviço para saber se é consulta gratuita
   onClose: () => void;
-  onRegister: (data: { name: string; phone: string; description: string; email: string }) => void; // Adicionado 'email'
+  onRegister: (data: { name: string; phone: string; description: string }) => void;
 }
 
 const QuickRegistrationModal: React.FC<QuickRegistrationModalProps> = ({ service, onClose, onRegister }) => {
@@ -15,7 +15,6 @@ const QuickRegistrationModal: React.FC<QuickRegistrationModalProps> = ({ service
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
-    email: '', // Novo campo
     description: isFreeConsultation ? '' : service.name, // Preenche a descrição com o nome do serviço se não for consulta gratuita
   });
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
@@ -28,11 +27,6 @@ const QuickRegistrationModal: React.FC<QuickRegistrationModalProps> = ({ service
     if (phoneDigits.length < 10) {
       newErrors.phone = 'Telefone inválido. Mínimo de 10 dígitos.';
     }
-    
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!formData.email.trim()) newErrors.email = 'O e-mail é obrigatório.';
-    else if (!emailRegex.test(formData.email)) newErrors.email = 'Formato de e-mail inválido.';
-    
     if (isFreeConsultation && !formData.description.trim()) {
         newErrors.description = 'A descrição dos serviços é obrigatória para a consulta gratuita.';
     }
@@ -82,12 +76,6 @@ const QuickRegistrationModal: React.FC<QuickRegistrationModalProps> = ({ service
               <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">Seu Nome Completo</label>
               <input type="text" id="name" name="name" value={formData.name} onChange={handleChange} className={`w-full p-2 border bg-white text-gray-900 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500 ${errors.name ? 'border-red-500' : 'border-gray-300'}`} />
               {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
-            </div>
-            
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">Seu E-mail (para login)</label>
-              <input type="email" id="email" name="email" value={formData.email} onChange={handleChange} placeholder="seu.email@exemplo.com" className={`w-full p-2 border bg-white text-gray-900 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500 ${errors.email ? 'border-red-500' : 'border-gray-300'}`} />
-              {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
             </div>
             
             <div>
