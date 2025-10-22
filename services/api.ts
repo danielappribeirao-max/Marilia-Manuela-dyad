@@ -287,13 +287,11 @@ export const deleteUser = async (userId: string): Promise<{ success: boolean, er
             body: { userId },
         });
 
-        // Se houver um erro de invocação (rede, timeout, etc.)
         if (error) {
             console.error("Error invoking admin-delete-user function:", error);
             return { success: false, error: "Falha na comunicação com o servidor. Verifique se você está tentando excluir o último administrador." };
         }
 
-        // Se a Edge Function retornou 200, mas com um erro de aplicação no corpo (data.error)
         if (data.error) {
             console.error("Edge Function returned application error:", data.error);
             return { success: false, error: data.error };
@@ -1031,4 +1029,36 @@ export const getSalesData = async (): Promise<Sale[]> => {
         amount: Number(d.amount),
         date: new Date(d.date),
     })) as Sale[];
+};
+
+// --- Funções de Integração ---
+
+interface GoogleCalendarSyncDetails {
+    summary: string;
+    description: string;
+    start: string; // ISO string
+    end: string; // ISO string
+}
+
+export const syncGoogleCalendar = async (details: GoogleCalendarSyncDetails): Promise<{ success: boolean, error?: string }> => {
+    try {
+        const { data, error } = await supabase.functions.invoke('google-calendar-sync', {
+            body: details,
+        });
+
+        if (error) {
+            console.error("Error invoking google-calendar-sync function:", error);
+            return { success: false, error: error.message };
+        }
+        
+        if (data.error) {
+            console.error("Edge Function returned error:", data.error);
+            return { success: false, error: data.error };
+        }
+
+        return { success: true };
+    } catch (e) {
+        console.error("Unexpected error during Google Calendar sync:", e);
+        return { success: false, error: "Erro inesperado ao tentar sincronizar com o Google Calendar." };
+    }
 };
