@@ -1,5 +1,5 @@
 import { supabase } from '../supabase/client';
-import { User, Service, ServicePackage, Booking, Sale, OperatingHours, HolidayException, ClinicSettings, Role } from '../types';
+import { User, Service, ServicePackage, Booking, Sale, OperatingHours, HolidayException, ClinicSettings, Role, RecurringBooking, RecurrenceFrequency } from '../types';
 import { FREE_CONSULTATION_SERVICE_ID } from '../constants';
 
 // --- Configurações Padrão da Clínica ---
@@ -19,6 +19,12 @@ export const DEFAULT_CLINIC_SETTINGS: ClinicSettings = {
     heroText: 'Bem Vindos ...', // TÍTULO ATUALIZADO
     heroSubtitle: 'Na Marília Manuela - Centro de Estética Avançada temos tratamentos de ponta, agende seu momento de cuidado em um ambiente de luxo e bem-estar.', // SUBTÍTULO ATUALIZADO
     aboutText: 'Na Marília Manuela, acreditamos que a estética vai além da aparência. Oferecemos um refúgio de bem-estar com tratamentos personalizados e tecnologia de ponta, garantindo resultados que elevam sua autoestima e promovem saúde integral. Nossa equipe de profissionais altamente qualificados está pronta para te receber.',
+};
+
+// Helper function to convert JS day index (0=Sun, 6=Sat) to RRULE BYDAY (SU, MO, TU, WE, TH, FR, SA)
+const dayIndexToRrule = (dayIndex: number): string => {
+    const days = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
+    return days[dayIndex];
 };
 
 // --- Funções de Autenticação e Perfil ---
@@ -739,6 +745,83 @@ export const addOrUpdateBooking = async (booking: Partial<Booking> & { serviceNa
             duration: data.duration,
         } as Booking;
     }
+};
+
+// --- Funções de Agendamento Recorrente ---
+
+interface AddRecurringBookingPayload extends Omit<RecurringBooking, 'id' | 'status' | 'rrule'> {
+    endDate: string; // YYYY-MM-DD
+    frequency: RecurrenceFrequency;
+}
+
+export const addRecurringBooking = async (booking: AddRecurringBookingPayload): Promise<RecurringBooking | null> => {
+    
+    // 1. Generate RRULE
+    const startDateObj = new Date(booking.startDate + 'T00:00:00'); // Garante que a data seja interpretada corretamente
+    const dayOfWeekRrule = dayIndexToRrule(startDateObj.getDay());
+    
+    // RRULE format: FREQ=WEEKLY;BYDAY=MO;UNTIL=YYYYMMDD
+    const untilDate = booking.endDate.replace(/-/g, ''); // YYYYMMDD
+    const rrule = `FREQ=${booking.frequency};BYDAY=${dayOfWeekRrule};UNTIL=${untilDate}`;
+    
+    const payload = {
+        user_id: booking.userId,
+        service_id: booking.serviceId,
+        professional_id: booking.professionalId,
+        start_date: booking.startDate,
+        start_time: booking.startTime,
+        duration: booking.duration,
+        rrule: rrule,
+        status: 'active',
+    };
+
+    const { data, error } = await supabase
+        .from('recurring_bookings')
+        .insert(payload)
+        .select('*')
+        .single();
+
+    if (error) {
+        console.error("Error inserting recurring booking:", error);
+        return null;
+    }
+    
+    return {
+        id: data.id,
+        userId: data.user_id,
+        serviceId: data.service_id,
+        professionalId: data.professional_id,
+        startDate: data.start_date,
+        startTime: data.start_time,
+        duration: data.duration,
+        rrule: data.rrule,
+        status: data.status as RecurringBooking['status'],
+    };
+};
+
+export const getRecurringBookings = async (): Promise<RecurringBooking[] | null> => {
+    // Nota: RLS garante que apenas admins vejam todos
+    const { data, error } = await supabase
+        .from('recurring_bookings')
+        .select('*')
+        .eq('status', 'active');
+
+    if (error) {
+        console.error("Error fetching recurring bookings:", error);
+        return null;
+    }
+
+    return data.map(d => ({
+        id: d.id,
+        userId: d.user_id,
+        serviceId: d.service_id,
+        professionalId: d.professional_id,
+        startDate: d.start_date,
+        startTime: d.start_time,
+        duration: d.duration,
+        rrule: d.rrule,
+        status: d.status as RecurringBooking['status'],
+    }));
 };
 
 // --- Funções de Configurações da Clínica ---

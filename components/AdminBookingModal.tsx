@@ -1,8 +1,9 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { Booking, User, Service, Role } from '../types';
+import { Booking, User, Service, Role, RecurrenceFrequency } from '../types';
 import { useApp } from '../App';
 import * as api from '../services/api';
 import { useAvailability } from '../hooks/useAvailability';
+import { Repeat } from 'lucide-react';
 
 interface AdminBookingModalProps {
   booking: Booking | null;
@@ -41,6 +42,10 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
     // 2. Determinar a hora inicial
     const initialTime = booking ? new Date(booking.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }).slice(0, 5) : (defaultDate ? defaultDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }).slice(0, 5) : '');
     
+    // Data final padrão: 1 mês após a data inicial
+    const defaultEndDate = new Date(initialDate);
+    defaultEndDate.setMonth(defaultEndDate.getMonth() + 1);
+    
     return {
       userId: booking?.userId || '', // Permite que seja string vazia se o usuário foi excluído
       serviceId: booking?.serviceId || '',
@@ -51,6 +56,11 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
       duration: booking?.duration || service?.duration || 30,
       quantity: 1,
       notes: booking?.comment || '', // Adicionando notas/comentários
+      
+      // Campos de Recorrência (apenas para criação)
+      isRecurring: false,
+      frequency: RecurrenceFrequency.WEEKLY,
+      endDate: defaultEndDate.toISOString().split('T')[0], 
     };
   };
   
@@ -79,8 +89,8 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
 
   const validate = () => {
     const newErrors: { [key: string]: string } = {};
-    // A validação de userId só é obrigatória se for um NOVO agendamento/venda de pacote
-    if (!isEditing && !isPackageSale && !formData.userId) newErrors.userId = 'Selecione um cliente.';
+    
+    if (!formData.userId) newErrors.userId = 'Selecione um cliente.';
     if (!formData.serviceId) newErrors.serviceId = 'Selecione um serviço.';
 
     if (isPackageSale) {
@@ -106,6 +116,15 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
                 }
             }
         }
+        
+        // Validação de recorrência (apenas para novos agendamentos)
+        if (!isEditing && formData.isRecurring) {
+            if (!formData.endDate) {
+                newErrors.endDate = 'A data final da recorrência é obrigatória.';
+            } else if (new Date(formData.endDate) <= new Date(formData.date)) {
+                newErrors.endDate = 'A data final deve ser posterior à data de início.';
+            }
+        }
     }
     
     setErrors(newErrors);
@@ -113,9 +132,11 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
+    const { name, value, type } = e.target;
+    
     setFormData(prev => {
-      const newFormData = { ...prev, [name]: value };
+      const newFormData = { ...prev, [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value };
+      
       if (name === 'serviceId' && !isPackageSale) {
         newFormData.duration = services.find(s => s.id === value)?.duration || 30;
       }
@@ -146,6 +167,37 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
         return;
     } 
     
+    // --- Agendamento Único ou Recorrente ---
+    
+    if (!isEditing && formData.isRecurring) {
+        // 1. Agendamento Recorrente (Cria a regra)
+        const user = users.find(u => u.id === formData.userId);
+        if (!user || !selectedService) return;
+        
+        const recurringBookingPayload = {
+            userId: formData.userId,
+            serviceId: formData.serviceId,
+            professionalId: formData.professionalId,
+            startDate: formData.date,
+            startTime: formData.time,
+            duration: Number(formData.duration),
+            endDate: formData.endDate,
+            frequency: formData.frequency as RecurrenceFrequency,
+        };
+        
+        const result = await api.addRecurringBooking(recurringBookingPayload);
+        
+        if (result) {
+            alert(`Agendamento recorrente para "${selectedService.name}" criado com sucesso!`);
+            onClose();
+        } else {
+            alert("Falha ao criar agendamento recorrente. Verifique a disponibilidade e tente novamente.");
+        }
+        return;
+    }
+    
+    // 2. Agendamento Único (Cria ou Edita)
+    
     const [hours, minutes] = formData.time.split(':').map(Number);
     
     // Cria a data final no fuso horário local
@@ -166,7 +218,7 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
   };
 
   const modalTitle = isPackageSale ? 'Vender Pacote de Serviços' : (isEditing ? 'Editar Agendamento' : 'Novo Agendamento');
-  const submitButtonText = isPackageSale ? 'Adicionar Créditos' : 'Salvar Agendamento';
+  const submitButtonText = isPackageSale ? 'Adicionar Créditos' : (formData.isRecurring ? 'Criar Recorrência' : 'Salvar Agendamento');
 
   const clientUsers = useMemo(() => users.filter(u => u.role === Role.CLIENT), [users]);
   
@@ -219,22 +271,42 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
                 </div>
             ) : (
               <>
-                <div>
-                    <label htmlFor="duration" className="block text-sm font-medium text-gray-700 mb-1">Duração (minutos)</label>
+                {/* Opção de Recorrência (Apenas para Novo Agendamento) */}
+                {!isEditing && (
+                    <div className="pt-2 border-t border-gray-200">
+                        <label className="flex items-center space-x-2 cursor-pointer">
+                            <input 
+                                type="checkbox" 
+                                name="isRecurring"
+                                checked={formData.isRecurring} 
+                                onChange={handleChange} 
+                                className="h-4 w-4 text-pink-600 border-gray-300 rounded focus:ring-pink-500"
+                            />
+                            <span className="text-sm font-medium text-gray-700 flex items-center gap-1"><Repeat size={16} /> Agendamento Recorrente?</span>
+                        </label>
+                    </div>
+                )}
+                
+                {/* Campos de Agendamento Único / Recorrente */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="sm:col-span-2">
+                    <label htmlFor="professionalId" className="block text-sm font-medium text-gray-700 mb-1">Profissional</label>
+                    <select id="professionalId" name="professionalId" value={formData.professionalId} onChange={handleChange} className={`w-full p-2 border bg-white text-gray-900 border-gray-300 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500 ${errors.professionalId ? 'border-red-500' : 'border-gray-300'}`}>
+                      <option value="" disabled>Selecione um profissional</option>
+                      {professionals.map(prof => <option key={prof.id} value={prof.id}>{prof.name}</option>)}
+                    </select>
+                    {errors.professionalId && <p className="text-red-500 text-xs mt-1">{errors.professionalId}</p>}
+                  </div>
+                  <div>
+                    <label htmlFor="duration" className="block text-sm font-medium text-gray-700 mb-1">Duração (min)</label>
                     <input type="number" id="duration" name="duration" value={formData.duration || ''} onChange={handleChange} className={`w-full p-2 border bg-white text-gray-900 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500 ${errors.duration ? 'border-red-500' : 'border-gray-300'}`} />
                     {errors.duration && <p className="text-red-500 text-xs mt-1">{errors.duration}</p>}
+                  </div>
                 </div>
-                <div>
-                  <label htmlFor="professionalId" className="block text-sm font-medium text-gray-700 mb-1">Profissional</label>
-                  <select id="professionalId" name="professionalId" value={formData.professionalId} onChange={handleChange} className={`w-full p-2 border bg-white text-gray-900 border-gray-300 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500 ${errors.professionalId ? 'border-red-500' : 'border-gray-300'}`}>
-                    <option value="" disabled>Selecione um profissional</option>
-                    {professionals.map(prof => <option key={prof.id} value={prof.id}>{prof.name}</option>)}
-                  </select>
-                  {errors.professionalId && <p className="text-red-500 text-xs mt-1">{errors.professionalId}</p>}
-                </div>
+                
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label htmlFor="date" className="block text-sm font-medium text-gray-700 mb-1">Data</label>
+                    <label htmlFor="date" className="block text-sm font-medium text-gray-700 mb-1">Data de Início</label>
                     <input type="date" id="date" name="date" value={formData.date} onChange={handleChange} className={`w-full p-2 border bg-white text-gray-900 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500 ${errors.date ? 'border-red-500' : 'border-gray-300'}`} />
                     {errors.date && <p className="text-red-500 text-xs mt-1">{errors.date}</p>}
                     {formData.date && <p className={`text-xs mt-1 ${isClinicOpen ? 'text-gray-600' : 'text-red-500 font-semibold'}`}>{clinicHoursMessage}</p>}
@@ -255,18 +327,41 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
                     {errors.time && <p className="text-red-500 text-xs mt-1">{errors.time}</p>}
                   </div>
                 </div>
+                
+                {/* Campos de Recorrência */}
+                {!isEditing && formData.isRecurring && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-pink-50 rounded-lg border border-pink-200">
+                        <div>
+                            <label htmlFor="frequency" className="block text-sm font-medium text-gray-700 mb-1">Frequência</label>
+                            <select id="frequency" name="frequency" value={formData.frequency} onChange={handleChange} className="w-full p-2 border bg-white text-gray-900 border-gray-300 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500">
+                                <option value={RecurrenceFrequency.WEEKLY}>Semanalmente</option>
+                                <option value={RecurrenceFrequency.MONTHLY} disabled>Mensalmente (Em breve)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label htmlFor="endDate" className="block text-sm font-medium text-gray-700 mb-1">Data Final da Recorrência</label>
+                            <input type="date" id="endDate" name="endDate" value={formData.endDate} onChange={handleChange} min={formData.date} className={`w-full p-2 border bg-white text-gray-900 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500 ${errors.endDate ? 'border-red-500' : 'border-gray-300'}`} />
+                            {errors.endDate && <p className="text-red-500 text-xs mt-1">{errors.endDate}</p>}
+                        </div>
+                        <div className="sm:col-span-2 text-sm text-gray-600">
+                            <p>A recorrência será criada para todas as {formData.frequency === RecurrenceFrequency.WEEKLY ? 'semanas' : 'meses'} até a data final, no mesmo dia da semana ({selectedDate?.toLocaleDateString('pt-BR', { weekday: 'long' })}).</p>
+                        </div>
+                    </div>
+                )}
+                
                 <div>
                     <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">Notas/Comentários</label>
                     <textarea id="notes" name="notes" value={formData.notes} onChange={handleChange} rows={2} className="w-full p-2 border bg-white text-gray-900 border-gray-300 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500" />
                 </div>
                 <div>
                   <label htmlFor="status" className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                  <select id="status" name="status" value={formData.status} onChange={handleChange} className="w-full p-2 border bg-white text-gray-900 border-gray-300 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500">
+                  <select id="status" name="status" value={formData.status} onChange={handleChange} className="w-full p-2 border bg-white text-gray-900 border-gray-300 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500" disabled={formData.isRecurring}>
                     <option value="confirmed">Confirmado</option>
                     <option value="completed">Concluído</option>
                     <option value="canceled">Cancelado</option>
                     <option value="Agendado">Agendado (Padrão)</option>
                   </select>
+                  {formData.isRecurring && <p className="text-xs text-gray-500 mt-1">O status é fixo como 'active' para agendamentos recorrentes.</p>}
                 </div>
               </>
             )}

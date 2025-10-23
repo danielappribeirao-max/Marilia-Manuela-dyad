@@ -68,6 +68,24 @@ export interface Booking {
   duration?: number; // in minutes
 }
 
+// NOVO: Tipos para Agendamentos Recorrentes
+export interface RecurringBooking {
+  id: string;
+  userId: string | null;
+  serviceId: string;
+  professionalId: string;
+  startDate: string; // YYYY-MM-DD
+  startTime: string; // HH:MM
+  duration: number; // in minutes
+  rrule: string; // RRULE string (e.g., "FREQ=WEEKLY;BYDAY=MO;COUNT=10")
+  status: 'active' | 'suspended' | 'completed';
+}
+
+export enum RecurrenceFrequency {
+  WEEKLY = 'WEEKLY',
+  MONTHLY = 'MONTHLY',
+}
+
 export interface Availability {
   [date: string]: string[]; // e.g., "2024-07-28": ["09:00", "10:00"]
 }

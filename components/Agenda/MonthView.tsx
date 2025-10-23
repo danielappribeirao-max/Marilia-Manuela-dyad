@@ -97,8 +97,12 @@ const AgendaMonthView: React.FC<AgendaMonthViewProps> = ({ currentDate, bookings
                                 const user = booking.userId ? users.find(u => u.id === booking.userId) : null;
                                 const clientName = user?.name || 'Cliente Excluído';
                                 const clientPhone = user?.phone || 'N/A';
+                                const isRecurring = booking.id.startsWith('R-');
                                 
-                                const bookingStatusClasses = statusClasses[booking.status as keyof typeof statusClasses] || statusClasses.Agendado;
+                                // Se for recorrente, usa um estilo diferente
+                                const bookingStatusClasses = isRecurring 
+                                    ? 'bg-yellow-50 border-yellow-400 text-yellow-800 hover:bg-yellow-100 border-dashed'
+                                    : statusClasses[booking.status as keyof typeof statusClasses] || statusClasses.Agendado;
                                 
                                 return (
                                     <div 
@@ -111,7 +115,7 @@ const AgendaMonthView: React.FC<AgendaMonthViewProps> = ({ currentDate, bookings
                                         <p className="font-bold text-xs">
                                             {new Date(booking.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                                         </p>
-                                        <p className="text-xs truncate font-medium">{service?.name}</p>
+                                        <p className="text-xs truncate font-medium">{service?.name} {isRecurring && '(Rec.)'}</p>
                                         {clientPhone !== 'N/A' && <p className="text-xs text-gray-600 font-medium">{formatPhone(clientPhone)}</p>}
                                         {clientName === 'Cliente Excluído' && <p className="text-xs text-red-600 font-medium">Excluído</p>}
                                     </div>

@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import * as api from '../../services/api';
-import { Booking, Service, User } from '../../types';
+import { Booking, Service, User, RecurringBooking } from '../../types';
 import AdminBookingModal from '../../components/AdminBookingModal';
 import AgendaWeekView from '../../components/Agenda/WeekView';
 import AgendaMonthView from '../../components/Agenda/MonthView';
@@ -15,8 +15,107 @@ const getWeekRange = (date: Date) => {
     start.setDate(start.getDate() - start.getDay()); // Sunday
     const end = new Date(start);
     end.setDate(end.getDate() + 6); // Saturday
+    // Ajusta o final do dia para incluir o último minuto
+    end.setHours(23, 59, 59, 999);
     return { start, end };
 };
+
+const getMonthRange = (date: Date) => {
+    const start = new Date(date.getFullYear(), date.getMonth(), 1);
+    const end = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+    end.setHours(23, 59, 59, 999);
+    return { start, end };
+};
+
+const getDayRange = (date: Date) => {
+    const start = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const end = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    end.setHours(23, 59, 59, 999);
+    return { start, end };
+};
+
+// Helper function to generate bookings from RRULE for a given date range
+const generateRecurringBookings = (
+    recurringBookings: RecurringBooking[], 
+    startDate: Date, 
+    endDate: Date, 
+    services: Service[], 
+    users: User[]
+): Booking[] => {
+    const generatedBookings: Booking[] = [];
+    
+    // Helper to convert RRULE BYDAY to JS Day Index (MO -> 1, TU -> 2, ..., SU -> 0)
+    const rruleDayToJsIndex: Record<string, number> = { 'SU': 0, 'MO': 1, 'TU': 2, 'WE': 3, 'TH': 4, 'FR': 5, 'SA': 6 };
+
+    for (const rb of recurringBookings) {
+        // Simple RRULE parsing (assuming FREQ=WEEKLY;BYDAY=XX;UNTIL=YYYYMMDD)
+        const parts = rb.rrule.split(';');
+        const freqPart = parts.find(p => p.startsWith('FREQ='));
+        const byDayPart = parts.find(p => p.startsWith('BYDAY='));
+        const untilPart = parts.find(p => p.startsWith('UNTIL='));
+
+        if (!freqPart || freqPart !== 'FREQ=WEEKLY' || !byDayPart || !untilPart) {
+            // Ignora regras complexas ou inválidas por enquanto
+            continue;
+        }
+        
+        const rruleDay = byDayPart.split('=')[1];
+        const targetDayIndex = rruleDayToJsIndex[rruleDay];
+        const untilDateStr = untilPart.split('=')[1]; // YYYYMMDD
+        
+        const [untilYear, untilMonth, untilDay] = [
+            parseInt(untilDateStr.substring(0, 4)),
+            parseInt(untilDateStr.substring(4, 6)) - 1, // Month is 0-indexed
+            parseInt(untilDateStr.substring(6, 8))
+        ];
+        // Define a data final da recorrência (fim do dia)
+        const untilDate = new Date(untilYear, untilMonth, untilDay, 23, 59, 59);
+
+        // Parse start time (HH:MM)
+        const [startHour, startMinute] = rb.startTime.split(':').map(Number);
+        
+        // Define a data de início da recorrência (início do dia)
+        const rbStartDate = new Date(rb.startDate + 'T00:00:00');
+        
+        // Começa a iteração a partir do início do intervalo visível ou da data de início da recorrência, o que for mais tarde
+        let current = new Date(startDate);
+        
+        // Se o início da visualização for anterior ao início da recorrência, ajusta o ponto de partida
+        if (current < rbStartDate) {
+            current = new Date(rbStartDate);
+        }
+        
+        // Itera dia a dia até o final do intervalo visível ou a data final da recorrência
+        while (current <= endDate && current <= untilDate) {
+            if (current.getDay() === targetDayIndex) {
+                // Cria a instância de agendamento
+                const bookingDate = new Date(current.getFullYear(), current.getMonth(), current.getDate(), startHour, startMinute);
+                
+                // Verifica se a instância está dentro do período de recorrência
+                if (bookingDate >= rbStartDate && bookingDate <= untilDate) {
+                    const service = services.find(s => s.id === rb.serviceId);
+                    
+                    // Adiciona a instância como um Booking normal, mas com ID especial
+                    generatedBookings.push({
+                        id: `R-${rb.id}-${bookingDate.getTime()}`, // ID único para a instância recorrente
+                        userId: rb.userId || '',
+                        serviceId: rb.serviceId,
+                        professionalId: rb.professionalId,
+                        date: bookingDate,
+                        status: 'confirmed', 
+                        duration: rb.duration,
+                        comment: `[RECORRENTE] ${service?.name || 'Serviço Desconhecido'}`,
+                    });
+                }
+            }
+            // Move para o próximo dia
+            current.setDate(current.getDate() + 1);
+        }
+    }
+    
+    return generatedBookings;
+};
+
 
 interface AdminAgendaProps {
     // Propriedade injetada pelo AdminDashboardPage para forçar o recarregamento
@@ -31,25 +130,26 @@ export default function AdminAgenda() {
     const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
     const [defaultDateForNewBooking, setDefaultDateForNewBooking] = useState<Date | undefined>(undefined);
     const [bookings, setBookings] = useState<Booking[]>([]);
+    const [recurringBookings, setRecurringBookings] = useState<RecurringBooking[]>([]);
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
 
     const fetchData = useCallback(async () => {
         setLoading(true);
-        const [allBookings, allUsers] = await Promise.all([
+        const [allBookings, allUsers, allRecurring] = await Promise.all([
             api.getAllBookings(),
             api.getUsersWithRoles(),
+            api.getRecurringBookings(), // Busca agendamentos recorrentes
         ]);
         setBookings(allBookings || []);
         setUsers(allUsers || []);
+        setRecurringBookings(allRecurring || []);
         setLoading(false);
     }, []);
 
-    // O AdminDashboardPage passa a chave via prop 'key', que força a remontagem do componente.
-    // O useEffect garante que os dados sejam carregados na montagem e sempre que a chave de atualização mudar.
     useEffect(() => {
         fetchData();
-    }, [fetchData, refreshAdminData]); // Adicionando refreshAdminData como dependência para garantir que o fetchData seja chamado quando o App.tsx o acionar.
+    }, [fetchData, refreshAdminData]);
 
     const openCreateModal = useCallback((date?: Date) => {
         setSelectedBooking(null);
@@ -58,13 +158,18 @@ export default function AdminAgenda() {
     }, []);
 
     const openEditModal = useCallback((booking: Booking) => {
+        // Não permitimos editar instâncias de agendamentos recorrentes diretamente
+        if (booking.id.startsWith('R-')) {
+            alert("Este é um agendamento recorrente. Edite a regra de recorrência na seção de Gerenciamento de Recorrências (em breve).");
+            return;
+        }
         setSelectedBooking(booking);
         setDefaultDateForNewBooking(undefined);
         setIsModalOpen(true);
     }, []);
 
     const handleSaveBooking = async (booking: Partial<Booking>) => {
-        // Define isEditing com base na presença do ID do agendamento
+        // ... (Lógica de salvar agendamento único/cancelamento) ...
         const isEditing = !!booking.id;
         
         const originalBooking = bookings.find(b => b.id === booking.id);
@@ -145,8 +250,24 @@ export default function AdminAgenda() {
     }, [currentDate, view]);
 
     const visibleBookings = useMemo(() => {
-        return bookings.filter(b => b.status !== 'canceled');
-    }, [bookings]);
+        const singleBookings = bookings.filter(b => b.status !== 'canceled');
+        
+        let range: { start: Date, end: Date };
+        if (view === 'month') range = getMonthRange(currentDate);
+        else if (view === 'week') range = getWeekRange(currentDate);
+        else range = getDayRange(currentDate);
+        
+        const recurringInstances = generateRecurringBookings(
+            recurringBookings, 
+            range.start, 
+            range.end, 
+            services, 
+            users
+        );
+        
+        // Combina agendamentos únicos e instâncias recorrentes
+        return [...singleBookings, ...recurringInstances];
+    }, [bookings, recurringBookings, currentDate, view, services, users]);
 
     const renderView = () => {
         if (loading) return <div className="flex justify-center items-center h-96">Carregando agenda...</div>;

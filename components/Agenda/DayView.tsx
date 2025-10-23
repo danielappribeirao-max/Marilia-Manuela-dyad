@@ -65,6 +65,7 @@ const AgendaDayView: React.FC<AgendaDayViewProps> = ({ currentDate, bookings, on
                             const user = booking.userId ? users.find(u => u.id === booking.userId) : null;
                             const clientName = user?.name || 'Cliente Excluído';
                             const clientPhone = user?.phone || 'N/A';
+                            const isRecurring = booking.id.startsWith('R-');
 
                             if (!service) return null;
 
@@ -83,15 +84,16 @@ const AgendaDayView: React.FC<AgendaDayViewProps> = ({ currentDate, bookings, on
                             const height = bookingDuration / 30 * 3;
                             
                             const colorClass = professionalColors[booking.professionalId] || 'bg-gray-200 border-gray-500';
+                            const recurringStyle = isRecurring ? 'bg-yellow-100 border-yellow-500 border-dashed' : '';
 
                             return (
                                 <div
                                     key={booking.id}
                                     onClick={() => onBookingClick(booking)}
-                                    className={`absolute left-2 right-2 p-2 rounded-lg border-l-4 cursor-pointer text-sm ${colorClass}`}
+                                    className={`absolute left-2 right-2 p-2 rounded-lg border-l-4 cursor-pointer text-sm ${colorClass} ${recurringStyle}`}
                                     style={{ top: `${top}rem`, height: `${height}rem`, minHeight: '3rem' }}
                                 >
-                                    <p className="font-bold truncate">{service.name}</p>
+                                    <p className="font-bold truncate">{service.name} {isRecurring && '(Rec.)'}</p>
                                     <p className="truncate">{clientName}</p>
                                     {clientPhone !== 'N/A' && <p className="text-gray-600 text-xs font-medium">{formatPhone(clientPhone)}</p>}
                                     <p className="text-gray-600 text-xs">{bookingDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} - {new Date(bookingDate.getTime() + bookingDuration * 60000).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>
