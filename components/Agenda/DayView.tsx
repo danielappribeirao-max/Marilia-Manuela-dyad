@@ -65,7 +65,7 @@ const AgendaDayView: React.FC<AgendaDayViewProps> = ({ currentDate, bookings, on
                             const user = booking.userId ? users.find(u => u.id === booking.userId) : null;
                             const clientName = user?.name || 'Cliente Excluído';
                             const clientPhone = user?.phone || 'N/A';
-                            const isRecurring = booking.id.startsWith('R-');
+                            const isRecurring = booking.isRecurringInstance; // Usando o novo campo
 
                             if (!service) return null;
 

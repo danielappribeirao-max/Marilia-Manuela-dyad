@@ -617,6 +617,7 @@ export const getUserBookings = async (userId: string): Promise<Booking[] | null>
         rating: b.rating,
         comment: b.notes,
         duration: b.duration,
+        recurringRuleId: b.recurring_rule_id, // NOVO CAMPO
     })) as Booking[];
 };
 
@@ -643,6 +644,7 @@ export const getAllBookings = async (): Promise<Booking[] | null> => {
         rating: b.rating,
         comment: b.notes,
         duration: b.duration,
+        recurringRuleId: b.recurring_rule_id, // NOVO CAMPO
     })) as Booking[];
 };
 
@@ -674,7 +676,6 @@ export const addOrUpdateBooking = async (booking: Partial<Booking> & { serviceNa
     }
     
     // Formata a data e hora para o formato do banco de dados (YYYY-MM-DD e HH:MM)
-    // Usamos UTC para a data (YYYY-MM-DD) e extraímos a hora local (HH:MM)
     const dateObj = booking.date;
     
     // Garante que a data seja YYYY-MM-DD (parte da data local)
@@ -693,10 +694,11 @@ export const addOrUpdateBooking = async (booking: Partial<Booking> & { serviceNa
         notes: booking.comment,
         duration: booking.duration,
         service_name: booking.serviceName,
+        recurring_rule_id: booking.recurringRuleId || null, // NOVO CAMPO
     };
 
-    if (booking.id) {
-        // Atualização
+    if (booking.id && !booking.id.startsWith('R-')) {
+        // Atualização de agendamento único
         const { data, error } = await supabase
             .from('bookings')
             .update(payload)
@@ -719,9 +721,10 @@ export const addOrUpdateBooking = async (booking: Partial<Booking> & { serviceNa
             rating: data.rating,
             comment: data.notes,
             duration: data.duration,
+            recurringRuleId: data.recurring_rule_id,
         } as Booking;
     } else {
-        // Inserção
+        // Inserção (novo agendamento ou exceção de recorrência)
         const { data, error } = await supabase
             .from('bookings')
             .insert(payload)
@@ -743,6 +746,7 @@ export const addOrUpdateBooking = async (booking: Partial<Booking> & { serviceNa
             rating: data.rating,
             comment: data.notes,
             duration: data.duration,
+            recurringRuleId: data.recurring_rule_id,
         } as Booking;
     }
 };
@@ -765,7 +769,6 @@ export const addRecurringBooking = async (booking: AddRecurringBookingPayload): 
         const dayOfWeekRrule = dayIndexToRrule(startDateObj.getDay());
         rrule += `;BYDAY=${dayOfWeekRrule}`;
     }
-    // Para MONTHLY, não adicionamos BYDAY/BYMONTHDAY por enquanto para manter a regra simples (dia do mês)
     
     // RRULE format: FREQ=WEEKLY;BYDAY=MO;UNTIL=YYYYMMDD
     const untilDate = booking.endDate.replace(/-/g, ''); // YYYYMMDD
@@ -811,7 +814,7 @@ export const getRecurringBookings = async (): Promise<RecurringBooking[] | null>
     const { data, error } = await supabase
         .from('recurring_bookings')
         .select('*')
-        .eq('status', 'active');
+        .in('status', ['active', 'suspended']); // Inclui suspended para o admin ver
 
     if (error) {
         console.error("Error fetching recurring bookings:", error);

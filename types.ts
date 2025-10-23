@@ -62,10 +62,12 @@ export interface Booking {
   serviceId: string;
   professionalId: string;
   date: Date;
-  status: 'confirmed' | 'completed' | 'canceled';
+  status: 'confirmed' | 'completed' | 'canceled' | 'Agendado';
   rating?: number;
   comment?: string;
   duration?: number; // in minutes
+  isRecurringInstance?: boolean; // NOVO: Indica se é uma instância gerada de uma regra recorrente
+  recurringRuleId?: string; // NOVO: ID da regra recorrente original
 }
 
 // NOVO: Tipos para Agendamentos Recorrentes
@@ -78,7 +80,7 @@ export interface RecurringBooking {
   startTime: string; // HH:MM
   duration: number; // in minutes
   rrule: string; // RRULE string (e.g., "FREQ=WEEKLY;BYDAY=MO;COUNT=10")
-  status: 'active' | 'suspended' | 'completed';
+  status: 'active' | 'suspended' | 'completed' | 'canceled';
 }
 
 export enum RecurrenceFrequency {
