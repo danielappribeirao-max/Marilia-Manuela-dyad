@@ -252,7 +252,7 @@ export default function AdminAgenda() {
             // Se o agendamento foi cancelado nesta ação, executa o fluxo de devolução e notificação
             if (wasJustCancelled) {
                 const service = services.find(s => s.id === savedBooking.serviceId);
-                const user = users.find(u => u.id === savedBooking.userId);
+                const user = users.find(u => b.id === savedBooking.userId);
 
                 if (service && user) {
                     let creditReturned = false;
