@@ -211,7 +211,11 @@ export default function AdminAgenda() {
     const openEditModal = useCallback((booking: Booking) => {
         // Se for uma instância recorrente, abre o modal de cancelamento de recorrência
         if (booking.id.startsWith('R-')) {
-            const recurringId = booking.id.split('-')[1];
+            // O ID é formatado como R-ID_DA_REGRA-TIMESTAMP
+            const parts = booking.id.split('-');
+            // O ID da regra é o segundo elemento (índice 1)
+            const recurringId = parts[1]; 
+            
             const rb = recurringBookings.find(r => r.id === recurringId);
             if (rb) {
                 setRecurringBookingToCancel(rb);
@@ -252,7 +256,7 @@ export default function AdminAgenda() {
             // Se o agendamento foi cancelado nesta ação, executa o fluxo de devolução e notificação
             if (wasJustCancelled) {
                 const service = services.find(s => s.id === savedBooking.serviceId);
-                const user = users.find(u => b.id === savedBooking.userId);
+                const user = users.find(u => u.id === savedBooking.userId);
 
                 if (service && user) {
                     let creditReturned = false;
