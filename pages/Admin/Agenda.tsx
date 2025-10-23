@@ -5,6 +5,7 @@ import AdminBookingModal from '../../components/AdminBookingModal';
 import AgendaWeekView from '../../components/Agenda/WeekView';
 import AgendaMonthView from '../../components/Agenda/MonthView';
 import AgendaDayView from '../../components/Agenda/DayView';
+import RecurringBookingCancelModal from '../../components/RecurringBookingCancelModal'; // Importado
 import { useApp } from '../../App';
 
 type AgendaView = 'day' | 'week' | 'month';
@@ -48,19 +49,28 @@ const generateRecurringBookings = (
     const rruleDayToJsIndex: Record<string, number> = { 'SU': 0, 'MO': 1, 'TU': 2, 'WE': 3, 'TH': 4, 'FR': 5, 'SA': 6 };
 
     for (const rb of recurringBookings) {
-        // Simple RRULE parsing (assuming FREQ=WEEKLY;BYDAY=XX;UNTIL=YYYYMMDD)
         const parts = rb.rrule.split(';');
         const freqPart = parts.find(p => p.startsWith('FREQ='));
         const byDayPart = parts.find(p => p.startsWith('BYDAY='));
         const untilPart = parts.find(p => p.startsWith('UNTIL='));
 
-        if (!freqPart || freqPart !== 'FREQ=WEEKLY' || !byDayPart || !untilPart) {
-            // Ignora regras complexas ou inválidas por enquanto
+        if (!freqPart || !untilPart) {
             continue;
         }
         
-        const rruleDay = byDayPart.split('=')[1];
-        const targetDayIndex = rruleDayToJsIndex[rruleDay];
+        const frequency = freqPart.split('=')[1];
+        
+        // Apenas suportamos WEEKLY e MONTHLY (simples)
+        if (frequency !== 'WEEKLY' && frequency !== 'MONTHLY') {
+            continue;
+        }
+        
+        let targetDayIndex: number | null = null;
+        if (frequency === 'WEEKLY' && byDayPart) {
+            const rruleDay = byDayPart.split('=')[1];
+            targetDayIndex = rruleDayToJsIndex[rruleDay];
+        }
+        
         const untilDateStr = untilPart.split('=')[1]; // YYYYMMDD
         
         const [untilYear, untilMonth, untilDay] = [
@@ -85,9 +95,23 @@ const generateRecurringBookings = (
             current = new Date(rbStartDate);
         }
         
-        // Itera dia a dia até o final do intervalo visível ou a data final da recorrência
+        // Itera para gerar as instâncias
         while (current <= endDate && current <= untilDate) {
-            if (current.getDay() === targetDayIndex) {
+            let shouldGenerate = false;
+            
+            if (frequency === 'WEEKLY') {
+                if (targetDayIndex !== null && current.getDay() === targetDayIndex) {
+                    shouldGenerate = true;
+                }
+            } else if (frequency === 'MONTHLY') {
+                // Para mensal, usamos o dia do mês da data de início
+                const startDayOfMonth = rbStartDate.getDate();
+                if (current.getDate() === startDayOfMonth) {
+                    shouldGenerate = true;
+                }
+            }
+            
+            if (shouldGenerate) {
                 // Cria a instância de agendamento
                 const bookingDate = new Date(current.getFullYear(), current.getMonth(), current.getDate(), startHour, startMinute);
                 
@@ -108,8 +132,32 @@ const generateRecurringBookings = (
                     });
                 }
             }
-            // Move para o próximo dia
-            current.setDate(current.getDate() + 1);
+            
+            // Move para o próximo dia/semana/mês
+            if (frequency === 'WEEKLY') {
+                current.setDate(current.getDate() + 1);
+            } else if (frequency === 'MONTHLY') {
+                // Para mensal, avançamos para o próximo mês e tentamos manter o dia do mês
+                const nextMonth = new Date(current.getFullYear(), current.getMonth() + 1, rbStartDate.getDate());
+                // Se o dia do mês não existir no próximo mês (ex: dia 31 em fevereiro), ele vai para o dia 1 do mês seguinte.
+                // Isso é uma simplificação, mas funciona para a maioria dos casos.
+                current = nextMonth;
+            } else {
+                // Avança um dia por padrão para evitar loops infinitos em regras não suportadas
+                current.setDate(current.getDate() + 1);
+            }
+            
+            // Se for mensal, precisamos garantir que a iteração avance corretamente
+            if (frequency === 'MONTHLY') {
+                // Se a data atual for maior que a data de início da recorrência, avançamos para o próximo mês
+                if (current.getTime() > rbStartDate.getTime()) {
+                    current = new Date(current.getFullYear(), current.getMonth() + 1, rbStartDate.getDate());
+                } else {
+                    current.setDate(current.getDate() + 1); // Avança um dia para iniciar o loop
+                }
+            } else {
+                current.setDate(current.getDate() + 1);
+            }
         }
     }
     
@@ -133,6 +181,9 @@ export default function AdminAgenda() {
     const [recurringBookings, setRecurringBookings] = useState<RecurringBooking[]>([]);
     const [users, setUsers] = useState<User[]>([]);
     const [loading, setLoading] = useState(true);
+    
+    // Estado para o modal de cancelamento de recorrência
+    const [recurringBookingToCancel, setRecurringBookingToCancel] = useState<RecurringBooking | null>(null);
 
     const fetchData = useCallback(async () => {
         setLoading(true);
@@ -158,15 +209,32 @@ export default function AdminAgenda() {
     }, []);
 
     const openEditModal = useCallback((booking: Booking) => {
-        // Não permitimos editar instâncias de agendamentos recorrentes diretamente
+        // Se for uma instância recorrente, abre o modal de cancelamento de recorrência
         if (booking.id.startsWith('R-')) {
-            alert("Este é um agendamento recorrente. Edite a regra de recorrência na seção de Gerenciamento de Recorrências (em breve).");
+            const recurringId = booking.id.split('-')[1];
+            const rb = recurringBookings.find(r => r.id === recurringId);
+            if (rb) {
+                setRecurringBookingToCancel(rb);
+            } else {
+                alert("Regra de recorrência não encontrada.");
+            }
             return;
         }
         setSelectedBooking(booking);
         setDefaultDateForNewBooking(undefined);
         setIsModalOpen(true);
-    }, []);
+    }, [recurringBookings]);
+    
+    const handleConfirmCancelRecurring = async (recurringBookingId: string) => {
+        const success = await api.cancelRecurringBooking(recurringBookingId);
+        if (success) {
+            alert("Agendamento recorrente cancelado com sucesso! As instâncias futuras não aparecerão mais na agenda.");
+            setRecurringBookingToCancel(null);
+            fetchData(); // Recarrega os dados para remover as instâncias da visualização
+        } else {
+            alert("Falha ao cancelar o agendamento recorrente.");
+        }
+    };
 
     const handleSaveBooking = async (booking: Partial<Booking>) => {
         // ... (Lógica de salvar agendamento único/cancelamento) ...
@@ -310,6 +378,16 @@ export default function AdminAgenda() {
                     defaultDate={defaultDateForNewBooking}
                     users={users}
                     professionals={professionals}
+                />
+            )}
+            
+            {recurringBookingToCancel && (
+                <RecurringBookingCancelModal
+                    recurringBooking={recurringBookingToCancel}
+                    onClose={() => setRecurringBookingToCancel(null)}
+                    onConfirmCancel={handleConfirmCancelRecurring}
+                    users={users}
+                    services={services}
                 />
             )}
         </div>

@@ -758,11 +758,18 @@ export const addRecurringBooking = async (booking: AddRecurringBookingPayload): 
     
     // 1. Generate RRULE
     const startDateObj = new Date(booking.startDate + 'T00:00:00'); // Garante que a data seja interpretada corretamente
-    const dayOfWeekRrule = dayIndexToRrule(startDateObj.getDay());
+    
+    let rrule = `FREQ=${booking.frequency}`;
+    
+    if (booking.frequency === RecurrenceFrequency.WEEKLY) {
+        const dayOfWeekRrule = dayIndexToRrule(startDateObj.getDay());
+        rrule += `;BYDAY=${dayOfWeekRrule}`;
+    }
+    // Para MONTHLY, não adicionamos BYDAY/BYMONTHDAY por enquanto para manter a regra simples (dia do mês)
     
     // RRULE format: FREQ=WEEKLY;BYDAY=MO;UNTIL=YYYYMMDD
     const untilDate = booking.endDate.replace(/-/g, ''); // YYYYMMDD
-    const rrule = `FREQ=${booking.frequency};BYDAY=${dayOfWeekRrule};UNTIL=${untilDate}`;
+    rrule += `;UNTIL=${untilDate}`;
     
     const payload = {
         user_id: booking.userId,
@@ -822,6 +829,19 @@ export const getRecurringBookings = async (): Promise<RecurringBooking[] | null>
         rrule: d.rrule,
         status: d.status as RecurringBooking['status'],
     }));
+};
+
+export const cancelRecurringBooking = async (recurringBookingId: string): Promise<boolean> => {
+    const { error } = await supabase
+        .from('recurring_bookings')
+        .update({ status: 'canceled', updated_at: new Date().toISOString() })
+        .eq('id', recurringBookingId);
+
+    if (error) {
+        console.error("Error canceling recurring booking:", error);
+        return false;
+    }
+    return true;
 };
 
 // --- Funções de Configurações da Clínica ---

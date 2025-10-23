@@ -335,7 +335,7 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
                             <label htmlFor="frequency" className="block text-sm font-medium text-gray-700 mb-1">Frequência</label>
                             <select id="frequency" name="frequency" value={formData.frequency} onChange={handleChange} className="w-full p-2 border bg-white text-gray-900 border-gray-300 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500">
                                 <option value={RecurrenceFrequency.WEEKLY}>Semanalmente</option>
-                                <option value={RecurrenceFrequency.MONTHLY} disabled>Mensalmente (Em breve)</option>
+                                <option value={RecurrenceFrequency.MONTHLY}>Mensalmente</option>
                             </select>
                         </div>
                         <div>
