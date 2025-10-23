@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Booking, User, Service, Role, RecurrenceFrequency } from '../types';
 import { useApp } from '../App';
 import * as api from '../services/api';
-import { useAvailability } from '../hooks/useAvailability';
+import { useAvailability } from '../../hooks/useAvailability';
 import { Repeat } from 'lucide-react';
 
 interface AdminBookingModalProps {
@@ -175,7 +175,7 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
         if (!user || !selectedService) return;
         
         const recurringBookingPayload = {
-            userId: formData.userId,
+            userId: formData.userId, // Garantido que é um ID válido pela validação
             serviceId: formData.serviceId,
             professionalId: formData.professionalId,
             startDate: formData.date,

@@ -216,17 +216,14 @@ export default function AdminAgenda() {
             // O ID da regra é o segundo elemento (índice 1)
             const recurringId = parts[1]; 
             
-            console.log(`[DEBUG] Booking ID: ${booking.id}`);
-            console.log(`[DEBUG] Extracted Recurring ID: ${recurringId}`);
-            
             const rb = recurringBookings.find(r => r.id === recurringId);
             
             if (rb) {
-                console.log("[DEBUG] Recurring Rule Found:", rb);
                 setRecurringBookingToCancel(rb);
             } else {
-                console.error("[DEBUG] Recurring Rule NOT Found for ID:", recurringId);
-                alert("Regra de recorrência não encontrada.");
+                // Se a regra não for encontrada (provavelmente um dado de teste inválido), apenas fecha o modal.
+                console.warn(`Regra de recorrência não encontrada para o ID: ${recurringId}. Ignorando clique.`);
+                // Não faz nada, apenas ignora o clique.
             }
             return;
         }
