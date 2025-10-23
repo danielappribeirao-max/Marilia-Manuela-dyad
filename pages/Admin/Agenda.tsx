@@ -60,7 +60,6 @@ const generateRecurringBookings = (
         
         const frequency = freqPart.split('=')[1];
         
-        // Apenas suportamos WEEKLY e MONTHLY (simples)
         if (frequency !== 'WEEKLY' && frequency !== 'MONTHLY') {
             continue;
         }
@@ -87,75 +86,64 @@ const generateRecurringBookings = (
         // Define a data de início da recorrência (início do dia)
         const rbStartDate = new Date(rb.startDate + 'T00:00:00');
         
-        // Começa a iteração a partir do início do intervalo visível ou da data de início da recorrência, o que for mais tarde
+        // 1. Determinar o ponto de partida da iteração (máximo entre o início da visualização e o início da recorrência)
         let current = new Date(startDate);
-        
-        // Se o início da visualização for anterior ao início da recorrência, ajusta o ponto de partida
         if (current < rbStartDate) {
             current = new Date(rbStartDate);
         }
         
-        // Itera para gerar as instâncias
+        // 2. Ajustar o ponto de partida para o primeiro dia válido dentro do intervalo de visualização
+        if (frequency === 'WEEKLY' && targetDayIndex !== null) {
+            // Se a visualização começar no meio da semana, avançamos para o primeiro dia da semana que corresponde ao targetDayIndex
+            while (current.getDay() !== targetDayIndex && current <= endDate) {
+                current.setDate(current.getDate() + 1);
+            }
+        } else if (frequency === 'MONTHLY') {
+            // Para mensal, ajustamos para o dia do mês da data de início da regra
+            const startDayOfMonth = rbStartDate.getDate();
+            
+            // Se o dia atual for anterior ao dia do mês da regra, ajustamos para o dia correto no mês atual
+            if (current.getDate() < startDayOfMonth) {
+                current.setDate(startDayOfMonth);
+            } else if (current.getDate() > startDayOfMonth) {
+                // Se o dia atual for posterior, avançamos para o dia correto no próximo mês
+                current.setMonth(current.getMonth() + 1);
+                current.setDate(startDayOfMonth);
+            }
+            // Garante que a hora seja 00:00:00
+            current.setHours(0, 0, 0, 0);
+        }
+        
+        // 3. Loop principal de geração
         while (current <= endDate && current <= untilDate) {
-            let shouldGenerate = false;
             
-            if (frequency === 'WEEKLY') {
-                if (targetDayIndex !== null && current.getDay() === targetDayIndex) {
-                    shouldGenerate = true;
-                }
-            } else if (frequency === 'MONTHLY') {
-                // Para mensal, usamos o dia do mês da data de início
-                const startDayOfMonth = rbStartDate.getDate();
-                if (current.getDate() === startDayOfMonth) {
-                    shouldGenerate = true;
-                }
-            }
+            // Cria a instância de agendamento
+            const bookingDate = new Date(current.getFullYear(), current.getMonth(), current.getDate(), startHour, startMinute);
             
-            if (shouldGenerate) {
-                // Cria a instância de agendamento
-                const bookingDate = new Date(current.getFullYear(), current.getMonth(), current.getDate(), startHour, startMinute);
+            // Verifica se a instância está dentro do período de recorrência (redundante, mas seguro)
+            if (bookingDate >= rbStartDate && bookingDate <= untilDate) {
+                const service = services.find(s => s.id === rb.serviceId);
                 
-                // Verifica se a instância está dentro do período de recorrência
-                if (bookingDate >= rbStartDate && bookingDate <= untilDate) {
-                    const service = services.find(s => s.id === rb.serviceId);
-                    
-                    // Adiciona a instância como um Booking normal, mas com ID especial
-                    generatedBookings.push({
-                        id: `R-${rb.id}-${bookingDate.getTime()}`, // ID único para a instância recorrente
-                        userId: rb.userId || '',
-                        serviceId: rb.serviceId,
-                        professionalId: rb.professionalId,
-                        date: bookingDate,
-                        status: 'confirmed', 
-                        duration: rb.duration,
-                        comment: `[RECORRENTE] ${service?.name || 'Serviço Desconhecido'}`,
-                    });
-                }
+                generatedBookings.push({
+                    id: `R-${rb.id}-${bookingDate.getTime()}`, // ID único para a instância recorrente
+                    userId: rb.userId || '',
+                    serviceId: rb.serviceId,
+                    professionalId: rb.professionalId,
+                    date: bookingDate,
+                    status: 'confirmed', 
+                    duration: rb.duration,
+                    comment: `[RECORRENTE] ${service?.name || 'Serviço Desconhecido'}`,
+                });
             }
             
-            // Move para o próximo dia/semana/mês
+            // 4. Avançar para a próxima data recorrente
             if (frequency === 'WEEKLY') {
-                current.setDate(current.getDate() + 1);
+                current.setDate(current.getDate() + 7);
             } else if (frequency === 'MONTHLY') {
-                // Para mensal, avançamos para o próximo mês e tentamos manter o dia do mês
-                const nextMonth = new Date(current.getFullYear(), current.getMonth() + 1, rbStartDate.getDate());
-                // Se o dia do mês não existir no próximo mês (ex: dia 31 em fevereiro), ele vai para o dia 1 do mês seguinte.
-                // Isso é uma simplificação, mas funciona para a maioria dos casos.
-                current = nextMonth;
+                // Avança exatamente um mês, mantendo o dia do mês (PostgreSQL lida com dias 31)
+                current.setMonth(current.getMonth() + 1);
             } else {
-                // Avança um dia por padrão para evitar loops infinitos em regras não suportadas
-                current.setDate(current.getDate() + 1);
-            }
-            
-            // Se for mensal, precisamos garantir que a iteração avance corretamente
-            if (frequency === 'MONTHLY') {
-                // Se a data atual for maior que a data de início da recorrência, avançamos para o próximo mês
-                if (current.getTime() > rbStartDate.getTime()) {
-                    current = new Date(current.getFullYear(), current.getMonth() + 1, rbStartDate.getDate());
-                } else {
-                    current.setDate(current.getDate() + 1); // Avança um dia para iniciar o loop
-                }
-            } else {
+                // Deve ser tratado acima, mas como fallback, avança um dia
                 current.setDate(current.getDate() + 1);
             }
         }
@@ -221,9 +209,8 @@ export default function AdminAgenda() {
             if (rb) {
                 setRecurringBookingToCancel(rb);
             } else {
-                // Se a regra não for encontrada (provavelmente um dado de teste inválido), apenas fecha o modal.
+                // Se a regra não for encontrada (provavelmente um dado de teste inválido), apenas ignora o clique.
                 console.warn(`Regra de recorrência não encontrada para o ID: ${recurringId}. Ignorando clique.`);
-                // Não faz nada, apenas ignora o clique.
             }
             return;
         }
