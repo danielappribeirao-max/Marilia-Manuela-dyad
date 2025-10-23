@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Booking, User, Service, Role, RecurrenceFrequency } from '../types';
 import { useApp } from '../App';
 import * as api from '../services/api';
-import { useAvailability } from '../../hooks/useAvailability';
+import { useAvailability } from '../hooks/useAvailability';
 import { Repeat } from 'lucide-react';
 
 interface AdminBookingModalProps {
