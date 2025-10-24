@@ -66,7 +66,8 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
   
   const [formData, setFormData] = useState(getInitialFormData());
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
-  
+  const [isSaving, setIsSaving] = useState(false); // Novo estado para desabilitar o botão
+
   const selectedService = useMemo(() => services.find(s => s.id === formData.serviceId), [formData.serviceId, services]);
   const sessionsPerPackage = selectedService?.sessions || 1;
   const isPackageSale = !isEditing && (sessionsPerPackage > 1 || Number(formData.quantity) > 1);
@@ -77,6 +78,12 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
       // Usamos o construtor (year, monthIndex, day) que cria a data no fuso horário local
       return new Date(year, month - 1, day);
   }, [formData.date]);
+  
+  // Horário original do agendamento (se estiver editando)
+  const originalBookingTime = useMemo(() => {
+      if (!isEditing || !booking?.date) return null;
+      return new Date(booking.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }).slice(0, 5);
+  }, [isEditing, booking?.date]);
 
   const { availableTimes, isClinicOpen, currentDaySettings, loadingAvailability } = useAvailability({
       selectedDate,
@@ -106,14 +113,15 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
             if (!isClinicOpen) {
                 newErrors.date = 'A clínica está fechada neste dia.';
             } else {
-                const originalTime = booking ? new Date(booking.date).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }).slice(0, 5) : null;
+                const isTimeChanged = formData.time !== originalBookingTime;
                 
-                // Se for um novo agendamento OU se for edição e o horário for diferente do original, verifica a disponibilidade.
-                if (!isEditing || (isEditing && formData.time !== originalTime)) {
+                // Se o horário foi alterado OU se for um novo agendamento, verificamos a disponibilidade na lista.
+                if (!isEditing || isTimeChanged) {
                     if (!availableTimes.includes(formData.time)) {
                         newErrors.time = 'Horário indisponível. O profissional está ocupado ou o horário está fora do expediente/almoço.';
                     }
                 }
+                // Se for edição e o horário não foi alterado, permitimos salvar (pois o slot já está ocupado por este booking).
             }
         }
         
@@ -155,66 +163,75 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
+    
+    setIsSaving(true);
 
-    if (isPackageSale) {
-        const user = users.find(u => u.id === formData.userId);
-        if (!user || !selectedService) return;
-        
-        await api.addCreditsToUser(user.id, selectedService.id, Number(formData.quantity), selectedService.sessions);
-        const totalCreditsToAdd = sessionsPerPackage * Number(formData.quantity);
-        alert(`${totalCreditsToAdd} créditos de "${selectedService?.name}" adicionados com sucesso para ${user.name}.`);
-        onClose();
-        return;
-    } 
-    
-    // --- Agendamento Único ou Recorrente ---
-    
-    if (!isEditing && formData.isRecurring) {
-        // 1. Agendamento Recorrente (Cria a regra)
-        const user = users.find(u => u.id === formData.userId);
-        if (!user || !selectedService) return;
-        
-        const recurringBookingPayload = {
-            userId: formData.userId, // Garantido que é um ID válido pela validação
-            serviceId: formData.serviceId,
-            professionalId: formData.professionalId,
-            startDate: formData.date,
-            startTime: formData.time,
-            duration: Number(formData.duration),
-            endDate: formData.endDate,
-            frequency: formData.frequency as RecurrenceFrequency,
-        };
-        
-        const result = await api.addRecurringBooking(recurringBookingPayload);
-        
-        if (result) {
-            alert(`Agendamento recorrente para "${selectedService.name}" criado com sucesso!`);
+    try {
+        if (isPackageSale) {
+            const user = users.find(u => u.id === formData.userId);
+            if (!user || !selectedService) return;
+            
+            await api.addCreditsToUser(user.id, selectedService.id, Number(formData.quantity), selectedService.sessions);
+            const totalCreditsToAdd = sessionsPerPackage * Number(formData.quantity);
+            alert(`${totalCreditsToAdd} créditos de "${selectedService?.name}" adicionados com sucesso para ${user.name}.`);
             onClose();
-        } else {
-            alert("Falha ao criar agendamento recorrente. Verifique a disponibilidade e tente novamente.");
+            return;
+        } 
+        
+        // --- Agendamento Único ou Recorrente ---
+        
+        if (!isEditing && formData.isRecurring) {
+            // 1. Agendamento Recorrente (Cria a regra)
+            const user = users.find(u => u.id === formData.userId);
+            if (!user || !selectedService) return;
+            
+            const recurringBookingPayload = {
+                userId: formData.userId, // Garantido que é um ID válido pela validação
+                serviceId: formData.serviceId,
+                professionalId: formData.professionalId,
+                startDate: formData.date,
+                startTime: formData.time,
+                duration: Number(formData.duration),
+                endDate: formData.endDate,
+                frequency: formData.frequency as RecurrenceFrequency,
+            };
+            
+            const result = await api.addRecurringBooking(recurringBookingPayload);
+            
+            if (result) {
+                alert(`Agendamento recorrente para "${selectedService.name}" criado com sucesso!`);
+                onClose();
+            } else {
+                alert("Falha ao criar agendamento recorrente. Verifique a disponibilidade e tente novamente.");
+            }
+            return;
         }
-        return;
-    }
-    
-    // 2. Agendamento Único (Cria ou Edita)
-    
-    const [hours, minutes] = formData.time.split(':').map(Number);
-    
-    // Cria a data final no fuso horário local
-    const bookingDate = new Date(selectedDate!.getFullYear(), selectedDate!.getMonth(), selectedDate!.getDate(), hours, minutes, 0, 0);
+        
+        // 2. Agendamento Único (Cria ou Edita)
+        
+        const [hours, minutes] = formData.time.split(':').map(Number);
+        
+        // Cria a data final no fuso horário local
+        const bookingDate = new Date(selectedDate!.getFullYear(), selectedDate!.getMonth(), selectedDate!.getDate(), hours, minutes, 0, 0);
 
-    const newBooking: Partial<Booking> = {
-      id: booking?.id,
-      userId: formData.userId || undefined, // Envia undefined se for string vazia (usuário excluído)
-      serviceId: formData.serviceId,
-      professionalId: formData.professionalId,
-      date: bookingDate,
-      status: formData.status as Booking['status'],
-      duration: Number(formData.duration),
-      comment: formData.notes, // Salvando as notas
-      serviceName: selectedService?.name, // Adicionando serviceName para a API
-    };
-    await onSave(newBooking);
+        const newBooking: Partial<Booking> = {
+          id: booking?.id,
+          userId: formData.userId || undefined, // Envia undefined se for string vazia (usuário excluído)
+          serviceId: formData.serviceId,
+          professionalId: formData.professionalId,
+          date: bookingDate,
+          status: formData.status as Booking['status'],
+          duration: Number(formData.duration),
+          comment: formData.notes, // Salvando as notas
+          serviceName: selectedService?.name, // Adicionando serviceName para a API
+        };
+        await onSave(newBooking);
+    } catch (error) {
+        console.error("Erro ao salvar agendamento:", error);
+        alert("Ocorreu um erro inesperado ao salvar o agendamento.");
+    } finally {
+        setIsSaving(false);
+    }
   };
 
   const modalTitle = isPackageSale ? 'Vender Pacote de Serviços' : (isEditing ? 'Editar Agendamento' : 'Novo Agendamento');
@@ -319,7 +336,7 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
                             <option disabled>Carregando...</option>
                         ) : availableTimes.length > 0 ? (
                             // Se estiver editando, adiciona o horário original se ele não estiver na lista (para permitir salvar sem mudar o horário)
-                            [...new Set([...availableTimes, (isEditing ? formData.time : '')])].filter(t => t).sort().map(time => <option key={time} value={time}>{time}</option>)
+                            [...new Set([...availableTimes, (isEditing ? originalBookingTime : '')])].filter(t => t).sort().map(time => <option key={time} value={time}>{time}</option>)
                         ) : (
                             <option disabled>Indisponível</option>
                         )}
@@ -367,8 +384,10 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
             )}
           </div>
           <div className="p-6 bg-gray-50 border-t flex justify-end gap-3">
-            <button type="button" onClick={onClose} className="px-5 py-2 bg-gray-200 text-gray-800 rounded-full font-semibold hover:bg-gray-300">Cancelar</button>
-            <button type="submit" className="px-5 py-2 bg-pink-500 text-white rounded-full font-semibold hover:bg-pink-600">{submitButtonText}</button>
+            <button type="button" onClick={onClose} disabled={isSaving} className="px-5 py-2 bg-gray-200 text-gray-800 rounded-full font-semibold hover:bg-gray-300 disabled:opacity-50">Cancelar</button>
+            <button type="submit" disabled={isSaving} className="px-5 py-2 bg-pink-500 text-white rounded-full font-semibold hover:bg-pink-600 disabled:bg-gray-400">
+                {isSaving ? 'Salvando...' : submitButtonText}
+            </button>
           </div>
         </form>
       </div>
