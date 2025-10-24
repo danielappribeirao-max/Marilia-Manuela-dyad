@@ -161,7 +161,14 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
       const newFormData = { ...prev, [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value };
       
       if (name === 'serviceId' && !isPackageSale) {
-        newFormData.duration = services.find(s => s.id === value)?.duration || 30;
+        const newService = services.find(s => s.id === value);
+        // Atualiza a duração e reseta o horário se a duração mudar
+        if (newService && newService.duration !== prev.duration) {
+            newFormData.duration = newService.duration || 30;
+            newFormData.time = ''; // Resetar o horário para forçar nova seleção/validação
+        } else if (newService) {
+            newFormData.duration = newService.duration || 30;
+        }
       }
       
       // Se mudar a data, profissional ou duração, resetar o horário
@@ -215,6 +222,8 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
                 frequency: formData.frequency as RecurrenceFrequency,
             };
             
+            console.log("Payload Recorrente:", recurringBookingPayload); // Log de debug
+            
             const result = await api.addRecurringBooking(recurringBookingPayload);
             
             if (result) {
@@ -244,6 +253,9 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
           comment: formData.notes, // Salvando as notas
           serviceName: selectedService?.name, // Adicionando serviceName para a API
         };
+        
+        console.log("Payload Agendamento Único:", newBooking); // Log de debug
+        
         await onSave(newBooking);
     } catch (error) {
         console.error("Erro ao salvar agendamento:", error);
