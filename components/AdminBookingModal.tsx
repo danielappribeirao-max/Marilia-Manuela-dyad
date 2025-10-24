@@ -244,7 +244,8 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
 
         const newBooking: Partial<Booking> = {
           id: booking?.id,
-          userId: formData.userId || undefined, // Envia undefined se for string vazia (usuário excluído)
+          // Se userId for string vazia (usuário excluído), envia null. Caso contrário, envia o ID.
+          userId: formData.userId || null, 
           serviceId: formData.serviceId,
           professionalId: formData.professionalId,
           date: bookingDate,
