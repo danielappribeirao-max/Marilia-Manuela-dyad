@@ -275,6 +275,7 @@ export default function AdminAgenda() {
         }
         
         // Cria um novo registro de agendamento com status 'canceled' para esta data/hora
+        // Nota: O ID é removido para forçar a inserção de um novo registro (a exceção)
         const newBooking: Omit<Booking, 'id'> = { 
             userId: user.id, 
             serviceId: service.id, 
@@ -301,14 +302,24 @@ export default function AdminAgenda() {
     const handleSaveBooking = async (booking: Partial<Booking>) => {
         const isEditing = !!booking.id;
         
-        const originalBooking = bookings.find(b => b.id === booking.id);
+        // Busca o agendamento original APENAS se estiver editando e o ID não for de recorrência (R-...)
+        const originalBooking = isEditing && !booking.id?.startsWith('R-') 
+            ? bookings.find(b => b.id === booking.id) 
+            : null;
+            
         const wasJustCancelled = originalBooking && originalBooking.status !== 'canceled' && booking.status === 'canceled';
 
         const savedBooking = await api.addOrUpdateBooking(booking);
         
         if (savedBooking) {
             // Atualiza a lista de agendamentos na interface
-            setBookings(prev => prev.map(b => b.id === savedBooking.id ? savedBooking : b));
+            setBookings(prev => {
+                const existingIndex = prev.findIndex(b => b.id === savedBooking.id);
+                if (existingIndex !== -1) {
+                    return prev.map((b, index) => index === existingIndex ? savedBooking : b);
+                }
+                return [...prev, savedBooking]; // Adiciona se for novo
+            });
 
             // Se o agendamento foi cancelado nesta ação, executa o fluxo de devolução e notificação
             if (wasJustCancelled) {
@@ -319,8 +330,10 @@ export default function AdminAgenda() {
                     let creditReturned = false;
                     // 1. Devolve o crédito se for um serviço de pacote
                     if (service.sessions && service.sessions > 1) {
-                        await api.returnCreditToUser(user.id, service.id);
-                        creditReturned = true;
+                        const updatedUser = await api.returnCreditToUser(user.id, service.id);
+                        if (updatedUser) {
+                            creditReturned = true;
+                        }
                     }
 
                     // 2. Notifica o cliente
