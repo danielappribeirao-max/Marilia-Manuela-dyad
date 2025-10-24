@@ -399,8 +399,10 @@ export default function AdminAgenda() {
     }, [currentDate, view]);
 
     const visibleBookings = useMemo(() => {
-        // Filtra agendamentos únicos que NÃO são exceções de recorrência canceladas
-        const singleBookings = bookings.filter(b => b.status !== 'canceled' || !b.recurringRuleId);
+        // 1. Filtra agendamentos únicos que NÃO estão cancelados E NÃO são exceções de recorrência canceladas
+        const uniqueBookings = bookings.filter(b => 
+            !b.recurringRuleId && b.status !== 'canceled'
+        );
         
         let range: { start: Date, end: Date };
         if (view === 'month') range = getMonthRange(currentDate);
@@ -416,10 +418,7 @@ export default function AdminAgenda() {
             users
         );
         
-        // Combina agendamentos únicos (não recorrentes) e instâncias recorrentes
-        // Filtra instâncias recorrentes que já existem como agendamentos únicos (ex: se o admin editou uma instância)
-        const uniqueBookings = singleBookings.filter(b => !b.recurringRuleId);
-        
+        // 2. Combina agendamentos únicos (não recorrentes e não cancelados) e instâncias recorrentes
         return [...uniqueBookings, ...recurringInstances];
     }, [bookings, recurringBookings, currentDate, view, services, users]);
 
