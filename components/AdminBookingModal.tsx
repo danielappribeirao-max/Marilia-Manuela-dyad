@@ -93,6 +93,19 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
       clinicHolidayExceptions: clinicSettings?.holidayExceptions,
       bookingToIgnoreId: booking?.id,
   });
+  
+  // Lista de horários para o select, incluindo o horário original se estiver editando
+  const timeOptions = useMemo(() => {
+      if (!isClinicOpen || !formData.professionalId || loadingAvailability) return [];
+      
+      const options = new Set(availableTimes);
+      if (isEditing && originalBookingTime) {
+          options.add(originalBookingTime);
+      }
+      
+      return Array.from(options).sort();
+  }, [availableTimes, isEditing, originalBookingTime, isClinicOpen, formData.professionalId, loadingAvailability]);
+
 
   const validate = () => {
     const newErrors: { [key: string]: string } = {};
@@ -115,13 +128,15 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
             } else {
                 const isTimeChanged = formData.time !== originalBookingTime;
                 
-                // Se o horário foi alterado OU se for um novo agendamento, verificamos a disponibilidade na lista.
-                if (!isEditing || isTimeChanged) {
+                // Se for edição E o horário NÃO foi alterado, pulamos a verificação de disponibilidade.
+                if (isEditing && !isTimeChanged) {
+                    // OK, mantendo o horário original.
+                } else {
+                    // Novo agendamento OU horário alterado: deve estar na lista de disponíveis.
                     if (!availableTimes.includes(formData.time)) {
                         newErrors.time = 'Horário indisponível. O profissional está ocupado ou o horário está fora do expediente/almoço.';
                     }
                 }
-                // Se for edição e o horário não foi alterado, permitimos salvar (pois o slot já está ocupado por este booking).
             }
         }
         
@@ -162,7 +177,11 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validate()) return;
+    if (!validate()) {
+        console.log("Validation failed:", errors);
+        setIsSaving(false); // Garante que o botão não fique preso se a validação falhar
+        return;
+    }
     
     setIsSaving(true);
 
@@ -334,9 +353,8 @@ const AdminBookingModal: React.FC<AdminBookingModalProps> = ({ booking, onClose,
                         <option value="" disabled>Selecione o horário</option>
                         {loadingAvailability ? (
                             <option disabled>Carregando...</option>
-                        ) : availableTimes.length > 0 ? (
-                            // Se estiver editando, adiciona o horário original se ele não estiver na lista (para permitir salvar sem mudar o horário)
-                            [...new Set([...availableTimes, (isEditing ? originalBookingTime : '')])].filter(t => t).sort().map(time => <option key={time} value={time}>{time}</option>)
+                        ) : timeOptions.length > 0 ? (
+                            timeOptions.map(time => <option key={time} value={time}>{time}</option>)
                         ) : (
                             <option disabled>Indisponível</option>
                         )}
