@@ -231,7 +231,7 @@ export const getOccupiedSlots = async (dateString: string): Promise<{ id: string
 export const addOrUpdateBooking = async (booking: Partial<Booking> & { serviceName?: string }): Promise<Booking | null> => {
     if (!booking.date) {
         console.error("Booking date is required.");
-        return null;
+        throw new Error("Data do agendamento é obrigatória.");
     }
     
     // Formata a data e hora para o formato do banco de dados (YYYY-MM-DD e HH:MM)
@@ -244,7 +244,7 @@ export const addOrUpdateBooking = async (booking: Partial<Booking> & { serviceNa
     const bookingTime = `${String(dateObj.getHours()).padStart(2, '0')}:${String(dateObj.getMinutes()).padStart(2, '0')}`;
     
     const payload = {
-        // Se for string vazia (''), transforma em null para o banco de dados
+        // Se for string vazia ('') ou undefined, transforma em null para o banco de dados
         user_id: booking.userId && booking.userId !== '' ? booking.userId : null, 
         service_id: booking.serviceId,
         professional_id: booking.professionalId,
@@ -279,7 +279,8 @@ export const addOrUpdateBooking = async (booking: Partial<Booking> & { serviceNa
 
     if (error) {
         console.error("Error adding/updating booking:", error);
-        return null;
+        // Lança o erro para que o componente possa capturá-lo
+        throw new Error(error.message || "Falha na operação de agendamento no banco de dados.");
     }
 
     // Se for um novo agendamento, tenta sincronizar com o Google Calendar (apenas para admins)

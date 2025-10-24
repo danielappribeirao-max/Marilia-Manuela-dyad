@@ -192,7 +192,7 @@ interface AdminAgendaProps {
 export default function AdminAgenda() {
     const { services, professionals, refreshAdminData } = useApp();
     const [currentDate, setCurrentDate] = useState(new Date());
-    const [view, setView] = useState<AgendaView>('week');
+    const [view, setView] = useState<AgendaView>('day'); // Alterado para 'day' como padrão
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
     const [defaultDateForNewBooking, setDefaultDateForNewBooking] = useState<Date | undefined>(undefined);
@@ -281,14 +281,20 @@ export default function AdminAgenda() {
             comment: `Cancelamento de instância recorrente: ${instance.date.toLocaleDateString('pt-BR')}`,
         };
         
-        const result = await api.addOrUpdateBooking(newBooking);
-        
-        if (result) {
-            alert(`Instância de agendamento cancelada com sucesso!`);
-            setRecurringInstanceToManage(null);
-            fetchData(); // Recarrega os dados para filtrar a exceção
-        } else {
-            alert("Falha ao cancelar a instância do agendamento.");
+        try {
+            const result = await api.addOrUpdateBooking(newBooking);
+            
+            if (result) {
+                alert(`Instância de agendamento cancelada com sucesso!`);
+                setRecurringInstanceToManage(null);
+                fetchData(); // Recarrega os dados para filtrar a exceção
+            } else {
+                // Isso não deve acontecer se a API lançar erro, mas é um fallback
+                alert("Falha ao cancelar a instância do agendamento.");
+            }
+        } catch (error: any) {
+            console.error("Erro ao cancelar instância recorrente:", error);
+            alert(`Falha ao cancelar a instância: ${error.message}`);
         }
     };
 
@@ -302,65 +308,70 @@ export default function AdminAgenda() {
             
         const wasJustCancelled = originalBooking && originalBooking.status !== 'canceled' && booking.status === 'canceled';
 
-        const savedBooking = await api.addOrUpdateBooking(booking);
-        
-        if (savedBooking) {
-            // Atualiza a lista de agendamentos na interface
-            setBookings(prev => {
-                const existingIndex = prev.findIndex(b => b.id === savedBooking.id);
-                if (existingIndex !== -1) {
-                    return prev.map((b, index) => index === existingIndex ? savedBooking : b);
-                }
-                return [...prev, savedBooking]; // Adiciona se for novo
-            });
+        try {
+            const savedBooking = await api.addOrUpdateBooking(booking);
+            
+            if (savedBooking) {
+                // Atualiza a lista de agendamentos na interface
+                setBookings(prev => {
+                    const existingIndex = prev.findIndex(b => b.id === savedBooking.id);
+                    if (existingIndex !== -1) {
+                        return prev.map((b, index) => index === existingIndex ? savedBooking : b);
+                    }
+                    return [...prev, savedBooking]; // Adiciona se for novo
+                });
 
-            // Se o agendamento foi cancelado nesta ação, executa o fluxo de devolução e notificação
-            if (wasJustCancelled) {
-                const service = services.find(s => s.id === savedBooking.serviceId);
-                const user = users.find(u => u.id === savedBooking.userId);
+                // Se o agendamento foi cancelado nesta ação, executa o fluxo de devolução e notificação
+                if (wasJustCancelled) {
+                    const service = services.find(s => s.id === savedBooking.serviceId);
+                    const user = users.find(u => u.id === savedBooking.userId);
 
-                if (service && user) {
-                    let creditReturned = false;
-                    // 1. Devolve o crédito se for um serviço de pacote
-                    if (service.sessions && service.sessions > 1) {
-                        const updatedUser = await api.returnCreditToUser(user.id, service.id);
-                        if (updatedUser) {
-                            creditReturned = true;
+                    if (service && user) {
+                        let creditReturned = false;
+                        // 1. Devolve o crédito se for um serviço de pacote
+                        if (service.sessions && service.sessions > 1) {
+                            const updatedUser = await api.returnCreditToUser(user.id, service.id);
+                            if (updatedUser) {
+                                creditReturned = true;
+                            }
                         }
-                    }
 
-                    // 2. Notifica o cliente
-                    const professional = professionals.find(p => p.id === savedBooking.professionalId);
-                    const message = `Olá ${user.name}, seu agendamento para "${service.name}" com ${professional?.name || 'o profissional'} no dia ${new Date(savedBooking.date).toLocaleDateString('pt-BR')} às ${new Date(savedBooking.date).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})} foi cancelado. Por favor, entre em contato para reagendar.`;
-                    
-                    if (user.phone) {
-                        await api.sendCancellationNotice({ to: user.phone.replace(/\D/g, ''), message });
-                    }
+                        // 2. Notifica o cliente
+                        const professional = professionals.find(p => p.id === savedBooking.professionalId);
+                        const message = `Olá ${user.name}, seu agendamento para "${service.name}" com ${professional?.name || 'o profissional'} no dia ${new Date(savedBooking.date).toLocaleDateString('pt-BR')} às ${new Date(savedBooking.date).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})} foi cancelado. Por favor, entre em contato para reagendar.`;
+                        
+                        if (user.phone) {
+                            await api.sendCancellationNotice({ to: user.phone.replace(/\D/g, ''), message });
+                        }
 
-                    // 3. Alerta o admin e atualiza os dados
-                    let alertMessage = `Agendamento de ${user.name} cancelado com sucesso.`;
-                    if (creditReturned) {
-                        alertMessage += ` 1 crédito de "${service.name}" foi devolvido.`;
+                        // 3. Alerta o admin e atualiza os dados
+                        let alertMessage = `Agendamento de ${user.name} cancelado com sucesso.`;
+                        if (creditReturned) {
+                            alertMessage += ` 1 crédito de "${service.name}" foi devolvido.`;
+                        }
+                        alertMessage += ' O cliente foi notificado.';
+                        alert(alertMessage);
+                        
+                        // Recarrega os usuários para atualizar a contagem de créditos na interface
+                        const allUsers = await api.getUsersWithRoles();
+                        setUsers(allUsers || []);
                     }
-                    alertMessage += ' O cliente foi notificado.';
-                    alert(alertMessage);
-                    
-                    // Recarrega os usuários para atualizar a contagem de créditos na interface
-                    const allUsers = await api.getUsersWithRoles();
-                    setUsers(allUsers || []);
+                } else {
+                    // Feedback de sucesso para novo agendamento ou edição
+                    alert(`Agendamento ${isEditing ? 'atualizado' : 'criado'} com sucesso!`);
                 }
             } else {
-                // Feedback de sucesso para novo agendamento ou edição
-                alert(`Agendamento ${isEditing ? 'atualizado' : 'criado'} com sucesso!`);
+                // Este bloco não deve ser alcançado se a API lançar erro
+                alert(`Falha ao salvar o agendamento. Verifique se todos os campos estão preenchidos e se o horário está disponível.`);
             }
-        } else {
-            // --- LOG DE ERRO DETALHADO ---
-            console.error("Falha ao salvar agendamento. O objeto de agendamento era:", booking);
-            // -----------------------------
-            alert(`Falha ao salvar o agendamento. Verifique se todos os campos estão preenchidos e se o horário está disponível.`);
+        } catch (error: any) {
+            // Captura o erro lançado pela API e exibe a mensagem específica
+            console.error("Erro ao salvar/cancelar agendamento:", error);
+            alert(`Falha ao salvar o agendamento: ${error.message}`);
+        } finally {
+            setIsModalOpen(false);
+            fetchData(); // Garante que a lista seja recarregada após salvar/cancelar
         }
-        setIsModalOpen(false);
-        fetchData(); // Garante que a lista seja recarregada após salvar/cancelar
     };
 
     const handleNavigate = (direction: 'prev' | 'next' | 'today') => {
