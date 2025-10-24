@@ -56,7 +56,7 @@ const generateRecurringBookings = (
         }
     });
 
-    // Helper to convert RRULE BYDAY to JS Day Index (MO -> 1, TU -> 2, ..., SU -> 0)
+    // Helper to convert JS day Index (0=Sun, 6=Sat) to RRULE BYDAY (SU, MO, TU, WE, TH, FR, SA)
     const rruleDayToJsIndex: Record<string, number> = { 'SU': 0, 'MO': 1, 'TU': 2, 'WE': 3, 'TH': 4, 'FR': 5, 'SA': 6 };
 
     for (const rb of recurringBookings) {
@@ -135,22 +135,15 @@ const generateRecurringBookings = (
                 
                 // Ajuste para o caso MONTHLY onde o avanço de dia pode ter sido feito no final do loop
                 if (frequency === 'MONTHLY' && current.getDate() !== rbStartDate.getDate()) {
-                    // Se o dia do mês não for o dia da regra, pulamos esta iteração (isso acontece se o dia 31 não existir no mês)
-                    // A lógica de avanço de data precisa ser mais inteligente para MONTHLY.
-                    // Vamos reajustar o 'current' para o dia correto do mês.
+                    // Se o dia do mês não for o dia alvo, ajustamos para o dia alvo no mês atual
                     const targetDay = rbStartDate.getDate();
-                    const currentDay = current.getDate();
-                    
-                    if (currentDay !== targetDay) {
-                        // Se o dia atual não for o dia alvo, ajustamos para o dia alvo no mês atual
-                        current.setDate(targetDay);
-                        // Se o ajuste fez a data retroceder, avançamos um mês
-                        if (current.getTime() < bookingDate.getTime()) {
-                            current.setMonth(current.getMonth() + 1);
-                        }
-                        // Recalcula a data de agendamento
-                        bookingDate.setFullYear(current.getFullYear(), current.getMonth(), current.getDate());
+                    current.setDate(targetDay);
+                    // Se o ajuste fez a data retroceder, avançamos um mês
+                    if (current.getTime() < bookingDate.getTime()) {
+                        current.setMonth(current.getMonth() + 1);
                     }
+                    // Recalcula a data de agendamento
+                    bookingDate.setFullYear(current.getFullYear(), current.getMonth(), current.getDate());
                 }
                 
                 const dateKey = bookingDate.toISOString().split('T')[0];
@@ -361,6 +354,9 @@ export default function AdminAgenda() {
                 alert(`Agendamento ${isEditing ? 'atualizado' : 'criado'} com sucesso!`);
             }
         } else {
+            // --- LOG DE ERRO DETALHADO ---
+            console.error("Falha ao salvar agendamento. O objeto de agendamento era:", booking);
+            // -----------------------------
             alert(`Falha ao salvar o agendamento. Verifique se todos os campos estão preenchidos e se o horário está disponível.`);
         }
         setIsModalOpen(false);
