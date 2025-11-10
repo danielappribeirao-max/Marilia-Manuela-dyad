@@ -6,11 +6,20 @@ import { Page } from '../types';
 interface PackageCardProps {
   servicePackage: ServicePackage;
   services: Service[]; // To look up service names
-  onBookPackage: (pkg: ServicePackage) => void; // Nova prop para iniciar o fluxo
+  onBookPackage: (pkg: ServicePackage) => void; // Esta prop não será mais usada diretamente
 }
 
 const PackageCard: React.FC<PackageCardProps> = ({ servicePackage, services, onBookPackage }) => {
   
+  const whatsappNumber = '5516993140852'; // (16) 99314-0852
+  const serviceList = servicePackage.services.map(({ serviceId, quantity }) => {
+      const service = services.find(s => s.id === serviceId);
+      return `${quantity}x ${service?.name || 'Serviço Desconhecido'}`;
+  }).join(', ');
+  
+  const message = `Olá, tenho interesse no Pacote Especial: ${servicePackage.name}. Ele inclui: ${serviceList}. Gostaria de agendar.`;
+  const whatsappLink = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
+
   return (
     <div className="bg-white rounded-lg shadow-lg overflow-hidden transform hover:-translate-y-2 transition-transform duration-300 flex flex-col">
       <img src={servicePackage.image} alt={servicePackage.name} className="w-full h-48 object-cover" />
@@ -30,19 +39,14 @@ const PackageCard: React.FC<PackageCardProps> = ({ servicePackage, services, onB
         </div>
 
         <div className="mt-auto pt-4 border-t border-gray-200">
-          {/* Removendo a exibição do preço */}
-          {/* <div className="flex justify-between items-center mb-4">
-            <span className="text-2xl font-bold text-pink-500">
-              R$ {servicePackage.price.toFixed(2).replace('.', ',')}
-            </span>
-          </div> */}
-
-          <button 
-            onClick={() => onBookPackage(servicePackage)}
-            className="w-full bg-gray-800 text-white py-2 rounded-full font-semibold hover:bg-pink-500 transition-colors duration-300"
+          <a 
+            href={whatsappLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full bg-gray-800 text-white py-2 rounded-full font-semibold hover:bg-pink-500 transition-colors duration-300 text-center block"
           >
             Agendar Serviço do Pacote
-          </button>
+          </a>
         </div>
       </div>
     </div>

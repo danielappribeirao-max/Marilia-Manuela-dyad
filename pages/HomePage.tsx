@@ -4,11 +4,12 @@ import ServiceCard from '../components/ServiceCard';
 import PackageCard from '../components/PackageCard';
 import { useApp } from '../App';
 import { Page } from '../types';
+import { FREE_CONSULTATION_SERVICE_ID } from '../constants';
 
 interface HomePageProps {
-    onBook: (service: Service) => void; // Alterado para onBook
-    onStartFreeConsultation: () => void;
-    onBookPackage: (pkg: ServicePackage) => void; // Nova prop
+    onBook: (service: Service) => void; // Não usado, mas mantido para compatibilidade
+    onStartFreeConsultation: () => void; // Não usado, mas mantido para compatibilidade
+    onBookPackage: (pkg: ServicePackage) => void; // Não usado, mas mantido para compatibilidade
 }
 
 export default function HomePage({ onBook, onStartFreeConsultation, onBookPackage }: HomePageProps) {
@@ -24,6 +25,13 @@ export default function HomePage({ onBook, onStartFreeConsultation, onBookPackag
   const finalFeaturedServices = featuredServices.length > 0 ? featuredServices : services.slice(0, 4);
   
   const featuredPackages = packages.slice(0, 2);
+  
+  // Lógica do WhatsApp para Consulta Gratuita
+  const freeConsultationService = services.find(s => s.id === FREE_CONSULTATION_SERVICE_ID);
+  const whatsappNumber = '5516993140852'; // (16) 99314-0852
+  const freeConsultationMessage = `Olá, gostaria de agendar a consulta gratuita.`;
+  const whatsappLink = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(freeConsultationMessage)}`;
+
 
   return (
     <div>
@@ -39,11 +47,14 @@ export default function HomePage({ onBook, onStartFreeConsultation, onBookPackag
               className="px-8 py-3 bg-pink-500 text-white rounded-full font-semibold text-lg hover:bg-pink-600 transition-transform hover:scale-105 duration-300 shadow-lg">
               Ver Procedimentos
             </button>
-            <button 
-              onClick={onStartFreeConsultation}
-              className="px-8 py-3 bg-white text-pink-500 rounded-full font-semibold text-lg hover:bg-gray-100 transition-transform hover:scale-105 duration-300 shadow-lg border border-pink-500">
+            <a 
+              href={whatsappLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="px-8 py-3 bg-white text-pink-500 rounded-full font-semibold text-lg hover:bg-gray-100 transition-transform hover:scale-105 duration-300 shadow-lg border border-pink-500 text-center"
+            >
               Agende sua Consulta Gratuita
-            </button>
+            </a>
           </div>
         </div>
       </section>

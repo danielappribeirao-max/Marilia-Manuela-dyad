@@ -5,8 +5,8 @@ import PackageCard from '../components/PackageCard';
 import { useApp } from '../App';
 
 interface ServicesPageProps {
-    onBook: (service: Service) => void; // Alterado para onBook
-    onBookPackage: (pkg: ServicePackage) => void; // Nova prop
+    onBook: (service: Service) => void; // Não usado, mas mantido para compatibilidade
+    onBookPackage: (pkg: ServicePackage) => void; // Não usado, mas mantido para compatibilidade
 }
 
 export default function ServicesPage({ onBook, onBookPackage }: ServicesPageProps) {

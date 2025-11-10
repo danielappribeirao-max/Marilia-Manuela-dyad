@@ -3,12 +3,12 @@ import { Service } from '../types';
 import { FREE_CONSULTATION_SERVICE_ID } from '../constants';
 
 interface ServiceCardProps {
-  // A função agora recebe apenas o serviço, pois a quantidade é sempre 1 para agendamento
+  // A função onBook não será mais usada diretamente pelo clique, mas a prop deve ser mantida se for usada em outro lugar.
   onBook: (service: Service) => void;
 }
 
 const ServiceCard: React.FC<ServiceCardProps> = ({ service, onBook }) => {
-  // Agora identificamos a consulta gratuita pelo ID fixo, já que todos os serviços terão preço 0
+  // Agora identificamos a consulta gratuita pelo ID fixo
   const isFreeConsultation = service.id === FREE_CONSULTATION_SERVICE_ID;
   
   const sessionsPerPackage = service.sessions || 1;
@@ -17,6 +17,13 @@ const ServiceCard: React.FC<ServiceCardProps> = ({ service, onBook }) => {
   const buttonClasses = isFreeConsultation 
     ? 'bg-green-500 hover:bg-green-600' 
     : 'bg-pink-500 hover:bg-pink-600';
+    
+  const whatsappNumber = '5516993140852'; // (16) 99314-0852
+  const baseMessage = isFreeConsultation 
+    ? `Olá, gostaria de agendar a consulta gratuita. Meu interesse é em: ${service.name}.`
+    : `Olá, tenho interesse no procedimento: ${service.name}. Gostaria de agendar.`;
+    
+  const whatsappLink = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(baseMessage)}`;
 
   return (
     <div className="bg-white rounded-lg shadow-lg overflow-hidden transform hover:-translate-y-2 transition-transform duration-300 flex flex-col">
@@ -40,12 +47,14 @@ const ServiceCard: React.FC<ServiceCardProps> = ({ service, onBook }) => {
           <span className="text-sm text-gray-500 ml-auto">{service.duration} min</span>
         </div>
         
-        <button 
-          onClick={() => onBook(service)}
-          className={`mt-4 w-full text-white py-2 rounded-full font-semibold transition-colors duration-300 ${buttonClasses}`}
+        <a 
+          href={whatsappLink}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`mt-4 w-full text-white py-2 rounded-full font-semibold transition-colors duration-300 text-center ${buttonClasses}`}
         >
           {buttonText}
-        </button>
+        </a>
       </div>
     </div>
   );

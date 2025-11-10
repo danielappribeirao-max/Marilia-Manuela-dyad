@@ -9,8 +9,6 @@ import LoginPage from './pages/LoginPage';
 import UserDashboardPage from './pages/UserDashboardPage';
 import AdminDashboardPage from './pages/AdminDashboardPage';
 import BookingModal from './components/BookingModal';
-import QuickRegistrationModal from './components/QuickRegistrationModal';
-import PackageBookingSelectionModal from './components/PackageBookingSelectionModal'; // Importado
 import { supabase } from './supabase/client';
 import { FREE_CONSULTATION_SERVICE_ID } from './constants';
 
@@ -68,18 +66,9 @@ function AppContent() {
   const [professionals, setProfessionals] = useState<User[]>([]);
   const [clinicSettings, setClinicSettings] = useState<ClinicSettings>(api.DEFAULT_CLINIC_SETTINGS); 
   
-  // Estado para o serviço a ser agendado (substitui bookingService e creditBookingService)
-  const [serviceToBook, setServiceToBook] = useState<Service | null>(null); 
+  // Estado para reagendamento (mantido)
   const [reschedulingBooking, setReschedulingBooking] = useState<Booking | null>(null);
   
-  const [isQuickRegisterModalOpen, setIsQuickRegisterModalOpen] = useState(false);
-  // O tempClientData agora só precisa de nome e telefone, a descrição é gerada
-  const [tempClientData, setTempClientData] = useState<{ name: string; phone: string; description: string } | null>(null);
-  const [newlyCreatedUserEmail, setNewlyCreatedUserEmail] = useState<string | null>(null);
-  
-  // NOVO: Estado para seleção de serviço dentro do pacote
-  const [packageToSelectService, setPackageToSelectService] = useState<ServicePackage | null>(null);
-
   const [showWhatsApp, setShowWhatsApp] = useState(false);
   
   const [logoUrl, setLogoUrl] = useState(api.getAssetUrl('logo.jpeg'));
@@ -204,113 +193,29 @@ function AppContent() {
   }, []);
 
   const handleCloseModals = () => {
-    setServiceToBook(null);
     setReschedulingBooking(null);
-    setIsQuickRegisterModalOpen(false);
-    setTempClientData(null); // Limpa dados temporários
-    setNewlyCreatedUserEmail(null);
-    setPackageToSelectService(null); // Limpa o pacote selecionado
   };
 
-  // --- NOVO FLUXO DE AGENDAMENTO UNIFICADO ---
-  const handleBookService = useCallback((service: Service) => {
-      if (!currentUser) {
-          // Se não estiver logado, abre o modal de cadastro rápido
-          setServiceToBook(service);
-          setIsQuickRegisterModalOpen(true);
-      } else {
-          // Se estiver logado, abre o modal de agendamento direto
-          setServiceToBook(service);
-      }
-  }, [currentUser]);
+  // --- FLUXO DE REAGENDAMENTO (MANTIDO) ---
   
-  const handleBookPackage = useCallback((pkg: ServicePackage) => {
-      // Abre o modal de seleção de serviço dentro do pacote
-      setPackageToSelectService(pkg);
-  }, []);
-  
-  const handleSelectServiceFromPackage = useCallback((service: Service) => {
-      setPackageToSelectService(null); // Fecha o modal de seleção
-      handleBookService(service); // Inicia o fluxo de agendamento para o serviço escolhido
-  }, [handleBookService]);
-  
-  const handleStartFreeConsultation = useCallback(() => {
-      // Busca o primeiro serviço com preço 0 (o novo serviço de consulta)
-      const freeConsultationService = services.find(s => s.price === 0);
-      if (!freeConsultationService) {
-          alert("Serviço de consulta gratuita não encontrado. Por favor, cadastre um serviço com preço R$ 0,00.");
-          return;
-      }
-      handleBookService(freeConsultationService);
-  }, [services, handleBookService]);
-  
+  // Esta função é chamada pelo UserDashboardPage quando o usuário clica em Reagendar
   const handleStartReschedule = useCallback((booking: Booking) => {
     setReschedulingBooking(booking);
   }, []);
   
-  const handleQuickRegisterAndBook = useCallback((data: { name: string; phone: string; description: string }) => {
-      if (!serviceToBook) return;
-      
-      // A descrição é passada aqui, seja o interesse (consulta gratuita) ou o nome do serviço (serviço pago)
-      setTempClientData(data);
-      setIsQuickRegisterModalOpen(false);
-      // O modal de agendamento será aberto automaticamente porque serviceToBook está definido
-  }, [serviceToBook]);
-
+  // Esta função é chamada pelo BookingModal para confirmar o reagendamento
   const handleConfirmFinalBooking = useCallback(async (details: { date: Date, professionalId: string }): Promise<{ success: boolean, error: string | null }> => {
-    const serviceToUse = serviceToBook || (reschedulingBooking ? services.find(s => s.id === reschedulingBooking.serviceId) : null);
-    if (!serviceToUse) return { success: false, error: "Serviço não selecionado." };
+    const serviceToUse = reschedulingBooking ? services.find(s => s.id === reschedulingBooking.serviceId) : null;
+    if (!serviceToUse || !reschedulingBooking) return { success: false, error: "Serviço ou agendamento não selecionado." };
 
-    if (reschedulingBooking) {
-      // 1. Reagendamento (Usuário logado)
-      const updatedBooking = { ...reschedulingBooking, ...details, status: 'confirmed' as const };
-      const result = await api.addOrUpdateBooking(updatedBooking);
-      if(result) return { success: true, error: null };
-      return { success: false, error: "Falha ao reagendar." };
-    } else if (currentUser) {
-      // 2. Novo Agendamento (Usuário logado)
-      const newBooking: Omit<Booking, 'id'> = { 
-          userId: currentUser.id, 
-          serviceId: serviceToUse.id, 
-          professionalId: details.professionalId, 
-          date: details.date, 
-          status: 'confirmed', 
-          duration: serviceToUse.duration,
-          serviceName: serviceToUse.name,
-      };
-      const result = await api.addOrUpdateBooking(newBooking);
-      
-      // Não há dedução de crédito, pois não há compra/crédito no novo fluxo
-      return { success: !!result, error: result ? null : "Falha ao criar agendamento." };
+    // 1. Reagendamento (Usuário logado)
+    const updatedBooking = { ...reschedulingBooking, ...details, status: 'confirmed' as const };
+    const result = await api.addOrUpdateBooking(updatedBooking);
+    
+    if(result) return { success: true, error: null };
+    return { success: false, error: "Falha ao reagendar." };
           
-    } else if (tempClientData) {
-        // 3. Novo Agendamento (Usuário não logado via Cadastro Rápido)
-        const result = await api.bookServiceForNewUser({
-            name: tempClientData.name,
-            phone: tempClientData.phone,
-            description: tempClientData.description, // Usa a descrição (interesse ou nome do serviço)
-            date: details.date,
-            professionalId: details.professionalId,
-            serviceId: serviceToUse.id,
-            serviceName: serviceToUse.name,
-            duration: serviceToUse.duration,
-        });
-        
-        if (result.success) {
-            // Limpa tempClientData e define newlyCreatedUserEmail
-            setTempClientData(null);
-            if (result.tempEmail) {
-                setNewlyCreatedUserEmail(result.tempEmail);
-            }
-            refreshAdminData();
-            return { success: true, error: null };
-        } else {
-            // Se falhar, mantemos tempClientData para que o usuário possa tentar novamente
-            return { success: false, error: result.error };
-        }
-    }
-    return { success: false, error: "Erro desconhecido no fluxo de agendamento." };
-  }, [currentUser, serviceToBook, reschedulingBooking, tempClientData, services, refreshAdminData]);
+  }, [reschedulingBooking, services]);
   // ------------------------------------------------------------------
 
   const addOrUpdateService = useCallback(async (service: Partial<Service>) => {
@@ -404,17 +309,21 @@ function AppContent() {
     if(loading) {
         return <div className="flex justify-center items-center h-screen"><div className="animate-spin rounded-full h-32 w-32 border-b-2 border-pink-500"></div></div>
     }
+    
+    // Funções de agendamento não são mais usadas, mas precisamos passá-las para os componentes
+    const noOpBook = () => {}; 
+    
     switch (currentPage) {
-      case Page.HOME: return <HomePage onBook={handleBookService} onStartFreeConsultation={handleStartFreeConsultation} onBookPackage={handleBookPackage} />;
-      case Page.SERVICES: return <ServicesPage onBook={handleBookService} onBookPackage={handleBookPackage} />;
+      case Page.HOME: return <HomePage onBook={noOpBook} onStartFreeConsultation={noOpBook} onBookPackage={noOpBook} />;
+      case Page.SERVICES: return <ServicesPage onBook={noOpBook} onBookPackage={noOpBook} />;
       case Page.LOGIN: return <LoginPage />;
-      case Page.USER_DASHBOARD: return <UserDashboardPage onBookWithCredit={handleBookService} onReschedule={handleStartReschedule} />;
+      case Page.USER_DASHBOARD: return <UserDashboardPage onBookWithCredit={noOpBook} onReschedule={handleStartReschedule} />;
       case Page.ADMIN_DASHBOARD: return <AdminDashboardPage adminDataRefreshKey={adminDataRefreshKey} />;
-      default: return <HomePage onBook={handleBookService} onStartFreeConsultation={handleStartFreeConsultation} onBookPackage={handleBookPackage} />;
+      default: return <HomePage onBook={noOpBook} onStartFreeConsultation={noOpBook} onBookPackage={noOpBook} />;
     }
   };
 
-  const serviceForBookingModal = serviceToBook || (reschedulingBooking ? services.find(s => s.id === reschedulingBooking.serviceId) : null);
+  const serviceForReschedulingModal = reschedulingBooking ? services.find(s => s.id === reschedulingBooking.serviceId) : null;
 
   return (
     <AppContext.Provider value={appContextValue}>
@@ -422,33 +331,22 @@ function AppContent() {
         <Header />
         <main className="flex-grow">{renderPage()}</main>
         <Footer />
-        {serviceForBookingModal && <BookingModal 
-            service={serviceForBookingModal} 
+        
+        {/* Modal de Reagendamento (Mantido) */}
+        {serviceForReschedulingModal && <BookingModal 
+            service={serviceForReschedulingModal} 
             booking={reschedulingBooking} 
             onClose={handleCloseModals} 
-            isCreditBooking={false} // Sempre false agora
+            isCreditBooking={false} 
             onConfirmBooking={handleConfirmFinalBooking} 
             professionals={professionals} 
             clinicOperatingHours={clinicSettings.operatingHours} 
             clinicHolidayExceptions={clinicSettings.holidayExceptions}
-            tempClientData={tempClientData} 
-            newlyCreatedUserEmail={newlyCreatedUserEmail}
-        />}
-        {isQuickRegisterModalOpen && serviceToBook && <QuickRegistrationModal 
-            service={serviceToBook} // Passa o serviço
-            onClose={handleCloseModals} 
-            onRegister={handleQuickRegisterAndBook} 
+            tempClientData={null} 
+            newlyCreatedUserEmail={null}
         />}
         
-        {/* NOVO MODAL DE SELEÇÃO DE SERVIÇO DO PACOTE */}
-        {packageToSelectService && (
-            <PackageBookingSelectionModal
-                pkg={packageToSelectService}
-                services={services}
-                onClose={handleCloseModals}
-                onSelectService={handleSelectServiceFromPackage}
-            />
-        )}
+        {/* Modais de Agendamento Rápido e Seleção de Pacote Removidos */}
         
         <a href="https://wa.me/5516993140852" target="_blank" rel="noopener noreferrer" className={`fixed bottom-6 right-6 bg-green-500 rounded-full p-3 shadow-lg hover:bg-green-600 transition-transform duration-300 transform ${showWhatsApp ? 'scale-100' : 'scale-0'}`} aria-label="Contact us on WhatsApp"><WhatsAppIcon /></a>
       </div>
