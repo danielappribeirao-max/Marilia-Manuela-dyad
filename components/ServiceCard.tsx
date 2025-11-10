@@ -8,8 +8,8 @@ interface ServiceCardProps {
 }
 
 const ServiceCard: React.FC<ServiceCardProps> = ({ service, onBook }) => {
-  // Agora identificamos a consulta gratuita pelo preço zero
-  const isFreeConsultation = service.price === 0;
+  // Agora identificamos a consulta gratuita pelo ID fixo, já que todos os serviços terão preço 0
+  const isFreeConsultation = service.id === FREE_CONSULTATION_SERVICE_ID;
   
   const sessionsPerPackage = service.sessions || 1;
 
@@ -33,7 +33,7 @@ const ServiceCard: React.FC<ServiceCardProps> = ({ service, onBook }) => {
 
         <div className="mt-4 flex justify-between items-center">
           <span className={`text-lg font-semibold ${isFreeConsultation ? 'text-green-600' : 'text-pink-500'}`}>
-            {isFreeConsultation ? 'GRATUITO' : `R$ ${service.price.toFixed(2).replace('.', ',')}`}
+            {isFreeConsultation ? 'GRATUITO' : 'Pagamento na Clínica'}
           </span>
           <span className="text-sm text-gray-500">{service.duration} min</span>
         </div>

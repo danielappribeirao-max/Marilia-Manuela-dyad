@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { Service } from '../types';
+import { FREE_CONSULTATION_SERVICE_ID } from '../constants';
 
 interface ServiceModalProps {
   service: Partial<Service> | null;
@@ -10,6 +11,7 @@ interface ServiceModalProps {
 
 const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave, existingServices }) => {
   const isEditing = !!service?.id;
+  const isFreeConsultation = service?.id === FREE_CONSULTATION_SERVICE_ID;
   
   const [formData, setFormData] = useState<Partial<Service>>({
     id: service?.id, 
@@ -25,8 +27,10 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave, e
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [isNewCategory, setIsNewCategory] = useState(false);
   
+  // O preço é sempre 0 no sistema, exceto se for a consulta gratuita (que também é 0)
+  // Mantemos o priceType apenas para fins de exibição/entendimento do admin, mas o valor é fixo.
   const [priceType, setPriceType] = useState<'fixed' | 'free'>(
-      (service?.price === 0 || !service?.price) ? 'free' : 'fixed'
+      isFreeConsultation ? 'free' : 'fixed'
   );
 
   useEffect(() => {
@@ -41,10 +45,10 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave, e
       sessions: service?.sessions || 1,
       order: service?.order,
     });
-    setPriceType((service?.price === 0 || !service?.price) ? 'free' : 'fixed');
+    setPriceType(isFreeConsultation ? 'free' : 'fixed');
     setIsNewCategory(false);
     setErrors({});
-  }, [service]);
+  }, [service, isFreeConsultation]);
   
   const existingCategories = useMemo(() => {
     const categories = new Set(existingServices.map(s => s.category).filter(Boolean));
@@ -56,15 +60,10 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave, e
     if (!formData.name?.trim()) newErrors.name = 'O nome é obrigatório.';
     if (!formData.description?.trim()) newErrors.description = 'A descrição é obrigatória.';
     
-    const price = Number(formData.price);
     const duration = Number(formData.duration);
     const sessions = Number(formData.sessions);
     
-    if (priceType === 'fixed') {
-        if (isNaN(price) || price <= 0) newErrors.price = 'O preço deve ser maior que zero para preço fixo.';
-    } else {
-        if (price !== 0) newErrors.price = 'Erro interno: Preço deve ser 0 para Grátis.';
-    }
+    // O preço é sempre 0, então não precisamos validar o valor, apenas garantir que seja 0.
     
     if (isNaN(duration) || duration < 0) newErrors.duration = 'A duração deve ser zero ou maior.';
     
@@ -98,16 +97,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave, e
     }
   };
   
-  const handlePriceTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-      const newType = e.target.value as 'fixed' | 'free';
-      setPriceType(newType);
-      if (newType === 'free') {
-          setFormData(prev => ({ ...prev, price: 0 }));
-      } else {
-          setFormData(prev => ({ ...prev, price: prev.price === 0 ? 50.00 : prev.price }));
-      }
-      if (errors.price) setErrors(prev => ({ ...prev, price: '' }));
-  };
+  // Removemos handlePriceTypeChange pois o preço é fixo em 0.
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -136,7 +126,7 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave, e
       const serviceToSave: Partial<Service> = {
           name: finalFormData.name!,
           description: finalFormData.description!,
-          price: Number(finalFormData.price),
+          price: 0, // Preço fixo em 0 para todos os serviços no sistema
           duration: Number(finalFormData.duration),
           category: finalFormData.category!,
           image: finalFormData.image!,
@@ -178,36 +168,12 @@ const ServiceModal: React.FC<ServiceModalProps> = ({ service, onClose, onSave, e
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label htmlFor="priceType" className="block text-sm font-medium text-gray-700 mb-1">Tipo de Preço</label>
-                <select 
-                    id="priceType" 
-                    name="priceType" 
-                    value={priceType} 
-                    onChange={handlePriceTypeChange} 
-                    className="w-full p-2 border bg-white text-gray-900 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500 border-gray-300"
-                >
-                    <option value="fixed">Preço Fixo (R$)</option>
-                    <option value="free">Grátis (R$ 0,00)</option>
-                </select>
+                <label htmlFor="priceType" className="block text-sm font-medium text-gray-700 mb-1">Status de Pagamento</label>
+                <div className="w-full p-2 border bg-gray-100 text-gray-900 rounded-md shadow-sm border-gray-300 cursor-not-allowed">
+                    {isFreeConsultation ? 'GRATUITO (Consulta)' : 'PAGAMENTO NA CLÍNICA'}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">O preço no sistema é R$ 0,00. O valor real é acertado na clínica.</p>
               </div>
-              <div>
-                <label htmlFor="price" className="block text-sm font-medium text-gray-700 mb-1">Preço (R$)</label>
-                <input 
-                    type="number" 
-                    id="price" 
-                    name="price" 
-                    value={formData.price || 0} 
-                    onChange={handleChange} 
-                    step="0.01" 
-                    min={priceType === 'fixed' ? '0.01' : '0'}
-                    disabled={priceType === 'free'}
-                    className={`w-full p-2 border bg-white text-gray-900 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500 ${errors.price ? 'border-red-500' : 'border-gray-300'} ${priceType === 'free' ? 'bg-gray-100 cursor-not-allowed' : ''}`} 
-                />
-                {errors.price && <p className="text-red-500 text-xs mt-1">{errors.price}</p>}
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label htmlFor="duration" className="block text-sm font-medium text-gray-700 mb-1">Duração (minutos)</label>
                 <input type="number" id="duration" name="duration" value={formData.duration || 0} onChange={handleChange} min="0" className={`w-full p-2 border bg-white text-gray-900 rounded-md shadow-sm focus:ring-pink-500 focus:border-pink-500 ${errors.duration ? 'border-red-500' : 'border-gray-300'}`} />

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Service } from '../types';
 import { Edit, Trash2, Clock, DollarSign, Layers } from 'lucide-react';
+import { FREE_CONSULTATION_SERVICE_ID } from '../constants';
 
 interface AdminServiceCardProps {
   service: Service;
@@ -9,6 +10,8 @@ interface AdminServiceCardProps {
 }
 
 const AdminServiceCard: React.FC<AdminServiceCardProps> = ({ service, onEdit, onDelete }) => {
+  const isFreeConsultation = service.id === FREE_CONSULTATION_SERVICE_ID;
+  
   return (
     <div className="bg-white border border-gray-200 rounded-xl shadow-md p-5 flex flex-col sm:flex-row items-start sm:items-center justify-between transition-shadow hover:shadow-lg">
       
@@ -31,8 +34,8 @@ const AdminServiceCard: React.FC<AdminServiceCardProps> = ({ service, onEdit, on
         {/* Details */}
         <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-gray-600">
           <span className="flex items-center gap-1.5 font-medium">
-            <DollarSign size={16} className="text-green-600" />
-            R$ {service.price.toFixed(2).replace('.', ',')}
+            <DollarSign size={16} className={isFreeConsultation ? 'text-green-600' : 'text-pink-500'} />
+            {isFreeConsultation ? 'GRATUITO' : 'Pagamento na Clínica'}
           </span>
           <span className="flex items-center gap-1.5">
             <Clock size={16} className="text-pink-500" />
