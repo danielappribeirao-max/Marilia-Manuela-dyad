@@ -41,12 +41,13 @@ const AdminPackageCard: React.FC<AdminPackageCardProps> = ({ servicePackage, ser
       <div className="mt-4 sm:mt-0 sm:ml-6 flex flex-col sm:flex-row sm:items-center gap-4 w-full sm:w-auto">
         
         {/* Details */}
-        <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-gray-600">
+        {/* Removendo a exibição do preço */}
+        {/* <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-gray-600">
           <span className="flex items-center gap-1.5 font-medium">
             <DollarSign size={16} className="text-green-600" />
             R$ {servicePackage.price.toFixed(2).replace('.', ',')}
           </span>
-        </div>
+        </div> */}
 
         {/* Actions - Vertical Stack */}
         <div className="flex flex-col space-y-2 flex-shrink-0 w-full sm:w-auto">

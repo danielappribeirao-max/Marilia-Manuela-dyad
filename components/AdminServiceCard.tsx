@@ -33,10 +33,7 @@ const AdminServiceCard: React.FC<AdminServiceCardProps> = ({ service, onEdit, on
         
         {/* Details */}
         <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-gray-600">
-          <span className="flex items-center gap-1.5 font-medium">
-            <DollarSign size={16} className={isFreeConsultation ? 'text-green-600' : 'text-pink-500'} />
-            {isFreeConsultation ? 'GRATUITO' : 'Pagamento na Clínica'}
-          </span>
+          {/* Removendo a exibição de preço/pagamento */}
           <span className="flex items-center gap-1.5">
             <Clock size={16} className="text-pink-500" />
             {service.duration} min

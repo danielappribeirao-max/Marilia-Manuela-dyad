@@ -30,11 +30,12 @@ const PackageCard: React.FC<PackageCardProps> = ({ servicePackage, services, onB
         </div>
 
         <div className="mt-auto pt-4 border-t border-gray-200">
-          <div className="flex justify-between items-center mb-4">
+          {/* Removendo a exibição do preço */}
+          {/* <div className="flex justify-between items-center mb-4">
             <span className="text-2xl font-bold text-pink-500">
               R$ {servicePackage.price.toFixed(2).replace('.', ',')}
             </span>
-          </div>
+          </div> */}
 
           <button 
             onClick={() => onBookPackage(servicePackage)}

@@ -32,10 +32,12 @@ const ServiceCard: React.FC<ServiceCardProps> = ({ service, onBook }) => {
         )}
 
         <div className="mt-4 flex justify-between items-center">
-          <span className={`text-lg font-semibold ${isFreeConsultation ? 'text-green-600' : 'text-pink-500'}`}>
-            {isFreeConsultation ? 'GRATUITO' : 'Pagamento na Clínica'}
-          </span>
-          <span className="text-sm text-gray-500">{service.duration} min</span>
+          {isFreeConsultation && (
+            <span className="text-lg font-semibold text-green-600">
+              GRATUITO
+            </span>
+          )}
+          <span className="text-sm text-gray-500 ml-auto">{service.duration} min</span>
         </div>
         
         <button 
